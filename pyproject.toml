@@ -1,0 +1,12 @@
+# Copyright 2026 Yaroslav Mariukha
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "fpga-cocotb"
+version = "0.1.0"
+description = "Personal cocotb helpers"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

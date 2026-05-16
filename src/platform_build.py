@@ -1,0 +1,200 @@
+# Copyright 2026 Yaroslav Mariukha
+# SPDX-License-Identifier: Apache-2.0
+
+def compile_with_msim_setup(toplevel):
+    import subprocess
+    from pathlib import Path
+
+    proj_path = Path(__file__).resolve().parent
+
+    qsys_simdir = (
+        proj_path
+        / toplevel
+        / toplevel
+        / "testbench"
+    )
+
+    build_dir = proj_path / "sim_build"
+    build_dir.mkdir(exist_ok=True)
+
+    do_file = build_dir / "compile_ip.do"
+
+    do_file.write_text(f"""
+set QSYS_SIMDIR "{qsys_simdir.as_posix()}"
+set TOP_LEVEL_NAME {toplevel}
+
+source "$QSYS_SIMDIR/mentor/msim_setup.tcl"
+
+dev_com
+com
+
+quit -f
+""")
+
+    subprocess.run(
+        ["vsim", "-c", "-do", str(do_file)],
+        cwd=build_dir,
+        check=True,
+    )
+
+def get_msim_libraries(msim_setup_path):
+    import re
+    from pathlib import Path
+
+    text = Path(msim_setup_path).read_text()
+
+    libs = []
+
+    # Ищем все "-work library_name"
+    for lib in re.findall(r"-work\s+([A-Za-z0-9_]+)", text):
+        if lib not in libs:
+            libs.append(lib)
+
+    return libs
+
+def run_questa(hdl_toplevel, test_module, debug=False):
+    import os
+    import sys
+    from pathlib import Path
+    from cocotb_tools.runner import get_runner
+
+    sim = os.getenv("SIM", "questa")
+    os.environ["COCOTB_LOG_LEVEL"] = "INFO"
+
+    proj_path = Path(__file__).resolve().parent
+    build_dir = proj_path / "sim_build"
+
+    compile_with_msim_setup(hdl_toplevel)
+
+    runner = get_runner(sim)
+
+    msim_setup = (
+        proj_path
+        / hdl_toplevel
+        / hdl_toplevel
+        / "testbench"
+        / "mentor"
+        / "msim_setup.tcl"
+    )
+
+    libs = get_msim_libraries(msim_setup)
+
+    test_args = [
+        "-voptargs=+acc",
+    ]
+
+    for lib in libs:
+        test_args += ["-L", lib]
+
+    if debug:
+        test_args += [
+            "-do", "wave.do",
+        ]
+    
+    runner.build(
+        sources=[],
+        hdl_toplevel=hdl_toplevel,
+        build_dir=build_dir,
+        always=False,
+    )
+
+    runner.test(
+        hdl_toplevel=hdl_toplevel,
+        hdl_toplevel_library=f"{hdl_toplevel}_inst",
+        test_module=test_module,
+        hdl_toplevel_lang="verilog",
+        build_dir=build_dir,
+        gui=debug,
+        waves=debug,
+        test_args=test_args,
+    )
+
+def run_verilator(hdl_toplevel, test_module, debug=False):
+    from pathlib import Path
+    from cocotb_tools.runner import get_runner
+    import os
+
+    proj_path = Path(__file__).resolve().parent
+    build_dir = proj_path / "sim_build_verilator"
+
+    sim_dir = (
+        proj_path
+        / hdl_toplevel
+        / hdl_toplevel
+        / "testbench"
+        / f"{hdl_toplevel}_tb"
+        / "simulation"
+    )
+
+    sub = sim_dir / "submodules"
+    mentor_src = sub / "mentor" / "src_hdl"
+
+    sources = []
+
+    # packages first
+    sources += [
+        sub / "verbosity_pkg.sv",
+        sub / "avalon_utilities_pkg.sv",
+    ]
+
+    # regular generated RTL
+    sources += sorted(sub.glob("*.v"))
+    sources += sorted(sub.glob("*.sv"))
+
+    # Intel VIP nested sources
+    sources += sorted(mentor_src.glob("*.v"))
+    sources += sorted(mentor_src.glob("*.sv"))
+
+    # remove duplicates and put platform1.v last
+    unique = []
+    seen = set()
+
+    for s in sources:
+        if s.name == f"{hdl_toplevel}.v":
+            continue
+        if s not in seen:
+            unique.append(s)
+            seen.add(s)
+
+    unique.append(sub / f"{hdl_toplevel}.v")
+    sources = unique
+
+    print("Verilator sources:")
+    for s in sources:
+        print("  ", s)
+
+    runner = get_runner("verilator")
+
+    runner.build(
+        sources=sources,
+        hdl_toplevel=hdl_toplevel,
+        build_dir=build_dir,
+        always=True,
+        build_args=[
+            "-Wno-fatal",
+            "--timescale", "1ps/1ps",
+            "-CFLAGS", "-std=c++20",
+            "-I" + str(sub),
+            "-I" + str(mentor_src),
+        ],
+    )
+
+    runner.test(
+        hdl_toplevel=hdl_toplevel,
+        test_module=test_module,
+        hdl_toplevel_lang="verilog",
+        build_dir=build_dir,
+        waves=debug,
+    )
+
+def platform_test_cocotb(hdl_toplevel="platform1", test_module="test", debug=False):
+    import os
+
+    sim = os.getenv("SIM", "questa")
+
+    if sim == "verilator":
+        run_verilator(hdl_toplevel, test_module, debug)
+    elif sim == "questa":
+        run_questa(hdl_toplevel, test_module, debug)
+    else:
+        raise ValueError(f"Unsupported SIM={sim}")
