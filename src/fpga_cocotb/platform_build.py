@@ -1,27 +1,27 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
-def compile_with_msim_setup(toplevel):
+def compile_with_msim_setup(project_root, hdl_toplevel):
     import subprocess
     from pathlib import Path
 
-    proj_path = Path(__file__).resolve().parent
+    project_root = Path(project_root)
 
     qsys_simdir = (
-        proj_path
-        / toplevel
-        / toplevel
+        project_root
+        / hdl_toplevel
+        / hdl_toplevel
         / "testbench"
     )
 
-    build_dir = proj_path / "sim_build"
+    build_dir = project_root / "sim_build"
     build_dir.mkdir(exist_ok=True)
 
     do_file = build_dir / "compile_ip.do"
 
     do_file.write_text(f"""
 set QSYS_SIMDIR "{qsys_simdir.as_posix()}"
-set TOP_LEVEL_NAME {toplevel}
+set TOP_LEVEL_NAME {hdl_toplevel}
 
 source "$QSYS_SIMDIR/mentor/msim_setup.tcl"
 
@@ -52,24 +52,22 @@ def get_msim_libraries(msim_setup_path):
 
     return libs
 
-def run_questa(hdl_toplevel, test_module, debug=False):
+def run_questa(project_root, hdl_toplevel, test_module, debug=False):
     import os
-    import sys
     from pathlib import Path
     from cocotb_tools.runner import get_runner
 
-    sim = os.getenv("SIM", "questa")
+    project_root = Path(project_root)
+    build_dir = project_root / "sim_build"
+
     os.environ["COCOTB_LOG_LEVEL"] = "INFO"
 
-    proj_path = Path(__file__).resolve().parent
-    build_dir = proj_path / "sim_build"
+    compile_with_msim_setup(project_root, hdl_toplevel)
 
-    compile_with_msim_setup(hdl_toplevel)
-
-    runner = get_runner(sim)
+    runner = get_runner("questa")
 
     msim_setup = (
-        proj_path
+        project_root
         / hdl_toplevel
         / hdl_toplevel
         / "testbench"
@@ -79,18 +77,14 @@ def run_questa(hdl_toplevel, test_module, debug=False):
 
     libs = get_msim_libraries(msim_setup)
 
-    test_args = [
-        "-voptargs=+acc",
-    ]
+    test_args = ["-voptargs=+acc"]
 
     for lib in libs:
         test_args += ["-L", lib]
 
     if debug:
-        test_args += [
-            "-do", "wave.do",
-        ]
-    
+        test_args += ["-do", "wave.do"]
+
     runner.build(
         sources=[],
         hdl_toplevel=hdl_toplevel,
@@ -108,17 +102,16 @@ def run_questa(hdl_toplevel, test_module, debug=False):
         waves=debug,
         test_args=test_args,
     )
-
-def run_verilator(hdl_toplevel, test_module, debug=False):
+    
+def run_verilator(project_root, hdl_toplevel, test_module, debug=False):
     from pathlib import Path
     from cocotb_tools.runner import get_runner
-    import os
 
-    proj_path = Path(__file__).resolve().parent
-    build_dir = proj_path / "sim_build_verilator"
+    project_root = Path(project_root)
+    build_dir = project_root / "sim_build_verilator"
 
     sim_dir = (
-        proj_path
+        project_root
         / hdl_toplevel
         / hdl_toplevel
         / "testbench"
@@ -187,14 +180,14 @@ def run_verilator(hdl_toplevel, test_module, debug=False):
         waves=debug,
     )
 
-def platform_test_cocotb(hdl_toplevel="platform1", test_module="test", debug=False):
+def platform_test_cocotb(project_root, hdl_toplevel="platform1", test_module="test", debug=False):
     import os
 
     sim = os.getenv("SIM", "questa")
 
     if sim == "verilator":
-        run_verilator(hdl_toplevel, test_module, debug)
+        run_verilator(project_root, hdl_toplevel, test_module, debug)
     elif sim == "questa":
-        run_questa(hdl_toplevel, test_module, debug)
+        run_questa(project_root, hdl_toplevel, test_module, debug)
     else:
         raise ValueError(f"Unsupported SIM={sim}")
