@@ -4,8 +4,15 @@
 [project]
 name = "fpga-cocotb"
 version = "0.1.0"
-description = "Personal cocotb helpers"
+description = "Intel Platform designer and Avalon Stream cocotb helpers"
 requires-python = ">=3.10"
+
+authors = [
+    { name = "Yaroslav Mariukha"  }
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [build-system]
 requires = ["setuptools>=61"]

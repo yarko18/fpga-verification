@@ -1,0 +1,5 @@
+# Copyright 2026 Yaroslav Mariukha
+# SPDX-License-Identifier: Apache-2.0
+
+src/fpga_cocotb.egg-info/
+src/fpga_cocotb/
