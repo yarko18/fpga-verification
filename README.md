@@ -10,7 +10,9 @@ SPDX-License-Identifier: Apache-2.0
 
 ## reinstall 
 
-    python.exe -m pip install -e . --force-reinstall
+    python.exe -m pip uninstall fpga-cocotb -y
+    python.exe -m pip install -e .
+
 
 ## check installation
 
