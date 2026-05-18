@@ -3,7 +3,7 @@
 
 [project]
 name = "fpga-cocotb"
-version = "0.1.0"
+version = "0.1.1"
 description = "Intel Platform designer and Avalon Stream cocotb helpers"
 requires-python = ">=3.10"
 
