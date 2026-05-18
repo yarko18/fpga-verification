@@ -39,11 +39,11 @@ class VIPPacket:
 
     def to_symbols(self) -> list[int]:
         raise NotImplementedError
-    
+
 @dataclass
 class VIPControlPacket(VIPPacket):
-    width: int = 0
-    height: int = 0
+    width: int
+    height: int
     interlacing: VIPInterlacing = VIPInterlacing.PROGRESSIVE_FRAME
 
     def __init__(
@@ -59,13 +59,15 @@ class VIPControlPacket(VIPPacket):
         self.validate()
 
     def validate(self):
-        assert 0 <= self.width <= 0xFFFF
-        assert 0 <= self.height <= 0xFFFF
-        assert 0 <= int(self.interlacing) <= 0xF
+        if not 0 <= self.width <= 0xFFFF:
+            raise ValueError("width must fit into 16 bits")
+
+        if not 0 <= self.height <= 0xFFFF:
+            raise ValueError("height must fit into 16 bits")
 
     def to_symbols(self) -> list[int]:
         return [
-            VIPPacketType.CONTROL,
+            int(VIPPacketType.CONTROL),
             (self.width >> 12) & 0xF,
             (self.width >> 8) & 0xF,
             (self.width >> 4) & 0xF,
@@ -79,8 +81,11 @@ class VIPControlPacket(VIPPacket):
 
     @classmethod
     def from_symbols(cls, symbols: list[int]):
+        if len(symbols) < 10:
+            raise ValueError(f"Control packet too short: {len(symbols)} symbols")
+
         if (symbols[0] & 0xF) != VIPPacketType.CONTROL:
-            raise ValueError("Not a VIP control packet")
+            raise ValueError(f"Not a control packet: type=0x{symbols[0] & 0xF:X}")
 
         width = (
             ((symbols[1] & 0xF) << 12)
@@ -96,9 +101,13 @@ class VIPControlPacket(VIPPacket):
             | (symbols[8] & 0xF)
         )
 
-        interlacing = VIPInterlacing(symbols[9] & 0xF)
+        interlacing_raw = symbols[9] & 0xF
 
-        return cls(width, height, interlacing)
+        return cls(
+            width=width,
+            height=height,
+            interlacing=VIPInterlacing(interlacing_raw),
+        )
     
 @dataclass
 class VIPVideoPacket(VIPPacket):
@@ -109,14 +118,17 @@ class VIPVideoPacket(VIPPacket):
         self.payload = payload
 
     def to_symbols(self) -> list[int]:
-        return [VIPPacketType.VIDEO] + self.payload
+        return [int(VIPPacketType.VIDEO)] + self.payload
 
     @classmethod
     def from_symbols(cls, symbols: list[int]):
-        if (symbols[0] & 0xF) != VIPPacketType.VIDEO:
-            raise ValueError("Not a VIP video packet")
+        if not symbols:
+            raise ValueError("Empty video packet")
 
-        return cls(payload=symbols[1:])
+        if (symbols[0] & 0xF) != VIPPacketType.VIDEO:
+            raise ValueError(f"Not a VIP video packet: type=0x{symbols[0] & 0xF:X}")
+
+        return cls(payload=list(symbols[1:]))
     
 @dataclass
 class VIPUserPacket(VIPPacket):
@@ -125,7 +137,7 @@ class VIPUserPacket(VIPPacket):
 
     def __init__(self, user_type: int, payload: list[int]):
         if not 1 <= user_type <= 8:
-            raise ValueError("User packet type must be 1..8")
+            raise ValueError("VIP user packet type must be 1..8")
 
         super().__init__(VIPPacketType(user_type))
         self.user_type = user_type
@@ -133,6 +145,21 @@ class VIPUserPacket(VIPPacket):
 
     def to_symbols(self) -> list[int]:
         return [self.user_type & 0xF] + self.payload
+
+    @classmethod
+    def from_symbols(cls, symbols: list[int]):
+        if not symbols:
+            raise ValueError("Empty user packet")
+
+        user_type = symbols[0] & 0xF
+
+        if not 1 <= user_type <= 8:
+            raise ValueError(f"Not a VIP user packet: type=0x{user_type:X}")
+
+        return cls(
+            user_type=user_type,
+            payload=list(symbols[1:]),
+        )
     
 @dataclass
 class VIPFrame:
@@ -158,3 +185,23 @@ class VIPFrame:
             self.control_packet(),
             self.video_packet(),
         ]
+    
+def vip_packet_from_symbols(symbols: list[int]) -> VIPPacket:
+    if not symbols:
+        raise ValueError("Empty VIP packet")
+
+    packet_type = symbols[0] & 0xF
+
+    if packet_type == int(VIPPacketType.VIDEO):
+        return VIPVideoPacket.from_symbols(symbols)
+
+    if packet_type == int(VIPPacketType.CONTROL):
+        return VIPControlPacket.from_symbols(symbols)
+
+    if 1 <= packet_type <= 8:
+        return VIPUserPacket.from_symbols(symbols)
+
+    if packet_type == int(VIPPacketType.ANCILLARY):
+        raise NotImplementedError("Ancillary VIP packet is not implemented yet")
+
+    raise ValueError(f"Reserved/unsupported VIP packet type: 0x{packet_type:X}")

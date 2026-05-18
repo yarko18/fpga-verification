@@ -4,3 +4,4 @@
 src/fpga_cocotb.egg-info/
 src/fpga_cocotb/__pycache__/
 src/fpga_cocotb/sim_build/
+src/fpga_cocotb/vip/__pycache__/
