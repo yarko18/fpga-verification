@@ -3,8 +3,8 @@
 
 [project]
 name = "fpga-cocotb"
-version = "0.1.1"
-description = "Intel Platform designer and Avalon Stream cocotb helpers"
+version = "0.1.2"
+description = "Avalon Stream, Intel Platform designer, Intel Video Suite IP cocotb helpers"
 requires-python = ">=3.10"
 
 authors = [

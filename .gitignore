@@ -2,4 +2,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 src/fpga_cocotb.egg-info/
-src/fpga_cocotb/
+src/fpga_cocotb/__pycache__/
+src/fpga_cocotb/sim_build/
