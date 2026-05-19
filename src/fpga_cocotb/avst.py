@@ -203,6 +203,7 @@ class AvalonSTBase:
         ready_latency=0,
         ready_allowance=None,
         packets=None,
+        strict_ready_latency=False,
         *args,
         **kwargs,
     ):
@@ -291,6 +292,7 @@ class AvalonSTBase:
 
         self.ready_latency = ready_latency
         self.ready_allowance = ready_allowance
+        self.strict_ready_latency = strict_ready_latency
         self._ready_history = [False] * self.ready_latency
 
         if self._valid_init is not None and self.has_valid:
@@ -889,23 +891,28 @@ class AvalonSTMonitor(AvalonSTBase):
             eop = True
 
         raw_empty = 0
-        if self.has_empty and self.has_packets and eop and self.symbols_per_beat > 1:
+        if self.has_empty and self.has_packets and self.symbols_per_beat > 1:
             raw_empty = self._safe_optional_int(self.bus.empty.value, 0)
+
+            if raw_empty:
+                if not eop:
+                    raise RuntimeError(
+                        f"Avalon-ST empty={raw_empty} asserted without endofpacket"
+                    )
+
+                if raw_empty >= self.symbols_per_beat:
+                    raise RuntimeError(
+                        f"Avalon-ST empty out of range: {raw_empty}, "
+                        f"symbols_per_beat={self.symbols_per_beat}"
+                    )
 
         error = self._safe_optional_int(self.bus.error.value, 0) if self.has_error else 0
         channel = self._safe_optional_int(self.bus.channel.value, 0) if self.has_channel else 0
 
         symbols = self._unpack_symbols(data_word)
 
-        if self.has_packets and eop and self.symbols_per_beat > 1:
-            if raw_empty < 0 or raw_empty > self.symbols_per_beat:
-                raise RuntimeError(
-                    f"Avalon-ST empty out of range: {raw_empty}, "
-                    f"symbols_per_beat={self.symbols_per_beat}"
-                )
-
-            if raw_empty:
-                symbols = symbols[:-raw_empty]
+        if self.has_packets and eop and raw_empty:
+            symbols = symbols[:-raw_empty]
 
         return AvalonSTBeat(
             data=data_word,
@@ -1023,6 +1030,7 @@ class AvalonSTMonitor(AvalonSTBase):
 
         pending_beat = None
         pending_valid = False
+        prev_ready_raw = True
 
         while True:
             await clock_edge_event
@@ -1033,10 +1041,23 @@ class AvalonSTMonitor(AvalonSTBase):
                 self.active = False
                 pending_beat = None
                 pending_valid = False
+                prev_ready_raw = True
                 self._reset_ready_state()
 
                 await NextTimeStep()
                 continue
+
+            ready_raw = self._sample_ready_raw()
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if self.strict_ready_latency and self.has_ready and self.has_valid:
+                if not prev_ready_raw and valid_sample:
+                    raise RuntimeError(
+                        "Avalon-ST RL=1 violation: valid is asserted although ready "
+                        "was low in the previous cycle"
+                    )
+
+            prev_ready_raw = ready_raw
 
             ready_sample = self._sample_ready_qualified()
 
@@ -1044,8 +1065,6 @@ class AvalonSTMonitor(AvalonSTBase):
                 frame = self._process_beat(pending_beat, frame)
             else:
                 self.active = frame is not None
-
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
             if valid_sample:
                 pending_beat = self._capture_beat()
