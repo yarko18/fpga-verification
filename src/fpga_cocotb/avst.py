@@ -979,6 +979,14 @@ class AvalonSTMonitor(AvalonSTBase):
         return frame
 
     async def _run(self):
+        if self.ready_latency == 0:
+            await self._run_rl0()
+        elif self.ready_latency == 1:
+            await self._run_rl1()
+        else:
+            raise NotImplementedError("AvalonSTMonitor supports only RL=0 or RL=1")
+
+    async def _run_rl0(self):
         frame = None
         self.active = False
 
@@ -1007,6 +1015,46 @@ class AvalonSTMonitor(AvalonSTBase):
                 self.wake_event.clear()
                 await wake_event
 
+    async def _run_rl1(self):
+        frame = None
+        self.active = False
+
+        clock_edge_event = RisingEdge(self.clock)
+
+        pending_beat = None
+        pending_valid = False
+
+        while True:
+            await clock_edge_event
+            await ReadOnly()
+
+            if self._reset_active():
+                frame = None
+                self.active = False
+                pending_beat = None
+                pending_valid = False
+                self._reset_ready_state()
+
+                await NextTimeStep()
+                continue
+
+            ready_sample = self._sample_ready_qualified()
+
+            if ready_sample and pending_valid:
+                frame = self._process_beat(pending_beat, frame)
+            else:
+                self.active = frame is not None
+
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if valid_sample:
+                pending_beat = self._capture_beat()
+                pending_valid = True
+            else:
+                pending_beat = None
+                pending_valid = False
+
+            await NextTimeStep()
 
 class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
     _type = "sink"
