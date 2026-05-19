@@ -237,7 +237,7 @@ class VIPUserPacket(VIPPacket):
         return [self.user_type & 0xF] + self.payload
 
     @classmethod
-    def from_symbols(cls, symbols: list[int]):
+    def from_symbols(cls, symbols: list[int], symbols_per_beat: int = 1):
         if not symbols:
             raise ValueError("Empty user packet")
 
@@ -246,9 +246,11 @@ class VIPUserPacket(VIPPacket):
         if not 1 <= user_type <= 8:
             raise ValueError(f"Not a VIP user packet: type=0x{user_type:X}")
 
+        payload = symbols[symbols_per_beat:]
+
         return cls(
             user_type=user_type,
-            payload=list(symbols[1:]),
+            payload=list(payload),
         )
     
 @dataclass
