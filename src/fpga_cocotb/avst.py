@@ -204,6 +204,7 @@ class AvalonSTBase:
         ready_allowance=None,
         packets=None,
         strict_ready_latency=False,
+        timeout_cycles=0,
         *args,
         **kwargs,
     ):
@@ -294,6 +295,7 @@ class AvalonSTBase:
         self.ready_allowance = ready_allowance
         self.strict_ready_latency = strict_ready_latency
         self._ready_history = [False] * self.ready_latency
+        self.timeout_cycles = timeout_cycles
 
         if self._valid_init is not None and self.has_valid:
             self.bus.valid.value = Immediate(self._valid_init)
@@ -993,9 +995,18 @@ class AvalonSTMonitor(AvalonSTBase):
         else:
             raise NotImplementedError("AvalonSTMonitor supports only RL=0 or RL=1")
 
+    def _check_timeout(self, idle_cycles):
+        if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
+            raise TimeoutError(
+                f"Avalon-ST monitor timeout: no transfer for "
+                f"{idle_cycles} cycles"
+            )
+
+
     async def _run_rl0(self):
         frame = None
         self.active = False
+        idle_cycles = 0
 
         clock_edge_event = RisingEdge(self.clock)
         wake_event = self.wake_event.wait()
@@ -1006,6 +1017,7 @@ class AvalonSTMonitor(AvalonSTBase):
             if self._reset_active():
                 frame = None
                 self.active = False
+                idle_cycles = 0
                 self._reset_ready_state()
                 continue
 
@@ -1013,14 +1025,20 @@ class AvalonSTMonitor(AvalonSTBase):
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
             if ready_sample and valid_sample:
+                idle_cycles = 0
                 beat = self._capture_beat()
                 frame = self._process_beat(beat, frame)
 
             else:
+                idle_cycles += 1
+                self._check_timeout(idle_cycles)
                 self.active = frame is not None
 
-                self.wake_event.clear()
-                await wake_event
+                # self.wake_event.clear()
+                # await wake_event
+                if self.timeout_cycles == 0:
+                    self.wake_event.clear()
+                    await wake_event
 
     async def _run_rl1(self):
         frame = None
@@ -1031,6 +1049,7 @@ class AvalonSTMonitor(AvalonSTBase):
         pending_beat = None
         pending_valid = False
         prev_ready_raw = True
+        idle_cycles = 0
 
         while True:
             await clock_edge_event
@@ -1042,6 +1061,7 @@ class AvalonSTMonitor(AvalonSTBase):
                 pending_beat = None
                 pending_valid = False
                 prev_ready_raw = True
+                idle_cycles = 0
                 self._reset_ready_state()
 
                 await NextTimeStep()
@@ -1062,8 +1082,17 @@ class AvalonSTMonitor(AvalonSTBase):
             ready_sample = self._sample_ready_qualified()
 
             if ready_sample and pending_valid:
+                idle_cycles = 0
                 frame = self._process_beat(pending_beat, frame)
             else:
+                idle_cycles += 1
+
+                if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
+                    raise TimeoutError(
+                        f"Avalon-ST monitor timeout: no transfer for "
+                        f"{idle_cycles} cycles"
+                    )
+
                 self.active = frame is not None
 
             if valid_sample:
