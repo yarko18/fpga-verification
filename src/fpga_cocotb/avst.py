@@ -203,6 +203,8 @@ class AvalonSTBase:
         ready_latency=0,
         ready_allowance=None,
         packets=None,
+        strict_ready_latency=False,
+        timeout_cycles=0,
         *args,
         **kwargs,
     ):
@@ -232,7 +234,7 @@ class AvalonSTBase:
                 f"cocotb.{bus._entity._name}.{self._type}"
             )
 
-        self.log.info("Avalon-ST %s", self._type)
+        self.log.debug("Avalon-ST %s", self._type)
 
         self.active = False
         self.queue = Queue()
@@ -291,7 +293,9 @@ class AvalonSTBase:
 
         self.ready_latency = ready_latency
         self.ready_allowance = ready_allowance
+        self.strict_ready_latency = strict_ready_latency
         self._ready_history = [False] * self.ready_latency
+        self.timeout_cycles = timeout_cycles
 
         if self._valid_init is not None and self.has_valid:
             self.bus.valid.value = Immediate(self._valid_init)
@@ -302,21 +306,21 @@ class AvalonSTBase:
         if self._init_x:
             self._drive_x_initial()
 
-        self.log.info("Avalon-ST %s configuration:", self._type)
-        self.log.info("  Data width: %d bits", self.width)
-        self.log.info("  Data bits per symbol: %d", self.data_bits_per_symbol)
-        self.log.info("  Symbols per beat: %d", self.symbols_per_beat)
-        self.log.info("  First symbol in high-order bits: %s", self.first_symbol_in_high_order_bits)
-        self.log.info("  Packets: %s", self.has_packets)
-        self.log.info("  Ready latency: %d", self.ready_latency)
-        self.log.info("  Ready allowance: %d", self.ready_allowance)
+        self.log.debug("Avalon-ST %s configuration:", self._type)
+        self.log.debug("  Data width: %d bits", self.width)
+        self.log.debug("  Data bits per symbol: %d", self.data_bits_per_symbol)
+        self.log.debug("  Symbols per beat: %d", self.symbols_per_beat)
+        self.log.debug("  First symbol in high-order bits: %s", self.first_symbol_in_high_order_bits)
+        self.log.debug("  Packets: %s", self.has_packets)
+        self.log.debug("  Ready latency: %d", self.ready_latency)
+        self.log.debug("  Ready allowance: %d", self.ready_allowance)
 
-        self.log.info("Avalon-ST %s signals:", self._type)
+        self.log.debug("Avalon-ST %s signals:", self._type)
         for sig in ["data", "valid", "ready", "startofpacket", "endofpacket", "empty", "error", "channel"]:
             if hasattr(self.bus, sig):
-                self.log.info("  %s width: %d bits", sig, len(getattr(self.bus, sig)))
+                self.log.debug("  %s width: %d bits", sig, len(getattr(self.bus, sig)))
             else:
-                self.log.info("  %s: not present", sig)
+                self.log.debug("  %s: not present", sig)
 
         self._run_cr = cocotb.start_soon(self._run())
 
@@ -889,23 +893,28 @@ class AvalonSTMonitor(AvalonSTBase):
             eop = True
 
         raw_empty = 0
-        if self.has_empty and self.has_packets and eop and self.symbols_per_beat > 1:
+        if self.has_empty and self.has_packets and self.symbols_per_beat > 1:
             raw_empty = self._safe_optional_int(self.bus.empty.value, 0)
+
+            if raw_empty:
+                if not eop:
+                    raise RuntimeError(
+                        f"Avalon-ST empty={raw_empty} asserted without endofpacket"
+                    )
+
+                if raw_empty >= self.symbols_per_beat:
+                    raise RuntimeError(
+                        f"Avalon-ST empty out of range: {raw_empty}, "
+                        f"symbols_per_beat={self.symbols_per_beat}"
+                    )
 
         error = self._safe_optional_int(self.bus.error.value, 0) if self.has_error else 0
         channel = self._safe_optional_int(self.bus.channel.value, 0) if self.has_channel else 0
 
         symbols = self._unpack_symbols(data_word)
 
-        if self.has_packets and eop and self.symbols_per_beat > 1:
-            if raw_empty < 0 or raw_empty > self.symbols_per_beat:
-                raise RuntimeError(
-                    f"Avalon-ST empty out of range: {raw_empty}, "
-                    f"symbols_per_beat={self.symbols_per_beat}"
-                )
-
-            if raw_empty:
-                symbols = symbols[:-raw_empty]
+        if self.has_packets and eop and raw_empty:
+            symbols = symbols[:-raw_empty]
 
         return AvalonSTBeat(
             data=data_word,
@@ -986,9 +995,18 @@ class AvalonSTMonitor(AvalonSTBase):
         else:
             raise NotImplementedError("AvalonSTMonitor supports only RL=0 or RL=1")
 
+    def _check_timeout(self, idle_cycles):
+        if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
+            raise TimeoutError(
+                f"Avalon-ST monitor timeout: no transfer for "
+                f"{idle_cycles} cycles"
+            )
+
+
     async def _run_rl0(self):
         frame = None
         self.active = False
+        idle_cycles = 0
 
         clock_edge_event = RisingEdge(self.clock)
         wake_event = self.wake_event.wait()
@@ -999,6 +1017,7 @@ class AvalonSTMonitor(AvalonSTBase):
             if self._reset_active():
                 frame = None
                 self.active = False
+                idle_cycles = 0
                 self._reset_ready_state()
                 continue
 
@@ -1006,14 +1025,20 @@ class AvalonSTMonitor(AvalonSTBase):
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
             if ready_sample and valid_sample:
+                idle_cycles = 0
                 beat = self._capture_beat()
                 frame = self._process_beat(beat, frame)
 
             else:
+                idle_cycles += 1
+                self._check_timeout(idle_cycles)
                 self.active = frame is not None
 
-                self.wake_event.clear()
-                await wake_event
+                # self.wake_event.clear()
+                # await wake_event
+                if self.timeout_cycles == 0:
+                    self.wake_event.clear()
+                    await wake_event
 
     async def _run_rl1(self):
         frame = None
@@ -1023,6 +1048,8 @@ class AvalonSTMonitor(AvalonSTBase):
 
         pending_beat = None
         pending_valid = False
+        prev_ready_raw = True
+        idle_cycles = 0
 
         while True:
             await clock_edge_event
@@ -1033,19 +1060,40 @@ class AvalonSTMonitor(AvalonSTBase):
                 self.active = False
                 pending_beat = None
                 pending_valid = False
+                prev_ready_raw = True
+                idle_cycles = 0
                 self._reset_ready_state()
 
                 await NextTimeStep()
                 continue
 
+            ready_raw = self._sample_ready_raw()
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if self.strict_ready_latency and self.has_ready and self.has_valid:
+                if not prev_ready_raw and valid_sample:
+                    raise RuntimeError(
+                        "Avalon-ST RL=1 violation: valid is asserted although ready "
+                        "was low in the previous cycle"
+                    )
+
+            prev_ready_raw = ready_raw
+
             ready_sample = self._sample_ready_qualified()
 
             if ready_sample and pending_valid:
+                idle_cycles = 0
                 frame = self._process_beat(pending_beat, frame)
             else:
-                self.active = frame is not None
+                idle_cycles += 1
 
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+                if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
+                    raise TimeoutError(
+                        f"Avalon-ST monitor timeout: no transfer for "
+                        f"{idle_cycles} cycles"
+                    )
+
+                self.active = frame is not None
 
             if valid_sample:
                 pending_beat = self._capture_beat()
@@ -1179,9 +1227,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         clock_edge_event = RisingEdge(self.clock)
 
-        pending_beat = None
-        pending_valid = False
-
         if self.has_ready:
             self.bus.ready.value = 0
 
@@ -1200,8 +1245,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             if self._reset_active():
                 frame = None
                 self.active = False
-                pending_beat = None
-                pending_valid = False
                 self._reset_ready_state()
 
                 await NextTimeStep()
@@ -1210,19 +1253,13 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             ready_sample = self._sample_ready_qualified()
 
             # ВАЖНО: для RL=1 обрабатываем beat из прошлого цикла
-            if ready_sample and pending_valid:
-                frame = self._process_beat(pending_beat, frame)
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if ready_sample and valid_sample:
+                beat = self._capture_beat()
+                frame = self._process_beat(beat, frame)
             else:
                 self.active = frame is not None
 
             # А текущий bus сохраняем на следующий цикл
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
-
-            if valid_sample:
-                pending_beat = self._capture_beat()
-                pending_valid = True
-            else:
-                pending_beat = None
-                pending_valid = False
-
             await NextTimeStep()
