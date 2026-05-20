@@ -418,6 +418,11 @@ class AvalonSTBase:
         self._ready_history.append(raw_ready)
         return self._ready_history.pop(0)
 
+    def cancel(self):
+        if self._run_cr is not None:
+            self._run_cr.cancel()
+            self._run_cr = None
+
     async def _run(self):
         raise NotImplementedError()
 
@@ -443,17 +448,18 @@ class AvalonSTPause:
         pass
 
     def set_pause_generator(self, generator=None):
-        if self._pause_cr is not None:
-            self._pause_cr.kill()
-            self._pause_cr = None
-
+        self.clear_pause_generator()
         self._pause_generator = generator
 
         if self._pause_generator is not None:
             self._pause_cr = cocotb.start_soon(self._run_pause())
 
     def clear_pause_generator(self):
-        self.set_pause_generator(None)
+        if self._pause_cr is not None:
+            self._pause_cr.cancel()
+            self._pause_cr = None
+
+        self._pause_generator = None
 
     async def _run_pause(self):
         clock_edge_event = RisingEdge(self.clock)
@@ -560,6 +566,10 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
 
     async def wait(self):
         await self.idle_event.wait()
+
+    def cancel(self):
+        self.clear_pause_generator()
+        super().cancel()
 
     def _drive_idle(self, idle_value=None):
         if idle_value is None:
@@ -793,10 +803,23 @@ class AvalonSTMonitor(AvalonSTBase):
 
         self.read_queue = []
 
+        self._signal_monitor_crs = []
+
         if self.has_valid:
-            cocotb.start_soon(self._run_valid_monitor())
+            self._signal_monitor_crs.append(
+                cocotb.start_soon(self._run_valid_monitor())
+            )
         if self.has_ready:
-            cocotb.start_soon(self._run_ready_monitor())
+            self._signal_monitor_crs.append(
+                cocotb.start_soon(self._run_ready_monitor())
+            )
+
+    def cancel(self):
+        for task in self._signal_monitor_crs:
+            task.cancel()
+        self._signal_monitor_crs = []
+
+        super().cancel()
 
     def _dequeue(self, frame):
         pass
@@ -1175,6 +1198,10 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
     def _dequeue(self, frame):
         self.wake_event.set()
+
+    def cancel(self):
+        self.clear_pause_generator()
+        super().cancel()
 
     async def _run(self):
         if self.ready_latency == 0:
