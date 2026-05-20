@@ -407,7 +407,9 @@ class AvalonSTBase:
 
     def _sample_ready_qualified(self):
         raw_ready = self._sample_ready_raw()
+        return self._ready_qualified_from_raw(raw_ready)
 
+    def _ready_qualified_from_raw(self, raw_ready):
         if self.ready_latency == 0:
             return raw_ready
 
@@ -1064,8 +1066,6 @@ class AvalonSTMonitor(AvalonSTBase):
 
         clock_edge_event = RisingEdge(self.clock)
 
-        pending_beat = None
-        pending_valid = False
         prev_ready_raw = True
         idle_cycles = 0
 
@@ -1076,8 +1076,6 @@ class AvalonSTMonitor(AvalonSTBase):
             if self._reset_active():
                 frame = None
                 self.active = False
-                pending_beat = None
-                pending_valid = False
                 prev_ready_raw = True
                 idle_cycles = 0
                 self._reset_ready_state()
@@ -1086,6 +1084,7 @@ class AvalonSTMonitor(AvalonSTBase):
                 continue
 
             ready_raw = self._sample_ready_raw()
+            ready_sample = self._ready_qualified_from_raw(ready_raw)
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
             if self.strict_ready_latency and self.has_ready and self.has_valid:
@@ -1097,11 +1096,10 @@ class AvalonSTMonitor(AvalonSTBase):
 
             prev_ready_raw = ready_raw
 
-            ready_sample = self._sample_ready_qualified()
-
-            if ready_sample and pending_valid:
+            if ready_sample and valid_sample:
                 idle_cycles = 0
-                frame = self._process_beat(pending_beat, frame)
+                beat = self._capture_beat()
+                frame = self._process_beat(beat, frame)
             else:
                 idle_cycles += 1
 
@@ -1112,13 +1110,6 @@ class AvalonSTMonitor(AvalonSTBase):
                     )
 
                 self.active = frame is not None
-
-            if valid_sample:
-                pending_beat = self._capture_beat()
-                pending_valid = True
-            else:
-                pending_beat = None
-                pending_valid = False
 
             await NextTimeStep()
 
