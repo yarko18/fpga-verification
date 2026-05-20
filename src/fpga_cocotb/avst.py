@@ -28,7 +28,7 @@ import random
 
 import cocotb
 from cocotb.queue import Queue, QueueFull
-from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, NextTimeStep
+from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, NextTimeStep, ValueChange
 from cocotb.utils import get_sim_time
 from cocotb_bus.bus import Bus
 from cocotb.handle import Immediate
@@ -407,7 +407,9 @@ class AvalonSTBase:
 
     def _sample_ready_qualified(self):
         raw_ready = self._sample_ready_raw()
+        return self._ready_qualified_from_raw(raw_ready)
 
+    def _ready_qualified_from_raw(self, raw_ready):
         if self.ready_latency == 0:
             return raw_ready
 
@@ -855,18 +857,36 @@ class AvalonSTMonitor(AvalonSTBase):
             await self.active_event.wait()
 
     async def _run_valid_monitor(self):
-        event = RisingEdge(self.bus.valid)
-
-        while True:
-            await event
-            self.wake_event.set()
+        await self._run_rising_value_monitor(self.bus.valid, "valid")
 
     async def _run_ready_monitor(self):
-        event = RisingEdge(self.bus.ready)
+        await self._run_rising_value_monitor(self.bus.ready, "ready")
 
+    async def _run_rising_value_monitor(self, signal, signal_name):
+        try:
+            width = len(signal)
+        except TypeError:
+            width = 1
+
+        if width != 1:
+            raise TypeError(f"Avalon-ST {signal_name} must be scalar or 1-bit wide")
+
+        previous = self._signal_bool(signal)
+        event = ValueChange(signal)
         while True:
             await event
-            self.wake_event.set()
+            current = self._signal_bool(signal)
+
+            if current and not previous:
+                self.wake_event.set()
+
+            previous = current
+
+    def _signal_bool(self, signal):
+        try:
+            return bool(int(signal.value))
+        except ValueError:
+            return False
 
     def _safe_int(self, value, signal_name):
         try:
@@ -1046,8 +1066,6 @@ class AvalonSTMonitor(AvalonSTBase):
 
         clock_edge_event = RisingEdge(self.clock)
 
-        pending_beat = None
-        pending_valid = False
         prev_ready_raw = True
         idle_cycles = 0
 
@@ -1058,8 +1076,6 @@ class AvalonSTMonitor(AvalonSTBase):
             if self._reset_active():
                 frame = None
                 self.active = False
-                pending_beat = None
-                pending_valid = False
                 prev_ready_raw = True
                 idle_cycles = 0
                 self._reset_ready_state()
@@ -1068,6 +1084,7 @@ class AvalonSTMonitor(AvalonSTBase):
                 continue
 
             ready_raw = self._sample_ready_raw()
+            ready_sample = self._ready_qualified_from_raw(ready_raw)
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
             if self.strict_ready_latency and self.has_ready and self.has_valid:
@@ -1079,11 +1096,10 @@ class AvalonSTMonitor(AvalonSTBase):
 
             prev_ready_raw = ready_raw
 
-            ready_sample = self._sample_ready_qualified()
-
-            if ready_sample and pending_valid:
+            if ready_sample and valid_sample:
                 idle_cycles = 0
-                frame = self._process_beat(pending_beat, frame)
+                beat = self._capture_beat()
+                frame = self._process_beat(beat, frame)
             else:
                 idle_cycles += 1
 
@@ -1094,13 +1110,6 @@ class AvalonSTMonitor(AvalonSTBase):
                     )
 
                 self.active = frame is not None
-
-            if valid_sample:
-                pending_beat = self._capture_beat()
-                pending_valid = True
-            else:
-                pending_beat = None
-                pending_valid = False
 
             await NextTimeStep()
 
@@ -1227,39 +1236,52 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         clock_edge_event = RisingEdge(self.clock)
 
+        pending_beat = None
+        pending_valid = False
+
         if self.has_ready:
             self.bus.ready.value = 0
 
         while True:
-            # ready выставляем до clock edge
+            await clock_edge_event
+
+            reset_active = self._reset_active()
+            ready_sample = self._sample_ready_qualified()
+
+            # Drive ready on the clock edge for the next cycle.
             if self.has_ready:
-                if self._reset_active():
+                if reset_active:
                     self.bus.ready.value = 0
                 else:
                     paused = self.full() or bool(self.pause)
                     self.bus.ready.value = int(not paused)
 
-            await clock_edge_event
             await ReadOnly()
 
-            if self._reset_active():
+            if reset_active:
                 frame = None
                 self.active = False
+                pending_beat = None
+                pending_valid = False
                 self._reset_ready_state()
 
                 await NextTimeStep()
                 continue
 
-            ready_sample = self._sample_ready_qualified()
-
             # ВАЖНО: для RL=1 обрабатываем beat из прошлого цикла
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
-
-            if ready_sample and valid_sample:
-                beat = self._capture_beat()
-                frame = self._process_beat(beat, frame)
+            if ready_sample and pending_valid:
+                frame = self._process_beat(pending_beat, frame)
             else:
                 self.active = frame is not None
 
             # А текущий bus сохраняем на следующий цикл
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if valid_sample:
+                pending_beat = self._capture_beat()
+                pending_valid = True
+            else:
+                pending_beat = None
+                pending_valid = False
+
             await NextTimeStep()

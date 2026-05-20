@@ -6,6 +6,7 @@ def compile_with_msim_setup(project_root, hdl_toplevel):
     from pathlib import Path
 
     project_root = Path(project_root)
+    user_defined_elab_options = "-nocvg -voptargs=+acc -suppress 8630"
 
     qsys_simdir = (
         project_root
@@ -22,6 +23,7 @@ def compile_with_msim_setup(project_root, hdl_toplevel):
     do_file.write_text(f"""
 set QSYS_SIMDIR "{qsys_simdir.as_posix()}"
 set TOP_LEVEL_NAME {hdl_toplevel}
+set USER_DEFINED_ELAB_OPTIONS "{user_defined_elab_options}"
 
 source "$QSYS_SIMDIR/mentor/msim_setup.tcl"
 
@@ -249,7 +251,7 @@ def run_questa(project_root, hdl_toplevel, test_module, debug=False):
 
     libs = get_msim_libraries(msim_setup)
 
-    test_args = ["-voptargs=+acc"]
+    test_args = ["-nocvg", "-voptargs=+acc", "-suppress", "8630"]
 
     for lib in libs:
         test_args += ["-L", lib]
