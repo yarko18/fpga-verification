@@ -1227,9 +1227,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         clock_edge_event = RisingEdge(self.clock)
 
-        pending_beat = None
-        pending_valid = False
-
         if self.has_ready:
             self.bus.ready.value = 0
 
@@ -1248,8 +1245,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             if self._reset_active():
                 frame = None
                 self.active = False
-                pending_beat = None
-                pending_valid = False
                 self._reset_ready_state()
 
                 await NextTimeStep()
@@ -1258,19 +1253,13 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             ready_sample = self._sample_ready_qualified()
 
             # ВАЖНО: для RL=1 обрабатываем beat из прошлого цикла
-            if ready_sample and pending_valid:
-                frame = self._process_beat(pending_beat, frame)
+            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+
+            if ready_sample and valid_sample:
+                beat = self._capture_beat()
+                frame = self._process_beat(beat, frame)
             else:
                 self.active = frame is not None
 
             # А текущий bus сохраняем на следующий цикл
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
-
-            if valid_sample:
-                pending_beat = self._capture_beat()
-                pending_valid = True
-            else:
-                pending_beat = None
-                pending_valid = False
-
             await NextTimeStep()
