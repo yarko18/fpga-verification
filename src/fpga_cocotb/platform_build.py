@@ -238,7 +238,16 @@ def run_questa(project_root, hdl_toplevel, test_module, debug=False):
 
     runner = get_runner("questa")
 
-    libs = get_msim_libraries(_platform_msim_setup(project_root, hdl_toplevel))
+    msim_setup = (
+        project_root
+        / hdl_toplevel
+        / hdl_toplevel
+        / "testbench"
+        / "mentor"
+        / "msim_setup.tcl"
+    )
+
+    libs = get_msim_libraries(msim_setup)
 
     test_args = ["-voptargs=+acc"]
 
@@ -289,6 +298,8 @@ def run_verilator(project_root, hdl_toplevel, test_module, debug=False):
         always=True,
         build_args=[
             "-Wno-fatal",
+            "-Wno-PARAMNODEFAULT",
+            "--bbox-unsup",
             "--timescale", "1ps/1ps",
             "-CFLAGS", "-std=c++20",
             *["-I" + str(include_dir) for include_dir in include_dirs],
