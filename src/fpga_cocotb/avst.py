@@ -234,7 +234,7 @@ class AvalonSTBase:
                 f"cocotb.{bus._entity._name}.{self._type}"
             )
 
-        self.log.info("Avalon-ST %s", self._type)
+        self.log.debug("Avalon-ST %s", self._type)
 
         self.active = False
         self.queue = Queue()
@@ -306,21 +306,21 @@ class AvalonSTBase:
         if self._init_x:
             self._drive_x_initial()
 
-        self.log.info("Avalon-ST %s configuration:", self._type)
-        self.log.info("  Data width: %d bits", self.width)
-        self.log.info("  Data bits per symbol: %d", self.data_bits_per_symbol)
-        self.log.info("  Symbols per beat: %d", self.symbols_per_beat)
-        self.log.info("  First symbol in high-order bits: %s", self.first_symbol_in_high_order_bits)
-        self.log.info("  Packets: %s", self.has_packets)
-        self.log.info("  Ready latency: %d", self.ready_latency)
-        self.log.info("  Ready allowance: %d", self.ready_allowance)
+        self.log.debug("Avalon-ST %s configuration:", self._type)
+        self.log.debug("  Data width: %d bits", self.width)
+        self.log.debug("  Data bits per symbol: %d", self.data_bits_per_symbol)
+        self.log.debug("  Symbols per beat: %d", self.symbols_per_beat)
+        self.log.debug("  First symbol in high-order bits: %s", self.first_symbol_in_high_order_bits)
+        self.log.debug("  Packets: %s", self.has_packets)
+        self.log.debug("  Ready latency: %d", self.ready_latency)
+        self.log.debug("  Ready allowance: %d", self.ready_allowance)
 
-        self.log.info("Avalon-ST %s signals:", self._type)
+        self.log.debug("Avalon-ST %s signals:", self._type)
         for sig in ["data", "valid", "ready", "startofpacket", "endofpacket", "empty", "error", "channel"]:
             if hasattr(self.bus, sig):
-                self.log.info("  %s width: %d bits", sig, len(getattr(self.bus, sig)))
+                self.log.debug("  %s width: %d bits", sig, len(getattr(self.bus, sig)))
             else:
-                self.log.info("  %s: not present", sig)
+                self.log.debug("  %s: not present", sig)
 
         self._run_cr = cocotb.start_soon(self._run())
 

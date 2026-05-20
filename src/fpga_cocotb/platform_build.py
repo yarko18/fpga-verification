@@ -220,8 +220,8 @@ def rtl_test_cocotb(
         for source_dir in source_dirs:
             src_dir = project_root / source_dir
 
-            sources += sorted(src_dir.glob("*.v"))
-            sources += sorted(src_dir.glob("*.sv"))
+            sources += sorted(src_dir.rglob("*.v"))
+            sources += sorted(src_dir.rglob("*.sv"))
 
     sources = [Path(s) for s in sources]
 
