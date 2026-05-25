@@ -16,12 +16,13 @@ src/fpga_verification/
   formats/
     integer.py             # UIntFormat
   sim/
+    platform_designer.py  # Platform Designer generated-system simulation
     buses/
       avalon_st.py         # Avalon-ST cocotb source/sink/monitor
     intel_video/
       vip.py               # Intel Video packet models
     runners/
-      quartus.py           # Quartus/Questa/Verilator cocotb runners
+      rtl.py               # Generic cocotb RTL runner
 ```
 
 ## Install
@@ -51,5 +52,6 @@ python -m pip install -e ".[sim]"
 from fpga_verification.formats import UIntFormat
 from fpga_verification.sim.buses import AvalonSTSink, AvalonSTSource
 from fpga_verification.sim.intel_video import VIPControlPacket
+from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import rtl_test_cocotb
 ```
