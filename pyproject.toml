@@ -19,9 +19,20 @@ sim = [
     "cocotb",
     "cocotb-bus",
 ]
+hil = [
+    "tqdm",
+]
+all = [
+    "cocotb",
+    "cocotb-bus",
+    "tqdm",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"fpga_verification.hil.intel" = ["resources/*.tcl"]
 
 [build-system]
 requires = ["setuptools>=61"]
