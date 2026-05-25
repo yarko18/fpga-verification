@@ -230,13 +230,6 @@ class IntelSystemConsoleSession:
                 if line.startswith("JTAG_ERROR\t"):
                     raise RuntimeError(line)
 
-    # Compatibility aliases for the existing HIL test API.
-    write = write_memory
-    read = read_memory
-    jtag_write = write_memory
-    jtag_read = read_memory
-    set_get = command
-
     def close(self):
         with self._lock:
             proc = self._proc
