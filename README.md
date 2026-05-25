@@ -15,6 +15,7 @@ and cocotb simulation utilities; HIL support can be added under a separate
 src/fpga_verification/
   formats/
     integer.py             # UIntFormat
+    fixed_point.py         # QFormat
   sim/
     platform_designer.py  # Platform Designer generated-system simulation
     buses/
@@ -49,9 +50,13 @@ python -m pip install -e ".[sim]"
 ## Imports
 
 ```python
-from fpga_verification.formats import UIntFormat
+from fpga_verification.formats import QFormat, UIntFormat
 from fpga_verification.sim.buses import AvalonSTSink, AvalonSTSource
 from fpga_verification.sim.intel_video import VIPControlPacket
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import rtl_test_cocotb
 ```
+
+`UIntFormat` models unscaled unsigned fields such as bus symbols or pixels.
+`QFormat` models fixed-point raw storage and arithmetic; for signed formats,
+the integer width includes the sign bit.
