@@ -1,7 +1,4 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
-__pycache__/
-*.egg-info/
-sim_build/
-sim_build_*/
+"""Simulation helpers for FPGA verification."""

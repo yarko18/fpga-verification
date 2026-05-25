@@ -2,13 +2,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [project]
-name = "fpga-cocotb"
-version = "0.1.5"
-description = "Avalon Stream, Intel Platform designer, Intel Video Suite IP cocotb helpers"
+name = "fpga-verification"
+version = "0.2.0"
+description = "Reusable FPGA simulation and hardware-in-the-loop verification tools"
 requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+]
 
 authors = [
     { name = "Yaroslav Mariukha"  }
+]
+
+[project.optional-dependencies]
+sim = [
+    "cocotb",
+    "cocotb-bus",
 ]
 
 [tool.setuptools.packages.find]
