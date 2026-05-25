@@ -23,6 +23,7 @@ Not supported yet:
   - ready_latency > 1
 """
 
+import asyncio
 import logging
 import random
 
@@ -805,14 +806,17 @@ class AvalonSTMonitor(AvalonSTBase):
 
         self._signal_monitor_crs = []
 
-        if self.has_valid:
-            self._signal_monitor_crs.append(
-                cocotb.start_soon(self._run_valid_monitor())
-            )
-        if self.has_ready:
-            self._signal_monitor_crs.append(
-                cocotb.start_soon(self._run_ready_monitor())
-            )
+        # RL=0 can sleep until activity resumes; RL=1 samples on every edge.
+        # Do not register unused ValueChange callbacks for RL=1.
+        if self.ready_latency == 0:
+            if self.has_valid:
+                self._signal_monitor_crs.append(
+                    cocotb.start_soon(self._run_valid_monitor())
+                )
+            if self.has_ready:
+                self._signal_monitor_crs.append(
+                    cocotb.start_soon(self._run_ready_monitor())
+                )
 
     def cancel(self):
         for task in self._signal_monitor_crs:
@@ -1203,6 +1207,28 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
         self.clear_pause_generator()
         super().cancel()
 
+    async def close(self):
+        if self.ready_latency == 1 and self._run_cr is not None:
+            # Allow an in-flight RL=1 iteration to leave its NextTimeStep
+            # trigger before removing callbacks. Verilator may dispatch a
+            # callback removed in the same time step after its owner is gone.
+            await NextTimeStep()
+
+        tasks = [
+            self._run_cr,
+            self._pause_cr,
+            *self._signal_monitor_crs,
+        ]
+        self.cancel()
+
+        for task in tasks:
+            if task is None:
+                continue
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
     async def _run(self):
         if self.ready_latency == 0:
             await self._run_rl0()
@@ -1263,8 +1289,7 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         clock_edge_event = RisingEdge(self.clock)
 
-        pending_beat = None
-        pending_valid = False
+        prev_ready = False
 
         if self.has_ready:
             self.bus.ready.value = 0
@@ -1273,42 +1298,38 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             await clock_edge_event
 
             reset_active = self._reset_active()
-            ready_sample = self._sample_ready_qualified()
 
-            # Drive ready on the clock edge for the next cycle.
+            # ready from previous cycle qualifies current transfer
+            ready_sample = prev_ready
+
+            # drive ready for NEXT cycle
             if self.has_ready:
                 if reset_active:
-                    self.bus.ready.value = 0
+                    next_ready = False
                 else:
-                    paused = self.full() or bool(self.pause)
-                    self.bus.ready.value = int(not paused)
+                    next_ready = not (self.full() or bool(self.pause))
+
+                self.bus.ready.value = int(next_ready)
+                prev_ready = next_ready
+            else:
+                prev_ready = True
 
             await ReadOnly()
 
             if reset_active:
                 frame = None
                 self.active = False
-                pending_beat = None
-                pending_valid = False
                 self._reset_ready_state()
 
                 await NextTimeStep()
                 continue
 
-            # ВАЖНО: для RL=1 обрабатываем beat из прошлого цикла
-            if ready_sample and pending_valid:
-                frame = self._process_beat(pending_beat, frame)
-            else:
-                self.active = frame is not None
-
-            # А текущий bus сохраняем на следующий цикл
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
 
-            if valid_sample:
-                pending_beat = self._capture_beat()
-                pending_valid = True
+            if ready_sample and valid_sample:
+                beat = self._capture_beat()
+                frame = self._process_beat(beat, frame)
             else:
-                pending_beat = None
-                pending_valid = False
+                self.active = frame is not None
 
             await NextTimeStep()

@@ -59,7 +59,7 @@ python -m pip install -e ".[all]"
 After reinstalling a previous development version:
 
 ```powershell
-python -m pip uninstall fpga-cocotb -y
+python -m pip uninstall fpga-verification -y
 python -m pip install -e ".[all]"
 ```
 
