@@ -23,13 +23,12 @@ Not supported yet:
   - ready_latency > 1
 """
 
-import asyncio
 import logging
 import random
 
 import cocotb
 from cocotb.queue import Queue, QueueFull
-from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, NextTimeStep, ValueChange
+from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, ValueChange
 from cocotb.utils import get_sim_time
 from cocotb_bus.bus import Bus
 from cocotb.handle import Immediate
@@ -1106,8 +1105,6 @@ class AvalonSTMonitor(AvalonSTBase):
                 prev_ready_raw = True
                 idle_cycles = 0
                 self._reset_ready_state()
-
-                await NextTimeStep()
                 continue
 
             ready_raw = self._sample_ready_raw()
@@ -1137,8 +1134,6 @@ class AvalonSTMonitor(AvalonSTBase):
                     )
 
                 self.active = frame is not None
-
-            await NextTimeStep()
 
 class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
     _type = "sink"
@@ -1206,28 +1201,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
     def cancel(self):
         self.clear_pause_generator()
         super().cancel()
-
-    async def close(self):
-        if self.ready_latency == 1 and self._run_cr is not None:
-            # Allow an in-flight RL=1 iteration to leave its NextTimeStep
-            # trigger before removing callbacks. Verilator may dispatch a
-            # callback removed in the same time step after its owner is gone.
-            await NextTimeStep()
-
-        tasks = [
-            self._run_cr,
-            self._pause_cr,
-            *self._signal_monitor_crs,
-        ]
-        self.cancel()
-
-        for task in tasks:
-            if task is None:
-                continue
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
 
     async def _run(self):
         if self.ready_latency == 0:
@@ -1320,8 +1293,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
                 frame = None
                 self.active = False
                 self._reset_ready_state()
-
-                await NextTimeStep()
                 continue
 
             valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
@@ -1331,5 +1302,3 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
                 frame = self._process_beat(beat, frame)
             else:
                 self.active = frame is not None
-
-            await NextTimeStep()

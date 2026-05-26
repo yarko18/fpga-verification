@@ -1,6 +1,14 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+def _check_results(results_xml):
+    from cocotb_tools.runner import get_results
+
+    num_tests, num_failed = get_results(results_xml)
+    if num_failed:
+        raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
+
+
 def compile_with_msim_setup(project_root, hdl_toplevel):
     import subprocess
     from pathlib import Path
@@ -266,7 +274,7 @@ def run_questa(project_root, hdl_toplevel, test_module, debug=False):
         always=False,
     )
 
-    runner.test(
+    results_xml = runner.test(
         hdl_toplevel=hdl_toplevel,
         hdl_toplevel_library=f"{hdl_toplevel}_inst",
         test_module=test_module,
@@ -276,6 +284,7 @@ def run_questa(project_root, hdl_toplevel, test_module, debug=False):
         waves=debug,
         test_args=test_args,
     )
+    _check_results(results_xml)
     
 def run_verilator(project_root, hdl_toplevel, test_module, debug=False):
     from pathlib import Path
@@ -308,13 +317,14 @@ def run_verilator(project_root, hdl_toplevel, test_module, debug=False):
         ],
     )
 
-    runner.test(
+    results_xml = runner.test(
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         hdl_toplevel_lang="verilog",
         build_dir=build_dir,
         waves=debug,
     )
+    _check_results(results_xml)
 
 def platform_test_cocotb(
         project_root,

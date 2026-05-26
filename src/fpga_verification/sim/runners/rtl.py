@@ -1,6 +1,14 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+def _check_results(results_xml):
+    from cocotb_tools.runner import get_results
+
+    num_tests, num_failed = get_results(results_xml)
+    if num_failed:
+        raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
+
+
 def rtl_test_cocotb(
     project_root,
     hdl_toplevel,
@@ -70,7 +78,7 @@ def rtl_test_cocotb(
     if debug and sim == "questa":
         test_args += ["-do", "wave.do"]
 
-    runner.test(
+    results_xml = runner.test(
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         hdl_toplevel_lang="verilog",
@@ -79,3 +87,4 @@ def rtl_test_cocotb(
         waves=debug,
         test_args=test_args,
     )
+    _check_results(results_xml)
