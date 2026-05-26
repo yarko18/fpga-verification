@@ -22,6 +22,7 @@ src/fpga_verification/
     intel_video/
       vip.py               # Intel Video packet models
     runners/
+      intel_component.py   # Intel component generation over the RTL runner
       rtl.py               # Generic cocotb RTL runner
   hil/
     intel/
@@ -70,7 +71,7 @@ from fpga_verification.formats import QFormat, UIntFormat
 from fpga_verification.sim.buses import AvalonSTSink, AvalonSTSource
 from fpga_verification.sim.intel_video import VIPControlPacket
 from fpga_verification.sim.platform_designer import platform_test_cocotb
-from fpga_verification.sim.runners import rtl_test_cocotb
+from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
 ```
 
@@ -93,3 +94,12 @@ with IntelSystemConsoleSession() as hw:
 ```
 
 Intel Quartus `system-console` must be available on `PATH`.
+
+## Intel Component Simulation
+
+`intel_component_test_cocotb` invokes `ip-generate` for a Platform Designer
+component `.tcl`, replaces generated copies of HDL with exact matches from
+`source_dirs`, and delegates simulation to `rtl_test_cocotb`. Composition HDL
+that has no source equivalent remains in a temporary directory only while the
+simulation is running. Pass `generate_only=True` to retain and return that
+generated composition directory without running simulation.
