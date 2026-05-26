@@ -1,7 +1,7 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
-from .vip import (
+from .packets import (
     VIPControlPacket,
     VIPFrame,
     VIPInterlacing,
