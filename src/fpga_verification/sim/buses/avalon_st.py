@@ -234,7 +234,7 @@ class AvalonSTBase:
                 f"cocotb.{bus._entity._name}.{self._type}"
             )
 
-        self.log.debug("Avalon-ST %s", self._type)
+        self.log.info("Avalon-ST %s", self._type)
 
         self.active = False
         self.queue = Queue()
