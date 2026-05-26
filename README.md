@@ -6,7 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 # fpga-verification
 
 Reusable FPGA verification helpers. The package provides shared data formats,
-cocotb simulation utilities, and an Intel System Console HIL transport.
+wire-protocol codecs, cocotb simulation utilities, and an Intel System Console
+HIL transport.
 
 ## Package Layout
 
@@ -15,12 +16,16 @@ src/fpga_verification/
   formats/
     integer.py             # UIntFormat
     fixed_point.py         # QFormat
+  protocols/
+    avalon_st/
+      intel_video/
+        packets.py         # Intel Avalon-ST Video packet codecs
   sim/
     platform_designer.py  # Platform Designer generated-system simulation
     buses/
       avalon_st.py         # Avalon-ST cocotb source/sink/monitor
-    intel_video/
-      vip.py               # Intel Video packet models
+    bfms/
+      intel_dma.py         # Intel read/write DMA component BFM
     runners/
       intel_component.py   # Intel component generation over the RTL runner
       rtl.py               # Generic cocotb RTL runner
@@ -68,8 +73,9 @@ python -m pip install -e ".[all]"
 
 ```python
 from fpga_verification.formats import QFormat, UIntFormat
+from fpga_verification.protocols.avalon_st.intel_video import VIPControlPacket
 from fpga_verification.sim.buses import AvalonSTSink, AvalonSTSource
-from fpga_verification.sim.intel_video import VIPControlPacket
+from fpga_verification.sim.bfms.intel_dma import IntelDMABFM, SparseByteMemory
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
@@ -78,6 +84,29 @@ from fpga_verification.hil.intel import IntelSystemConsoleSession
 `UIntFormat` models unscaled unsigned fields such as bus symbols or pixels.
 `QFormat` models fixed-point raw storage and arithmetic; for signed formats,
 the integer width includes the sign bit.
+
+## Avalon-ST Protocols
+
+`fpga_verification.protocols.avalon_st` contains packet encoders and decoders,
+independent of cocotb and simulator state. `intel_video` implements the Intel
+Avalon-ST Video packet format. Additional project-specific protocols can be
+placed alongside it without mixing them with bus drivers or component models.
+
+## Intel DMA BFM
+
+`IntelDMABFM` models paired Intel read and write DMA streaming interfaces using
+Avalon-ST command, response, and payload buses. It accepts an optional shared
+`SparseByteMemory` instance for initializing read data and inspecting written
+data. The class is named for Intel because its descriptor bit layouts are
+specific to those DMA components.
+
+```python
+from fpga_verification.sim.bfms.intel_dma import IntelDMABFM, SparseByteMemory
+
+memory = SparseByteMemory()
+memory.write(0x1000, b"\x01\x02\x03\x04")
+dma = IntelDMABFM(dut, memory=memory).start()
+```
 
 ## HIL Session
 
