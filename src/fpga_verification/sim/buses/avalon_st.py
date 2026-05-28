@@ -28,7 +28,7 @@ import random
 
 import cocotb
 from cocotb.queue import Queue, QueueFull
-from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, ValueChange
+from cocotb.triggers import RisingEdge, Timer, First, Event, ReadOnly, ValueChange, Edge
 from cocotb.utils import get_sim_time
 from cocotb_bus.bus import Bus
 from cocotb.handle import Immediate
@@ -322,7 +322,10 @@ class AvalonSTBase:
             else:
                 self.log.debug("  %s: not present", sig)
 
-        self._run_cr = cocotb.start_soon(self._run())
+        self._run_cr = None
+        self._reset_monitor_cr = None
+        self._reset_state = True
+        self._init_reset_control()
 
     def _logic_x(self, width):
         if LogicArray is not None:
@@ -337,16 +340,59 @@ class AvalonSTBase:
                 sig = getattr(self.bus, name)
                 sig.value = Immediate(self._logic_x(len(sig)))
 
-    def _reset_active(self):
+    def _logic_bool(self, value, default=False):
+        try:
+            return bool(int(value))
+        except ValueError:
+            return default
+
+    def _sample_reset_active(self):
         if self.reset is None:
             return False
 
-        value = str(self.reset.value)
+        level = self._logic_bool(self.reset.value, default=bool(self.reset_active_level))
+        return level == bool(self.reset_active_level)
 
-        if self.reset_active_level:
-            return value != "0"
+    def _reset_active(self):
+        return self._reset_state
+
+    def _init_reset_control(self):
+        self._reset_state = self._sample_reset_active()
+
+        if self.reset is not None:
+            self._reset_monitor_cr = cocotb.start_soon(self._run_reset_monitor())
+
+        self._handle_reset(self._reset_state)
+
+    async def _run_reset_monitor(self):
+        while True:
+            try:
+                trigger = self.reset.value_change
+            except AttributeError:
+                trigger = Edge(self.reset)
+            await trigger
+            self._update_reset(self._sample_reset_active())
+
+    def _update_reset(self, state):
+        state = bool(state)
+        if self._reset_state != state:
+            self._reset_state = state
+            self._handle_reset(state)
+
+    def _handle_reset(self, state):
+        if state:
+            if self._run_cr is not None:
+                self._run_cr.cancel()
+                self._run_cr = None
+
+            self.active = False
+            self._reset_ready_state()
+
+            if self.queue.empty():
+                self.idle_event.set()
         else:
-            return value != "1"
+            if self._run_cr is None:
+                self._run_cr = cocotb.start_soon(self._run())
 
     def _reset_ready_state(self):
         self._ready_history = [False] * self.ready_latency
@@ -403,7 +449,12 @@ class AvalonSTBase:
     def _sample_ready_raw(self):
         if not self.has_ready:
             return True
-        return bool(int(self.bus.ready.value))
+        return self._logic_bool(self.bus.ready.value, default=False)
+
+    def _sample_valid(self):
+        if not self.has_valid:
+            return True
+        return self._logic_bool(self.bus.valid.value, default=False)
 
     def _sample_ready_qualified(self):
         raw_ready = self._sample_ready_raw()
@@ -419,6 +470,10 @@ class AvalonSTBase:
         return self._ready_history.pop(0)
 
     def cancel(self):
+        if self._reset_monitor_cr is not None:
+            self._reset_monitor_cr.cancel()
+            self._reset_monitor_cr = None
+
         if self._run_cr is not None:
             self._run_cr.cancel()
             self._run_cr = None
@@ -567,6 +622,17 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
     async def wait(self):
         await self.idle_event.wait()
 
+    def _handle_reset(self, state):
+        if state:
+            self._drive_idle(0)
+
+            if self.current_frame:
+                self.log.warning("Flushed transmit frame during reset: %s", self.current_frame)
+                self.current_frame.handle_tx_complete()
+                self.current_frame = None
+
+        super()._handle_reset(state)
+
     def cancel(self):
         self.clear_pause_generator()
         super().cancel()
@@ -672,7 +738,7 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
 
             if self.ready_latency == 0:
                 ready_sample = self._sample_ready_qualified()
-                valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+                valid_sample = self._sample_valid()
 
                 can_update_bus = (ready_sample and valid_sample) or not valid_sample
 
@@ -1068,7 +1134,7 @@ class AvalonSTMonitor(AvalonSTBase):
                 continue
 
             ready_sample = self._sample_ready_qualified()
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+            valid_sample = self._sample_valid()
 
             if ready_sample and valid_sample:
                 idle_cycles = 0
@@ -1109,7 +1175,7 @@ class AvalonSTMonitor(AvalonSTBase):
 
             ready_raw = self._sample_ready_raw()
             ready_sample = self._ready_qualified_from_raw(ready_raw)
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+            valid_sample = self._sample_valid()
 
             if self.strict_ready_latency and self.has_ready and self.has_valid:
                 if not prev_ready_raw and valid_sample:
@@ -1192,6 +1258,12 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         return False
 
+    def _handle_reset(self, state):
+        if state and self.has_ready:
+            self.bus.ready.value = 0
+
+        super()._handle_reset(state)
+
     def _pause_update(self, val):
         self.wake_event.set()
 
@@ -1236,7 +1308,7 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
                 continue
 
             ready_sample = self._sample_ready_qualified()
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+            valid_sample = self._sample_valid()
 
             if ready_sample and valid_sample:
                 beat = self._capture_beat()
@@ -1295,7 +1367,7 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
                 self._reset_ready_state()
                 continue
 
-            valid_sample = (not self.has_valid) or bool(int(self.bus.valid.value))
+            valid_sample = self._sample_valid()
 
             if ready_sample and valid_sample:
                 beat = self._capture_beat()
