@@ -23,7 +23,7 @@ def rtl_test_cocotb(
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
-    sim = os.getenv("SIM", "verilator")
+    sim = os.getenv("SIM", "questa")
 
     build_dir = project_root / f"sim_build_{sim}"
 
