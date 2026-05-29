@@ -1,6 +1,10 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+from pathlib import Path
+
+
 def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
@@ -17,9 +21,8 @@ def rtl_test_cocotb(
     source_dirs=("src",),
     parameters=None,
     debug=False,
+    compile_log=None,
 ):
-    import os
-    from pathlib import Path
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
@@ -37,10 +40,6 @@ def rtl_test_cocotb(
             sources += sorted(src_dir.rglob("*.sv"))
 
     sources = [Path(s) for s in sources]
-
-    print("RTL sources:")
-    for s in sources:
-        print("  ", s)
 
     runner = get_runner(sim)
 
@@ -61,6 +60,17 @@ def rtl_test_cocotb(
     if parameters is None:
         parameters = {}
 
+    build_kwargs = {}
+    if compile_log is not None:
+        compile_log = Path(compile_log)
+        compile_log.parent.mkdir(parents=True, exist_ok=True)
+        print(f"{sim} compile log: {compile_log}", flush=True)
+        build_kwargs["log_file"] = compile_log
+    else:
+        print("RTL sources:")
+        for s in sources:
+            print("  ", s)
+
     runner.build(
         sources=sources,
         hdl_toplevel=hdl_toplevel,
@@ -68,6 +78,7 @@ def rtl_test_cocotb(
         always=True,
         build_args=build_args,
         parameters=parameters,
+        **build_kwargs,
     )
 
     test_args = []

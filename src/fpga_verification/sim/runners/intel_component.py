@@ -101,6 +101,9 @@ def intel_component_test_cocotb(
     quartus_model_files=("220model.v", "altera_mf.v"),
     debug=False,
     generate_only=False,
+    ip_generate_log=None,
+    compile_log=None,
+    retain_generated=False,
 ):
     """Generate an Intel component composition and simulate against original RTL.
 
@@ -124,7 +127,9 @@ def intel_component_test_cocotb(
     if component_parameters is None:
         component_parameters = {}
 
-    if generate_only:
+    keep_generated = generate_only or retain_generated
+
+    if keep_generated:
         generation_context = nullcontext(
             tempfile.mkdtemp(
                 prefix=f".ip_generate_{hdl_toplevel}_",
@@ -159,7 +164,34 @@ def intel_component_test_cocotb(
             for name, value in component_parameters.items()
         )
 
-        subprocess.run(command, cwd=project_root, check=True)
+        if ip_generate_log is None:
+            subprocess.run(command, cwd=project_root, check=True)
+        else:
+            ip_generate_log = Path(ip_generate_log)
+            ip_generate_log.parent.mkdir(parents=True, exist_ok=True)
+            print(f"IP generation log: {ip_generate_log}", flush=True)
+            with ip_generate_log.open(
+                "w", encoding="utf-8", errors="replace"
+            ) as log:
+                print(
+                    "Command:",
+                    " ".join(str(item) for item in command),
+                    file=log,
+                )
+                print(file=log)
+                log.flush()
+                try:
+                    subprocess.run(
+                        command,
+                        cwd=project_root,
+                        check=True,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                except subprocess.CalledProcessError:
+                    print(f"ip-generate failed, see {ip_generate_log}", flush=True)
+                    raise
 
         generated_sources = _spd_hdl_sources(spd_path)
         spd_path.unlink()
@@ -171,13 +203,25 @@ def intel_component_test_cocotb(
         _remove_empty_directories(output_dir)
         sources = _quartus_sim_sources(ip_generate, quartus_model_files) + sources
 
-        lifecycle = "Retained" if generate_only else "Temporary"
-        print(f"{lifecycle} generated composition HDL:")
-        for source in retained_generated:
-            print("  ", source)
+        lifecycle = "Retained" if keep_generated else "Temporary"
+        generated_hdl_lines = [f"{lifecycle} generated composition HDL:"]
+        generated_hdl_lines.extend(f"   {source}" for source in retained_generated)
+        if keep_generated:
+            generated_hdl_lines.append(f"Generated output directory: {output_dir}")
+
+        if ip_generate_log is None:
+            for line in generated_hdl_lines:
+                print(line)
+        else:
+            with ip_generate_log.open(
+                "a", encoding="utf-8", errors="replace"
+            ) as log:
+                print(file=log)
+                for line in generated_hdl_lines:
+                    print(line, file=log)
 
         if generate_only:
-            print("Generated output directory:", output_dir)
+            print("Generated output directory:", output_dir, flush=True)
             return output_dir
 
         rtl_test_cocotb(
@@ -186,4 +230,5 @@ def intel_component_test_cocotb(
             test_module=test_module,
             sources=sources,
             debug=debug,
+            compile_log=compile_log,
         )
