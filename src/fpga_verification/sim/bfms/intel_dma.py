@@ -100,6 +100,12 @@ class IntelDMABFM:
         memory=None,
         read_response_delay_cycles=2,
         write_response_delay_cycles=2,
+        rdma_cmd_bus=None,
+        rdma_resp_bus=None,
+        wdma_cmd_bus=None,
+        wdma_resp_bus=None,
+        din_bus=None,
+        dout_bus=None,
     ):
         if read_response_delay_cycles < 0 or write_response_delay_cycles < 0:
             raise ValueError("DMA response delays must be non-negative")
@@ -118,13 +124,13 @@ class IntelDMABFM:
         self.write_responses = Queue()
         self._tasks = []
 
-        self.rdma_cmd_sink = self._make_control_sink("rdma_cmd")
-        self.rdma_resp_source = self._make_control_source("rdma_resp")
-        self.wdma_cmd_sink = self._make_control_sink("wdma_cmd")
-        self.wdma_resp_source = self._make_control_source("wdma_resp")
+        self.rdma_cmd_sink = self._make_control_sink("rdma_cmd", rdma_cmd_bus)
+        self.rdma_resp_source = self._make_control_source("rdma_resp", rdma_resp_bus)
+        self.wdma_cmd_sink = self._make_control_sink("wdma_cmd", wdma_cmd_bus)
+        self.wdma_resp_source = self._make_control_source("wdma_resp", wdma_resp_bus)
 
         self.din_source = AvalonSTSource(
-            AvalonSTBus.from_prefix(dut, "din"),
+            din_bus if din_bus is not None else AvalonSTBus.from_prefix(dut, "din"),
             self.clock,
             reset=self.reset,
             data_bits_per_symbol=8,
@@ -133,7 +139,7 @@ class IntelDMABFM:
             idle_value=0,
         )
         self.dout_sink = AvalonSTSink(
-            AvalonSTBus.from_prefix(dut, "dout"),
+            dout_bus if dout_bus is not None else AvalonSTBus.from_prefix(dut, "dout"),
             self.clock,
             reset=self.reset,
             data_bits_per_symbol=8,
@@ -154,8 +160,10 @@ class IntelDMABFM:
     def _log_transaction(self, message, *args):
         self.log.log(logging.DEBUG, message, *args)
 
-    def _make_control_sink(self, prefix):
-        bus = AvalonSTBus.from_prefix(self.dut, prefix)
+    def _make_control_sink(self, prefix, bus=None):
+        if bus is None:
+            bus = AvalonSTBus.from_prefix(self.dut, prefix)
+
         return AvalonSTSink(
             bus,
             self.clock,
@@ -165,8 +173,10 @@ class IntelDMABFM:
             packets=False,
         )
 
-    def _make_control_source(self, prefix):
-        bus = AvalonSTBus.from_prefix(self.dut, prefix)
+    def _make_control_source(self, prefix, bus=None):
+        if bus is None:
+            bus = AvalonSTBus.from_prefix(self.dut, prefix)
+
         return AvalonSTSource(
             bus,
             self.clock,
