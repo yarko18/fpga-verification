@@ -10,10 +10,18 @@ import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import ClockCycles
 
-from fpga_verification.sim.buses import AvalonSTBus, AvalonSTFrame, AvalonSTSink, AvalonSTSource
+from fpga_verification.sim.buses import (
+    AvalonSTBus,
+    AvalonSTFrame,
+    AvalonSTMonitor,
+    AvalonSTSink,
+    AvalonSTSource,
+)
 
 __all__ = [
+    "DMAAddressRegion",
     "IntelDMABFM",
+    "IntelDMACommandMonitor",
     "ReadDMADescriptor",
     "SparseByteMemory",
     "WriteDMADescriptor",
@@ -74,6 +82,143 @@ class WriteDMADescriptor:
             stop=bool((value >> 66) & 1),
             reset=bool((value >> 67) & 1),
         )
+
+
+@dataclass(frozen=True)
+class DMAAddressRegion:
+    """Allowed DMA address interval.
+
+    ``end`` is exclusive, so ``start=0x1000, size=0x100`` covers
+    ``0x1000..0x1100``.
+    """
+
+    name: str
+    start: int
+    size: int
+
+    def __post_init__(self):
+        if self.size < 0:
+            raise ValueError("DMA address region size must be non-negative")
+
+    @property
+    def end(self):
+        return self.start + self.size
+
+    def contains(self, address, length):
+        return length >= 0 and self.start <= address and address + length <= self.end
+
+    def __str__(self):
+        return f"{self.name}[0x{self.start:X}..0x{self.end:X})"
+
+
+class IntelDMACommandMonitor:
+    """Passive monitor for Intel read/write DMA descriptor streams.
+
+    If address regions are provided, every non-control descriptor is checked
+    immediately when it appears on the command stream.
+    """
+
+    def __init__(
+        self,
+        clock,
+        reset=None,
+        rdma_cmd_bus=None,
+        wdma_cmd_bus=None,
+        read_address_regions=None,
+        write_address_regions=None,
+        logger=None,
+    ):
+        self.read_address_regions = (
+            None if read_address_regions is None else list(read_address_regions)
+        )
+        self.write_address_regions = (
+            None if write_address_regions is None else list(write_address_regions)
+        )
+        self.read_descriptors = []
+        self.write_descriptors = []
+        self._tasks = []
+        self.log = logger or logging.getLogger("cocotb.intel_dma_command_monitor")
+
+        self.rdma_cmd_monitor = self._make_control_monitor(rdma_cmd_bus, clock, reset)
+        self.wdma_cmd_monitor = self._make_control_monitor(wdma_cmd_bus, clock, reset)
+
+    def _make_control_monitor(self, bus, clock, reset):
+        if bus is None:
+            return None
+
+        return AvalonSTMonitor(
+            bus,
+            clock,
+            reset=reset,
+            data_bits_per_symbol=len(bus.data),
+            symbols_per_beat=1,
+            packets=False,
+        )
+
+    def start(self):
+        if self._tasks:
+            return self
+
+        if self.rdma_cmd_monitor is not None:
+            self._tasks.append(cocotb.start_soon(self._run_read_commands()))
+        if self.wdma_cmd_monitor is not None:
+            self._tasks.append(cocotb.start_soon(self._run_write_commands()))
+
+        return self
+
+    def stop(self):
+        for task in self._tasks:
+            task.cancel()
+        self._tasks = []
+
+        if self.rdma_cmd_monitor is not None:
+            self.rdma_cmd_monitor.cancel()
+        if self.wdma_cmd_monitor is not None:
+            self.wdma_cmd_monitor.cancel()
+
+    async def _run_read_commands(self):
+        while True:
+            beat = await self.rdma_cmd_monitor.recv_beat()
+            descriptor = ReadDMADescriptor.decode(beat.data)
+            self.read_descriptors.append(descriptor)
+            self._check_descriptor("RDMA", descriptor, self.read_address_regions)
+            self.log.debug(
+                "RDMA command address=0x%X length=%d channel=%d",
+                descriptor.address,
+                descriptor.length,
+                descriptor.channel,
+            )
+
+    async def _run_write_commands(self):
+        while True:
+            beat = await self.wdma_cmd_monitor.recv_beat()
+            descriptor = WriteDMADescriptor.decode(beat.data)
+            self.write_descriptors.append(descriptor)
+            self._check_descriptor("WDMA", descriptor, self.write_address_regions)
+            self.log.debug(
+                "WDMA command address=0x%X length=%d",
+                descriptor.address,
+                descriptor.length,
+            )
+
+    def _check_descriptor(self, name, descriptor, regions):
+        if regions is None:
+            return
+
+        if descriptor.reset or descriptor.stop or descriptor.length == 0:
+            return
+
+        if any(region.contains(descriptor.address, descriptor.length) for region in regions):
+            return
+
+        raise AssertionError(
+            f"{name} descriptor outside allowed regions: "
+            f"address=0x{descriptor.address:X}, length={descriptor.length}, "
+            f"allowed={self._format_regions(regions)}"
+        )
+
+    def _format_regions(self, regions):
+        return ", ".join(str(region) for region in regions)
 
 
 class IntelDMABFM:
