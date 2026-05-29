@@ -124,6 +124,8 @@ class IntelDMACommandMonitor:
         reset=None,
         rdma_cmd_bus=None,
         wdma_cmd_bus=None,
+        rdma_cmd_monitor=None,
+        wdma_cmd_monitor=None,
         read_address_regions=None,
         write_address_regions=None,
         logger=None,
@@ -139,8 +141,18 @@ class IntelDMACommandMonitor:
         self._tasks = []
         self.log = logger or logging.getLogger("cocotb.intel_dma_command_monitor")
 
-        self.rdma_cmd_monitor = self._make_control_monitor(rdma_cmd_bus, clock, reset)
-        self.wdma_cmd_monitor = self._make_control_monitor(wdma_cmd_bus, clock, reset)
+        self.rdma_cmd_monitor = rdma_cmd_monitor or self._make_control_monitor(
+            rdma_cmd_bus,
+            clock,
+            reset,
+        )
+        self.wdma_cmd_monitor = wdma_cmd_monitor or self._make_control_monitor(
+            wdma_cmd_bus,
+            clock,
+            reset,
+        )
+        self._owns_rdma_cmd_monitor = rdma_cmd_monitor is None
+        self._owns_wdma_cmd_monitor = wdma_cmd_monitor is None
 
     def _make_control_monitor(self, bus, clock, reset):
         if bus is None:
@@ -171,9 +183,9 @@ class IntelDMACommandMonitor:
             task.cancel()
         self._tasks = []
 
-        if self.rdma_cmd_monitor is not None:
+        if self._owns_rdma_cmd_monitor and self.rdma_cmd_monitor is not None:
             self.rdma_cmd_monitor.cancel()
-        if self.wdma_cmd_monitor is not None:
+        if self._owns_wdma_cmd_monitor and self.wdma_cmd_monitor is not None:
             self.wdma_cmd_monitor.cancel()
 
     async def _run_read_commands(self):

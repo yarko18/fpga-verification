@@ -74,8 +74,13 @@ python -m pip install -e ".[all]"
 ```python
 from fpga_verification.formats import QFormat, UIntFormat
 from fpga_verification.protocols.avalon_st.intel_video import VIPControlPacket
-from fpga_verification.sim.buses import AvalonSTSink, AvalonSTSource
-from fpga_verification.sim.bfms.intel_dma import IntelDMABFM, SparseByteMemory
+from fpga_verification.sim.buses import AvalonSTMonitor, AvalonSTSink, AvalonSTSource
+from fpga_verification.sim.bfms.intel_dma import (
+    DMAAddressRegion,
+    IntelDMABFM,
+    IntelDMACommandMonitor,
+    SparseByteMemory,
+)
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
@@ -100,12 +105,32 @@ Avalon-ST command, response, and payload buses. It accepts an optional shared
 data. The class is named for Intel because its descriptor bit layouts are
 specific to those DMA components.
 
+`IntelDMACommandMonitor` is a passive descriptor monitor for the Intel DMA
+command streams. It can decode read/write descriptors and optionally check that
+descriptor address ranges stay inside allowed `DMAAddressRegion` intervals. It
+can either create its own Avalon-ST command monitors from bus handles or consume
+existing `AvalonSTMonitor` objects owned by a test environment.
+
 ```python
-from fpga_verification.sim.bfms.intel_dma import IntelDMABFM, SparseByteMemory
+from fpga_verification.sim.bfms.intel_dma import (
+    DMAAddressRegion,
+    IntelDMABFM,
+    IntelDMACommandMonitor,
+    SparseByteMemory,
+)
 
 memory = SparseByteMemory()
 memory.write(0x1000, b"\x01\x02\x03\x04")
 dma = IntelDMABFM(dut, memory=memory).start()
+
+dma_commands = IntelDMACommandMonitor(
+    clock=dut.mem_clk,
+    reset=dut.mem_reset,
+    rdma_cmd_bus=rdma_cmd_bus,
+    wdma_cmd_bus=wdma_cmd_bus,
+    read_address_regions=[DMAAddressRegion("input", 0x1000, 0x4000)],
+    write_address_regions=[DMAAddressRegion("output", 0x8000, 0x4000)],
+).start()
 ```
 
 ## HIL Session
