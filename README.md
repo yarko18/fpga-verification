@@ -149,11 +149,57 @@ with IntelSystemConsoleSession() as hw:
 
 Intel Quartus `system-console` must be available on `PATH`.
 
-## Intel Component Simulation
+## Simulation Runners
 
-`intel_component_test_cocotb` invokes `ip-generate` for a Platform Designer
-component `.tcl`, replaces generated copies of HDL with exact matches from
-`source_dirs`, and delegates simulation to `rtl_test_cocotb`. Composition HDL
-that has no source equivalent remains in a temporary directory only while the
-simulation is running. Pass `generate_only=True` to retain and return that
-generated composition directory without running simulation.
+The simulation helpers cover three levels of generated and non-generated
+designs:
+
+```text
+rtl_runner
+  RTL sources -> cocotb build/test
+
+intel_component_runner
+  *_hw.tcl -> ip-generate -> generated composition HDL + original RTL -> rtl_runner
+
+platform_runner
+  already generated Platform Designer sim dir/msim_setup.tcl -> simulator flow
+```
+
+`rtl_test_cocotb` is the direct RTL path. Pass it explicit HDL sources or source
+directories, and it delegates build/test to the selected cocotb simulator runner.
+
+`intel_component_test_cocotb` is for Platform Designer component `.tcl` files.
+It generates only the HDL needed for simulation, keeps composition HDL that has
+no source equivalent, replaces generated copies of project RTL with exact
+matches from `source_dirs`, and then calls `rtl_test_cocotb`.
+
+Its generated-catalog flow is:
+
+```text
+source_dirs
+  -> ip-make-ipx --thorough-descent --source-directory=<source_dirs>
+  -> components.ipx in generated temp dir
+  -> ip-generate --search-path=<components.ipx>,$
+  -> parse .spd
+  -> replace generated RTL copies with original source files
+  -> rtl_test_cocotb
+```
+
+Pass `generate_only=True` to retain and return the generated composition
+directory without running simulation.
+
+`platform_test_cocotb` is for already generated Platform Designer simulation
+trees. The expected layout is:
+
+```text
+project_root/
+  <hdl_toplevel>/
+    <hdl_toplevel>/
+      testbench/
+        mentor/
+          msim_setup.tcl
+```
+
+For Questa, the platform runner compiles through `msim_setup.tcl` and runs
+cocotb against the generated simulator libraries. For Verilator, it reads
+Verilog/SystemVerilog sources from `msim_setup.tcl` and builds them directly.

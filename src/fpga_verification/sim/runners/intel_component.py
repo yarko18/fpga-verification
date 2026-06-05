@@ -89,6 +89,62 @@ def _remove_empty_directories(root):
             directory.rmdir()
 
 
+def _run_command(command, cwd, log_path=None, append_log=False):
+    if log_path is None:
+        subprocess.run(command, cwd=cwd, check=True)
+        return
+
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    mode = "a" if append_log else "w"
+
+    with log_path.open(mode, encoding="utf-8", errors="replace") as log:
+        print("Command:", " ".join(str(item) for item in command), file=log)
+        print(file=log)
+        log.flush()
+        try:
+            subprocess.run(
+                command,
+                cwd=cwd,
+                check=True,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            print(f"Command failed, see {log_path}", flush=True)
+            raise
+
+
+def _make_ipx(project_root, source_dirs, output_dir, log_path=None, append_log=False):
+    if not source_dirs:
+        return None
+
+    ip_make_ipx = shutil.which("ip-make-ipx") or shutil.which("ip-make-ipx.exe")
+    if ip_make_ipx is None:
+        raise FileNotFoundError("ip-make-ipx is not available on PATH")
+
+    ipx_path = Path(output_dir) / "components.ipx"
+    source_directory = ",".join(
+        str(_resolve_path(project_root, source_dir))
+        for source_dir in source_dirs
+    )
+
+    _run_command(
+        [
+            ip_make_ipx,
+            "--thorough-descent",
+            f"--source-directory={source_directory}",
+            f"--output={ipx_path}",
+        ],
+        cwd=project_root,
+        log_path=log_path,
+        append_log=append_log,
+    )
+
+    return ipx_path
+
+
 def intel_component_test_cocotb(
     project_root,
     component_file,
@@ -104,6 +160,9 @@ def intel_component_test_cocotb(
     ip_generate_log=None,
     compile_log=None,
     retain_generated=False,
+    make_ipx=True,
+    ipx_source_dirs=None,
+    ip_search_paths=(),
 ):
     """Generate an Intel component composition and simulate against original RTL.
 
@@ -111,7 +170,9 @@ def intel_component_test_cocotb(
     are replaced by those source paths before invoking ``rtl_test_cocotb``. Any
     remaining generated HDL implements Platform Designer composition wiring. By
     default it exists only for this call; with ``generate_only=True`` its
-    directory is retained and returned for inspection.
+    directory is retained and returned for inspection. By default a temporary
+    Platform Designer IP index is generated from ``source_dirs`` and passed to
+    ``ip-generate`` as a search path.
     """
     project_root = Path(project_root)
     component_file = _resolve_path(project_root, component_file)
@@ -147,6 +208,28 @@ def intel_component_test_cocotb(
         spd_path = output_dir / f"{hdl_toplevel}.spd"
         (output_dir / "submodules").mkdir()
 
+        log_has_content = False
+        if ip_generate_log is not None:
+            ip_generate_log = Path(ip_generate_log)
+            print(f"IP generation log: {ip_generate_log}", flush=True)
+
+        resolved_ip_search_paths = [
+            _resolve_path(project_root, path)
+            for path in ip_search_paths
+        ]
+
+        if make_ipx:
+            ipx_path = _make_ipx(
+                project_root,
+                source_dirs if ipx_source_dirs is None else ipx_source_dirs,
+                output_dir,
+                log_path=ip_generate_log,
+                append_log=log_has_content,
+            )
+            log_has_content = ipx_path is not None or log_has_content
+            if ipx_path is not None:
+                resolved_ip_search_paths.insert(0, ipx_path)
+
         command = [
             ip_generate,
             f"--component-file={component_file}",
@@ -159,39 +242,22 @@ def intel_component_test_cocotb(
         ]
         if part is not None:
             command.append(f"--part={part}")
+
+        if resolved_ip_search_paths:
+            search_path = ",".join(str(path) for path in resolved_ip_search_paths)
+            command.append(f"--search-path={search_path},$")
+
         command.extend(
             f"--component-parameter={name}={value}"
             for name, value in component_parameters.items()
         )
 
-        if ip_generate_log is None:
-            subprocess.run(command, cwd=project_root, check=True)
-        else:
-            ip_generate_log = Path(ip_generate_log)
-            ip_generate_log.parent.mkdir(parents=True, exist_ok=True)
-            print(f"IP generation log: {ip_generate_log}", flush=True)
-            with ip_generate_log.open(
-                "w", encoding="utf-8", errors="replace"
-            ) as log:
-                print(
-                    "Command:",
-                    " ".join(str(item) for item in command),
-                    file=log,
-                )
-                print(file=log)
-                log.flush()
-                try:
-                    subprocess.run(
-                        command,
-                        cwd=project_root,
-                        check=True,
-                        stdout=log,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                    )
-                except subprocess.CalledProcessError:
-                    print(f"ip-generate failed, see {ip_generate_log}", flush=True)
-                    raise
+        _run_command(
+            command,
+            cwd=project_root,
+            log_path=ip_generate_log,
+            append_log=log_has_content,
+        )
 
         generated_sources = _spd_hdl_sources(spd_path)
         spd_path.unlink()
