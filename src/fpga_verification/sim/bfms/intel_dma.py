@@ -244,6 +244,14 @@ class IntelDMABFM:
     data has entered the model, it is committed to memory and a successful
     ``wdma_resp`` is scheduled after the configured completion delay.
 
+    ``mode`` selects which side is modeled:
+
+    * ``"full"`` models both read and write DMA interfaces.
+    * ``"read"`` or ``"read_only"`` models only ``rdma_cmd``, ``rdma_resp``,
+      and ``din``.
+    * ``"write"`` or ``"write_only"`` models only ``wdma_cmd``,
+      ``wdma_resp``, and ``dout``.
+
     Tests can set ``din_source.pause`` to delay read data presentation and
     ``dout_sink.pause`` to deassert ``dout_ready`` while write data waits.
     """
@@ -263,10 +271,12 @@ class IntelDMABFM:
         wdma_resp_bus=None,
         din_bus=None,
         dout_bus=None,
+        mode="full",
     ):
         if read_response_delay_cycles < 0 or write_response_delay_cycles < 0:
             raise ValueError("DMA response delays must be non-negative")
 
+        self.enable_read, self.enable_write = self._decode_mode(mode)
         self.log = logging.getLogger(f"cocotb.{dut._name}.intel_dma_bfm")
         self.dut = dut
         self.clock = dut.mem_clk
@@ -281,37 +291,72 @@ class IntelDMABFM:
         self.write_responses = Queue()
         self._tasks = []
 
-        self.rdma_cmd_sink = self._make_control_sink("rdma_cmd", rdma_cmd_bus)
-        self.rdma_resp_source = self._make_control_source("rdma_resp", rdma_resp_bus)
-        self.wdma_cmd_sink = self._make_control_sink("wdma_cmd", wdma_cmd_bus)
-        self.wdma_resp_source = self._make_control_source("wdma_resp", wdma_resp_bus)
+        self.rdma_cmd_sink = None
+        self.rdma_resp_source = None
+        self.wdma_cmd_sink = None
+        self.wdma_resp_source = None
+        self.din_source = None
+        self.dout_sink = None
+        self.read_data_bytes_per_beat = None
+        self.write_data_bytes_per_beat = None
 
-        self.din_source = AvalonSTSource(
-            din_bus if din_bus is not None else AvalonSTBus.from_prefix(dut, "din"),
-            self.clock,
-            reset=self.reset,
-            data_bits_per_symbol=8,
-            first_symbol_in_high_order_bits=True,
-            packets=True,
-            idle_value=0,
-        )
-        self.dout_sink = AvalonSTSink(
-            dout_bus if dout_bus is not None else AvalonSTBus.from_prefix(dut, "dout"),
-            self.clock,
-            reset=self.reset,
-            data_bits_per_symbol=8,
-            first_symbol_in_high_order_bits=True,
-            packets=False,
-        )
+        if self.enable_read:
+            self.rdma_cmd_sink = self._make_control_sink("rdma_cmd", rdma_cmd_bus)
+            self.rdma_resp_source = self._make_control_source("rdma_resp", rdma_resp_bus)
+            self.din_source = AvalonSTSource(
+                din_bus if din_bus is not None else AvalonSTBus.from_prefix(dut, "din"),
+                self.clock,
+                reset=self.reset,
+                data_bits_per_symbol=8,
+                first_symbol_in_high_order_bits=True,
+                packets=True,
+                idle_value=0,
+            )
+            self.read_data_bytes_per_beat = self.din_source.symbols_per_beat
 
-        self.data_bytes_per_beat = self.din_source.symbols_per_beat
+        if self.enable_write:
+            self.wdma_cmd_sink = self._make_control_sink("wdma_cmd", wdma_cmd_bus)
+            self.wdma_resp_source = self._make_control_source("wdma_resp", wdma_resp_bus)
+            self.dout_sink = AvalonSTSink(
+                dout_bus if dout_bus is not None else AvalonSTBus.from_prefix(dut, "dout"),
+                self.clock,
+                reset=self.reset,
+                data_bits_per_symbol=8,
+                first_symbol_in_high_order_bits=True,
+                packets=False,
+            )
+            self.write_data_bytes_per_beat = self.dout_sink.symbols_per_beat
+
+        self.data_bytes_per_beat = (
+            self.read_data_bytes_per_beat
+            if self.read_data_bytes_per_beat is not None
+            else self.write_data_bytes_per_beat
+        )
         self.log.info(
-            "Created DMA BFM: beat=%d bytes, read_response_delay=%d cycles, "
-            "write_response_delay=%d cycles, transaction_level=%s",
-            self.data_bytes_per_beat,
+            "Created DMA BFM: mode=%s, read_beat=%s bytes, write_beat=%s bytes, "
+            "read_response_delay=%d cycles, write_response_delay=%d cycles, "
+            "transaction_level=%s",
+            mode,
+            self.read_data_bytes_per_beat,
+            self.write_data_bytes_per_beat,
             self.read_response_delay_cycles,
             self.write_response_delay_cycles,
             logging.INFO,
+        )
+
+    def _decode_mode(self, mode):
+        normalized = str(mode).lower().replace("-", "_").replace(" ", "_")
+
+        if normalized in ("full", "read_write", "readwrite"):
+            return True, True
+        if normalized in ("read", "read_only", "readonly"):
+            return True, False
+        if normalized in ("write", "write_only", "writeonly"):
+            return False, True
+
+        raise ValueError(
+            "IntelDMABFM mode must be 'full', 'read', 'read_only', "
+            "'write', or 'write_only'"
         )
 
     def _log_transaction(self, message, *args):
@@ -346,10 +391,10 @@ class IntelDMABFM:
 
     def start(self):
         if not self._tasks:
-            self._tasks = [
-                cocotb.start_soon(self._run_reads()),
-                cocotb.start_soon(self._run_writes()),
-            ]
+            if self.enable_read:
+                self._tasks.append(cocotb.start_soon(self._run_reads()))
+            if self.enable_write:
+                self._tasks.append(cocotb.start_soon(self._run_writes()))
         return self
 
     def stop(self):
@@ -357,12 +402,16 @@ class IntelDMABFM:
             task.cancel()
         self._tasks = []
 
-        self.rdma_cmd_sink.cancel()
-        self.rdma_resp_source.cancel()
-        self.wdma_cmd_sink.cancel()
-        self.wdma_resp_source.cancel()
-        self.din_source.cancel()
-        self.dout_sink.cancel()
+        for bfm in (
+            self.rdma_cmd_sink,
+            self.rdma_resp_source,
+            self.wdma_cmd_sink,
+            self.wdma_resp_source,
+            self.din_source,
+            self.dout_sink,
+        ):
+            if bfm is not None:
+                bfm.cancel()
 
     async def _run_reads(self):
         while True:
@@ -384,7 +433,7 @@ class IntelDMABFM:
             else:
                 response = self.READ_RESPONSE_DONE
                 if descriptor.length:
-                    if descriptor.length % self.data_bytes_per_beat:
+                    if descriptor.length % self.read_data_bytes_per_beat:
                         raise RuntimeError(
                             "Read DMA BFM requires transfers aligned to the exported "
                             "din beat because the component does not expose din_empty"
@@ -453,7 +502,9 @@ class IntelDMABFM:
 
     async def _receive_write_payload(self, length):
         payload = bytearray()
-        beats_needed = (length + self.data_bytes_per_beat - 1) // self.data_bytes_per_beat
+        beats_needed = (
+            length + self.write_data_bytes_per_beat - 1
+        ) // self.write_data_bytes_per_beat
 
         for _ in range(beats_needed):
             payload.extend((await self.dout_sink.recv_beat()).symbols)
