@@ -262,6 +262,8 @@ class IntelDMABFM:
     def __init__(
         self,
         dut,
+        clock,
+        reset,
         memory=None,
         read_response_delay_cycles=2,
         write_response_delay_cycles=2,
@@ -279,8 +281,8 @@ class IntelDMABFM:
         self.enable_read, self.enable_write = self._decode_mode(mode)
         self.log = logging.getLogger(f"cocotb.{dut._name}.intel_dma_bfm")
         self.dut = dut
-        self.clock = dut.mem_clk
-        self.reset = dut.mem_reset
+        self.clock = clock
+        self.reset = reset
         self.memory = memory if memory is not None else SparseByteMemory()
         self.read_response_delay_cycles = read_response_delay_cycles
         self.write_response_delay_cycles = write_response_delay_cycles
