@@ -62,6 +62,79 @@ For both:
 python -m pip install -e ".[all]"
 ```
 
+## Closed-source binary wheel
+
+This project can build a platform-specific binary wheel with Cython. The wheel
+contains compiled extension modules (`.pyd` on Windows, `.so` on Linux/macOS)
+instead of the package's `.py` source files.
+
+This is source hiding, not strong code protection: compiled Python extensions
+can still be inspected or reverse engineered. Do not publish a source
+distribution (`sdist`) if you do not want to distribute the Python sources.
+
+Install the build tools:
+
+```powershell
+python -m pip install --upgrade build twine Cython wheel
+```
+
+Build a local binary wheel:
+
+```powershell
+.\tools\build_binary_wheel.ps1
+```
+
+Install the produced wheel locally:
+
+```powershell
+python -m pip install .\dist\fpga_verification-0.2.0-*.whl
+```
+
+Publish only wheel files, not `*.tar.gz` source archives:
+
+```powershell
+python -m twine upload --repository testpypi dist\*.whl
+python -m pip install --index-url https://test.pypi.org/simple/ fpga-verification
+
+python -m twine upload dist\*.whl
+python -m pip install fpga-verification
+```
+
+Binary wheels are specific to the Python version, operating system, CPU
+architecture, and sometimes the C runtime used to build them. For public PyPI
+distribution, build and upload one wheel for every platform and Python version
+you want to support. `cibuildwheel` is the usual CI tool for that.
+
+This repository includes a GitHub Actions workflow at
+`.github/workflows/wheels.yml` that builds binary wheels for:
+
+```text
+cp310, cp311, cp312, cp313, cp314
+Windows x64
+Linux x64
+macOS x64 and arm64
+```
+
+The workflow uploads wheels as GitHub Actions artifacts on pushes, pull
+requests, and manual runs. When you publish a GitHub Release, it uploads only
+the built wheels to PyPI through Trusted Publishing. It intentionally does not
+build or upload an `sdist`.
+
+To publish publicly:
+
+1. Push this repository to GitHub. It may stay private; PyPI users only receive
+   the wheels.
+2. Create the `fpga-verification` project on PyPI, or prepare the first upload.
+3. In PyPI, configure Trusted Publisher for this GitHub repository:
+   workflow name `wheels.yml`, environment `pypi`.
+4. Push a tag and create a GitHub Release from it.
+5. After the release workflow succeeds, users can install with:
+
+```powershell
+python -m pip install fpga-verification
+python -m pip install "fpga-verification[all]"
+```
+
 After reinstalling a previous development version:
 
 ```powershell

@@ -3,6 +3,9 @@
 
 __pycache__/
 *.egg-info/
+build/
+dist/
+.tmp-wheel-test-*/
 sim_build/
 sim_build_*/
 *.bin

@@ -1,0 +1,67 @@
+# Copyright 2026 Yaroslav Mariukha
+# SPDX-License-Identifier: Apache-2.0
+
+name: wheels
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  release:
+    types:
+      - published
+
+jobs:
+  build_wheels:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows x64
+            os: windows-latest
+            archs: AMD64
+          - label: Linux x64
+            os: ubuntu-latest
+            archs: x86_64
+          - label: macOS x64 and arm64
+            os: macos-latest
+            archs: x86_64 arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.1.0
+        env:
+          CIBW_ARCHS: ${{ matrix.archs }}
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cibw-${{ matrix.os }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
+
+  publish_pypi:
+    name: Publish to PyPI
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish wheels to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
