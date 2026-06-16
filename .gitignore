@@ -1,7 +1,11 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
-src/fpga_cocotb.egg-info/
-src/fpga_cocotb/__pycache__/
-src/fpga_cocotb/sim_build/
-src/fpga_cocotb/vip/__pycache__/
+__pycache__/
+*.egg-info/
+build/
+dist/
+.tmp-wheel-test-*/
+sim_build/
+sim_build_*/
+*.bin

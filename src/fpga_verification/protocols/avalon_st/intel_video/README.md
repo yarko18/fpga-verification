@@ -3,7 +3,13 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: Apache-2.0
 -->
 
-Original documentation: [Video and Image Processing Suite](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
+# Intel Avalon-ST Video Protocol
+
+Reference documentation: [Video and Image Processing Suite](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
+
+```python
+from fpga_verification.protocols.avalon_st.intel_video import VIPControlPacket
+```
 
 
 ### Packet Type Identifiers

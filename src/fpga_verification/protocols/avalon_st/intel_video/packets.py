@@ -1,6 +1,8 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+"""Packet codecs for the Intel Avalon-ST Video protocol."""
+
 from dataclasses import dataclass, field
 from enum import IntEnum
 
