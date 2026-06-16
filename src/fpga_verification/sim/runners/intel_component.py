@@ -89,6 +89,16 @@ def _remove_empty_directories(root):
             directory.rmdir()
 
 
+def _clean_directory(path):
+    path = Path(path)
+    if path.exists():
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+    path.mkdir(parents=True)
+
+
 def _run_command(command, cwd, log_path=None, append_log=False):
     if log_path is None:
         subprocess.run(command, cwd=cwd, check=True)
@@ -191,12 +201,9 @@ def intel_component_test_cocotb(
     keep_generated = generate_only or retain_generated
 
     if keep_generated:
-        generation_context = nullcontext(
-            tempfile.mkdtemp(
-                prefix=f".ip_generate_{hdl_toplevel}_",
-                dir=project_root,
-            )
-        )
+        fixed_output_dir = project_root / f".ip_generate_{hdl_toplevel}"
+        _clean_directory(fixed_output_dir)
+        generation_context = nullcontext(fixed_output_dir)
     else:
         generation_context = tempfile.TemporaryDirectory(
             prefix=f".ip_generate_{hdl_toplevel}_",
