@@ -68,6 +68,9 @@ This project can build a platform-specific binary wheel with Cython. The wheel
 contains compiled extension modules (`.pyd` on Windows, `.so` on Linux/macOS)
 instead of the package's `.py` source files.
 
+See [docs/binary_wheel.md](docs/binary_wheel.md) for the full command list:
+build, check, install, uninstall, cleanup, and publish.
+
 This is source hiding, not strong code protection: compiled Python extensions
 can still be inspected or reverse engineered. Do not publish a source
 distribution (`sdist`) if you do not want to distribute the Python sources.
