@@ -9,148 +9,53 @@ Reusable FPGA verification helpers. The package provides shared data formats,
 wire-protocol codecs, cocotb simulation utilities, and an Intel System Console
 HIL transport.
 
-## Package Layout
-
-```text
-src/fpga_verification/
-  formats/
-    integer.py             # UIntFormat
-    fixed_point.py         # QFormat
-  protocols/
-    avalon_st/
-      intel_video/
-        packets.py         # Intel Avalon-ST Video packet codecs
-  sim/
-    platform_designer.py  # Platform Designer generated-system simulation
-    buses/
-      avalon_st.py         # Avalon-ST cocotb source/sink/monitor
-    bfms/
-      intel_dma.py         # Intel read/write DMA component BFM
-    runners/
-      intel_component.py   # Intel component generation over the RTL runner
-      rtl.py               # Generic cocotb RTL runner
-  hil/
-    intel/
-      system_console.py    # Persistent Avalon-MM and JTAG UART session
-      resources/
-        jtag_session.tcl   # System Console worker
-```
-
 ## Install
 
-For format-only use:
+Install the base package for format conversion and protocol codecs:
 
-```powershell
-python -m pip install -e .
-```
-
-For simulation use:
-
-```powershell
-python -m pip install -e ".[sim]"
-```
-
-For hardware-in-the-loop use:
-
-```powershell
-python -m pip install -e ".[hil]"
-```
-
-For both:
-
-```powershell
-python -m pip install -e ".[all]"
-```
-
-## Closed-source binary wheel
-
-This project can build a platform-specific binary wheel with Cython. The wheel
-contains compiled extension modules (`.pyd` on Windows, `.so` on Linux/macOS)
-instead of the package's `.py` source files.
-
-See [docs/binary_wheel.md](docs/binary_wheel.md) for the full command list:
-build, check, install, uninstall, cleanup, and publish.
-
-This is source hiding, not strong code protection: compiled Python extensions
-can still be inspected or reverse engineered. Do not publish a source
-distribution (`sdist`) if you do not want to distribute the Python sources.
-
-Install the build tools:
-
-```powershell
-python -m pip install --upgrade build twine Cython wheel
-```
-
-Build a local binary wheel:
-
-```powershell
-.\tools\build_binary_wheel.ps1
-```
-
-Install the produced wheel locally:
-
-```powershell
-python -m pip install .\dist\fpga_verification-0.2.0-*.whl
-```
-
-Publish only wheel files, not `*.tar.gz` source archives:
-
-```powershell
-python -m twine upload --repository testpypi dist\*.whl
-python -m pip install --index-url https://test.pypi.org/simple/ fpga-verification
-
-python -m twine upload dist\*.whl
+```bash
 python -m pip install fpga-verification
 ```
 
-Binary wheels are specific to the Python version, operating system, CPU
-architecture, and sometimes the C runtime used to build them. For public PyPI
-distribution, build and upload one wheel for every platform and Python version
-you want to support. `cibuildwheel` is the usual CI tool for that.
+Install cocotb simulation helpers:
 
-This repository includes a GitHub Actions workflow at
-`.github/workflows/wheels.yml` that builds binary wheels for:
-
-```text
-cp310, cp311, cp312, cp313, cp314
-Windows x64
-Linux x64
-macOS x64 and arm64
+```bash
+python -m pip install "fpga-verification[sim]"
 ```
 
-The workflow uploads wheels as GitHub Actions artifacts on pushes, pull
-requests, and manual runs. When you publish a GitHub Release, it uploads only
-the built wheels to PyPI through Trusted Publishing. It intentionally does not
-build or upload an `sdist`.
+Install Intel System Console HIL helpers:
 
-To publish publicly:
+```bash
+python -m pip install "fpga-verification[hil]"
+```
 
-1. Push this repository to GitHub. It may stay private; PyPI users only receive
-   the wheels.
-2. Create the `fpga-verification` project on PyPI, or prepare the first upload.
-3. In PyPI, configure Trusted Publisher for this GitHub repository:
-   workflow name `wheels.yml`, environment `pypi`.
-4. Push a tag and create a GitHub Release from it.
-5. After the release workflow succeeds, users can install with:
+Install everything:
 
-```powershell
-python -m pip install fpga-verification
+```bash
 python -m pip install "fpga-verification[all]"
 ```
 
-After reinstalling a previous development version:
-
-```powershell
-python -m pip uninstall fpga-verification -y
-python -m pip install -e ".[all]"
-```
-
-## Imports
+## Public API
 
 ```python
-from fpga_verification.formats import QFormat, UIntFormat
-from fpga_verification.protocols.avalon_st.intel_video import VIPControlPacket
-from fpga_verification.sim.buses import AvalonSTMonitor, AvalonSTSink, AvalonSTSource
+from fpga_verification.formats import QFormat, UIntFormat, qformat
+from fpga_verification.protocols.avalon_st.intel_video import (
+    VIPControlPacket,
+    VIPFrame,
+    VIPInterlacing,
+    VIPPacketType,
+    VIPUserPacket,
+    VIPVideoPacket,
+    vip_packet_from_symbols,
+)
+from fpga_verification.sim.buses import (
+    AvalonSTBeat,
+    AvalonSTBus,
+    AvalonSTFrame,
+    AvalonSTMonitor,
+    AvalonSTSink,
+    AvalonSTSource,
+)
 from fpga_verification.sim.bfms.intel_dma import (
     DMAAddressRegion,
     IntelDMABFM,
@@ -162,32 +67,229 @@ from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_
 from fpga_verification.hil.intel import IntelSystemConsoleSession
 ```
 
-`UIntFormat` models unscaled unsigned fields such as bus symbols or pixels.
-`QFormat` models fixed-point raw storage and arithmetic; for signed formats,
-the integer width includes the sign bit.
+## Numeric Formats
+
+`UIntFormat` and `QFormat` convert between Python/numpy values and raw integer
+words used by hardware buses, memories, and scoreboards.
+
+### UIntFormat
+
+```python
+from fpga_verification.formats import UIntFormat
+
+pixel = UIntFormat(width=10)
+raw_pixels = pixel.array([0, 1023, 1024, -1])
+
+assert raw_pixels.tolist() == [0, 1023, 0, 1023]
+assert raw_pixels.dtype == pixel.dtype
+```
+
+Inputs:
+
+- `width`: unsigned word width in bits, from 1 to 64.
+- `zeros(shape)`: creates a zero-filled numpy array.
+- `wrap(values)`: masks values to the configured width.
+- `array(values, shape=None)`: masks, casts to the smallest unsigned storage
+  dtype, and optionally reshapes.
+
+Outputs:
+
+- `dtype`: numpy unsigned dtype selected from `uint8`, `uint16`, `uint32`, or
+  `uint64`.
+- `mask`: integer bit mask for the configured width.
+
+### QFormat
+
+```python
+from fpga_verification.formats import QFormat
+
+sample = QFormat(qi=3, qf=2, signed=True)
+raw = sample.float_to_qraw([1.25, -1.0])
+back = sample.qraw_to_float(raw)
+
+assert raw.tolist() == [5, 28]
+assert back.tolist() == [1.25, -1.0]
+```
+
+Inputs:
+
+- `qi`: integer width. For signed formats, this includes the sign bit.
+- `qf`: fractional width.
+- `signed`: `True` for two's-complement signed values, `False` for unsigned.
+- `float_to_qraw(x, saturate=True)`: converts floats to raw fixed-point words.
+- `int_to_qraw(raw, saturate=True)`: converts signed integer values to raw
+  stored words.
+- `qraw_to_int(raw)`: converts raw words to signed or unsigned integers.
+- `qraw_to_float(raw)`: converts raw words to floating-point values.
+- `multiply(left_raw, right_format, right_raw, out_qf=None)`: multiplies two
+  raw fixed-point arrays. If `out_qf` is provided, the result is shifted to the
+  requested fractional width.
+- `zeros(size=None)`, `ones(size=None)`, `full(size, value, raw=False)`, and
+  `randomize(...)`: create test data.
+
+Outputs:
+
+- `width`: total raw word width, `qi + qf`.
+- `scale`: `2 ** qf`.
+- `mask`: integer bit mask for the raw word.
+- `min_float`, `max_float`: representable numeric range.
+- `dtype`: numpy unsigned storage dtype for the raw word.
 
 ## Avalon-ST Protocols
 
-`fpga_verification.protocols.avalon_st` contains packet encoders and decoders,
-independent of cocotb and simulator state. `intel_video` implements the Intel
-Avalon-ST Video packet format. Additional project-specific protocols can be
-placed alongside it without mixing them with bus drivers or component models.
+Avalon-ST helpers follow the Avalon interface terminology used by Intel/Altera.
+The protocol reference is:
+https://docs.altera.com/r/docs/683091/22.3/avalon-interface-specifications/introduction-to-the-avalon-interface-specifications
+
+The protocol codec layer is independent of cocotb and simulator state. It
+accepts and returns Python lists of symbols.
+
+### Intel Avalon-ST Video Packets
+
+```python
+from fpga_verification.protocols.avalon_st.intel_video import (
+    VIPControlPacket,
+    VIPFrame,
+    VIPInterlacing,
+    VIPUserPacket,
+    vip_packet_from_symbols,
+)
+
+control = VIPControlPacket(
+    width=1920,
+    height=1080,
+    interlacing=VIPInterlacing.PROGRESSIVE_FRAME,
+)
+symbols = control.to_symbols()
+decoded = vip_packet_from_symbols(symbols)
+
+assert decoded.width == 1920
+assert decoded.height == 1080
+
+frame = VIPFrame(
+    width=2,
+    height=2,
+    pixels=[0x10, 0x20, 0x30, 0x40],
+    user_packets=[VIPUserPacket(1, [0xA, 0xB])],
+)
+packets = frame.packets()
+```
+
+Inputs:
+
+- `VIPControlPacket(width, height, interlacing=...)`: frame dimensions and
+  interlacing metadata. Width and height must fit in 16 bits.
+- `VIPVideoPacket(payload)`: video payload symbols.
+- `VIPUserPacket(user_type, payload)`: user packet type `1..8` and payload
+  symbols.
+- `VIPFrame(width, height, pixels, interlacing=..., user_packets=...)`: a
+  black-box container that produces user, control, and video packets.
+- `vip_packet_from_symbols(symbols, symbols_per_beat=1)`: decodes one packet
+  from raw symbols. `symbols_per_beat` controls how many symbols belong to the
+  first Avalon-ST beat; payload starts after that first beat.
+
+Outputs:
+
+- `to_symbols()`: returns a list of 4-bit packet symbols.
+- `VIPFrame.control_packet()`: returns a `VIPControlPacket`.
+- `VIPFrame.video_packet()`: returns a `VIPVideoPacket`.
+- `VIPFrame.packets()`: returns user packets followed by control and video
+  packets.
+- `VIPInterlacing.description`: human-readable interlacing mode.
+
+Ancillary packets are currently reported as unsupported by the decoder.
+
+## Avalon-ST Cocotb Bus Helpers
+
+The cocotb bus helpers drive and observe Avalon-ST interfaces through cocotb
+handles. They support scalar `valid`/`ready`, optional packet signals, optional
+`empty`, `error`, and `channel`, and ready modes `ready_latency=0` or
+`ready_latency=1`.
+
+### Instantiating A Source And Sink
+
+```python
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import RisingEdge
+
+from fpga_verification.sim.buses import (
+    AvalonSTBus,
+    AvalonSTFrame,
+    AvalonSTSink,
+    AvalonSTSource,
+)
+
+
+@cocotb.test()
+async def stream_loopback_test(dut):
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+
+    dut.reset.value = 1
+    await RisingEdge(dut.clk)
+    dut.reset.value = 0
+
+    source = AvalonSTSource(
+        AvalonSTBus.from_prefix(dut, "sink"),
+        dut.clk,
+        reset=dut.reset,
+        data_bits_per_symbol=8,
+        packets=True,
+    )
+    sink = AvalonSTSink(
+        AvalonSTBus.from_prefix(dut, "source"),
+        dut.clk,
+        reset=dut.reset,
+        data_bits_per_symbol=8,
+        packets=True,
+    )
+
+    await source.send(AvalonSTFrame([0x11, 0x22, 0x33]))
+    received = await sink.recv()
+
+    assert received.data == [0x11, 0x22, 0x33]
+```
+
+Inputs:
+
+- `AvalonSTBus.from_prefix(dut, prefix)`: binds signals named like
+  `<prefix>_data`, `<prefix>_valid`, `<prefix>_ready`,
+  `<prefix>_startofpacket`, and `<prefix>_endofpacket`.
+- `AvalonSTFrame(data, channel=None, error=None, empty=None, tx_complete=None)`:
+  frame payload and optional sideband metadata.
+- `AvalonSTSource(bus, clock, reset=None, data_bits_per_symbol=8,
+  symbols_per_beat=None, first_symbol_in_high_order_bits=False,
+  ready_latency=0, ready_allowance=None, packets=None, idle_value="x")`.
+- `AvalonSTSink(...)` and `AvalonSTMonitor(...)`: use the same bus format
+  options as `AvalonSTSource`.
+- `send(frame)` / `send_nowait(frame)`: queue transmit data.
+- `recv()` / `recv_nowait()`: receive complete frames.
+- `recv_beat()` / `recv_beat_nowait()`: receive one transferred beat.
+- `set_pause_generator(generator)`: apply backpressure or idle insertion from
+  an iterable of booleans.
+
+Outputs:
+
+- `AvalonSTFrame.data`: list of symbols.
+- `AvalonSTFrame.channel`, `error`, `empty`: captured sideband metadata.
+- `AvalonSTFrame.sim_time_start`, `sim_time_end`: simulation timestamps.
+- `AvalonSTBeat`: one handshake beat with `data`, decoded `symbols`, `sop`,
+  `eop`, `empty`, `error`, `channel`, and `sim_time`.
+- `wait()`: waits for a source to become idle or a monitor/sink to see
+  activity, depending on the helper type.
 
 ## Intel DMA BFM
 
-`IntelDMABFM` models paired Intel read and write DMA streaming interfaces using
-Avalon-ST command, response, and payload buses. It accepts an optional shared
-`SparseByteMemory` instance for initializing read data and inspecting written
-data. The class is named for Intel because its descriptor bit layouts are
-specific to those DMA components.
-
-`IntelDMACommandMonitor` is a passive descriptor monitor for the Intel DMA
-command streams. It can decode read/write descriptors and optionally check that
-descriptor address ranges stay inside allowed `DMAAddressRegion` intervals. It
-can either create its own Avalon-ST command monitors from bus handles or consume
-existing `AvalonSTMonitor` objects owned by a test environment.
+`IntelDMABFM` is a cocotb black-box model for Intel read and write DMA streaming
+interfaces. It consumes DMA command descriptors, emits DMA responses, sources
+read data from memory, and stores write data into memory.
 
 ```python
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import RisingEdge
+
+from fpga_verification.sim.buses import AvalonSTBus
 from fpga_verification.sim.bfms.intel_dma import (
     DMAAddressRegion,
     IntelDMABFM,
@@ -195,35 +297,119 @@ from fpga_verification.sim.bfms.intel_dma import (
     SparseByteMemory,
 )
 
-memory = SparseByteMemory()
-memory.write(0x1000, b"\x01\x02\x03\x04")
-dma = IntelDMABFM(dut, memory=memory).start()
 
-dma_commands = IntelDMACommandMonitor(
-    clock=dut.mem_clk,
-    reset=dut.mem_reset,
-    rdma_cmd_bus=rdma_cmd_bus,
-    wdma_cmd_bus=wdma_cmd_bus,
-    read_address_regions=[DMAAddressRegion("input", 0x1000, 0x4000)],
-    write_address_regions=[DMAAddressRegion("output", 0x8000, 0x4000)],
-).start()
+@cocotb.test()
+async def dma_component_test(dut):
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+
+    memory = SparseByteMemory()
+    memory.write(0x1000, b"\x01\x02\x03\x04")
+
+    dma = IntelDMABFM(
+        dut,
+        clock=dut.clk,
+        reset=dut.reset,
+        memory=memory,
+        mode="full",
+    ).start()
+
+    command_monitor = IntelDMACommandMonitor(
+        clock=dut.clk,
+        reset=dut.reset,
+        rdma_cmd_bus=AvalonSTBus.from_prefix(dut, "rdma_cmd"),
+        wdma_cmd_bus=AvalonSTBus.from_prefix(dut, "wdma_cmd"),
+        read_address_regions=[DMAAddressRegion("input", 0x1000, 0x4000)],
+        write_address_regions=[DMAAddressRegion("output", 0x8000, 0x4000)],
+    ).start()
+
+    dut.reset.value = 1
+    await RisingEdge(dut.clk)
+    dut.reset.value = 0
+
+    # Drive the DUT here. The BFM responds on the DMA Avalon-ST interfaces.
+    # Later, inspect memory or descriptor logs as black-box outputs.
+    written_bytes = memory.read(0x8000, 16)
+    read_descriptors = command_monitor.read_descriptors
+
+    dma.stop()
+    command_monitor.stop()
 ```
+
+Inputs:
+
+- `IntelDMABFM(dut, clock, reset, memory=None, read_response_delay_cycles=2,
+  write_response_delay_cycles=2, ..., mode="full")`.
+- `mode`: `"full"`, `"read"`/`"read_only"`, or `"write"`/`"write_only"`.
+- `memory`: optional `SparseByteMemory` shared by read and write paths.
+- Optional bus overrides: `rdma_cmd_bus`, `rdma_resp_bus`, `wdma_cmd_bus`,
+  `wdma_resp_bus`, `din_bus`, and `dout_bus`. If omitted, buses are discovered
+  from DUT prefixes with the same names.
+- `SparseByteMemory.write(address, data)`: initializes byte-addressed memory.
+- `DMAAddressRegion(name, start, size)`: allowed address interval for passive
+  checking. End address is exclusive.
+- `IntelDMACommandMonitor(...)`: pass command buses or existing
+  `AvalonSTMonitor` instances and optional allowed address regions.
+
+Outputs:
+
+- `SparseByteMemory.read(address, length)`: returns bytes stored by the BFM.
+- `IntelDMABFM.read_commands`, `write_commands`: descriptor queues observed by
+  the model.
+- `IntelDMABFM.read_responses`, `write_responses`: queues of descriptors whose
+  responses were issued.
+- `IntelDMACommandMonitor.read_descriptors`, `write_descriptors`: decoded
+  descriptor history.
+- `ReadDMADescriptor.decode(value)` and `WriteDMADescriptor.decode(value)`:
+  convert raw descriptor words into address, length, and control fields.
 
 ## HIL Session
 
 `IntelSystemConsoleSession` opens one persistent `system-console` process and
-uses it sequentially for Avalon-MM memory access and JTAG UART commands.
+uses it sequentially for Avalon-MM memory access and JTAG UART commands. Intel
+Quartus `system-console` must be available on `PATH`.
 
 ```python
+import numpy as np
+
 from fpga_verification.hil.intel import IntelSystemConsoleSession
 
-with IntelSystemConsoleSession() as hw:
-    hw.write_memory(frame, 0x01E84800)
-    print(hw.command("g\n"))
-    frame_out = hw.read_memory((1024, 1280), 0x02DC6C00)
+frame = np.arange(1024 * 1280, dtype=np.uint16).reshape(1024, 1280)
+
+with IntelSystemConsoleSession(
+    system_console="system-console",
+    master_index=0,
+    uart_index=0,
+    startup_timeout=30.0,
+    work_dir=".",
+) as hw:
+    hw.write_memory(frame, address=0x01E84800)
+    response = hw.command("g\n", timeout=3.0)
+    frame_out = hw.read_memory((1024, 1280), address=0x02DC6C00)
+
+print(response)
+print(frame_out.shape)
 ```
 
-Intel Quartus `system-console` must be available on `PATH`.
+Inputs:
+
+- `system_console`: executable name or path.
+- `master_index`: System Console Avalon-MM master index.
+- `uart_index`: JTAG UART service index.
+- `startup_timeout`: seconds to wait for the Tcl worker to become ready.
+- `work_dir`: directory used for temporary binary transfer files.
+- `write_memory(data, address, chunk_size=4096)`: writes numpy-compatible data
+  as little-endian 16-bit words.
+- `read_memory(shape, address, chunk_size=4096)`: reads little-endian 16-bit
+  words and reshapes them.
+- `command(command, timeout=3.0, debug=False)`: sends a UTF-8 command over JTAG
+  UART and waits for the first non-empty response line.
+
+Outputs:
+
+- `read_memory(...)`: numpy array with the requested shape.
+- `command(...)`: response string.
+- Methods raise `TimeoutError` or `RuntimeError` if System Console stops or
+  reports a protocol error.
 
 ## Simulation Runners
 
