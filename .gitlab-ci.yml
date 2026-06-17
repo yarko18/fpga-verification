@@ -50,6 +50,12 @@ publish-pypi:
     PYPI_ID_TOKEN:
       aud: pypi
   script:
+    - echo "CI_PROJECT_PATH=$CI_PROJECT_PATH"
+    - echo "CI_PROJECT_NAMESPACE=$CI_PROJECT_NAMESPACE"
+    - echo "CI_PROJECT_NAME=$CI_PROJECT_NAME"
+    - echo "CI_CONFIG_PATH=$CI_CONFIG_PATH"
+    - echo "CI_ENVIRONMENT_NAME=$CI_ENVIRONMENT_NAME"
+    - echo "CI_COMMIT_TAG=$CI_COMMIT_TAG"
     - python -m pip install -U twine
     - python -m twine check wheelhouse/*.whl
     - python -m twine upload wheelhouse/*.whl
