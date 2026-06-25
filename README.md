@@ -135,6 +135,52 @@ Outputs:
 - `min_float`, `max_float`: representable numeric range.
 - `dtype`: numpy unsigned storage dtype for the raw word.
 
+## Video frames
+
+The neutral video layer is independent of cocotb and protocol-specific packet
+formats:
+
+```python
+from fpga_verification.video import (
+    FrameSize,
+    ImageGenerator,
+    VideoFormat,
+    VideoPayloadCodec,
+    compare_frames,
+)
+
+fmt = VideoFormat(
+    bits_per_symbol=10,
+    number_of_color_planes=3,
+    color_planes_are_in_parallel=True,
+    pixels_in_parallel=2,
+)
+size = FrameSize(width=640, height=480)
+generator = ImageGenerator(fmt, rng=1)
+frame = generator.random(size)
+
+codec = VideoPayloadCodec(fmt)
+payload_beats = codec.pack_frame(frame, size)
+decoded = codec.unpack_frame(payload_beats, size)
+compare_frames(decoded, frame)
+```
+
+`VideoFormat` contains only static AV-ST sample layout. `FrameSize` contains
+the width and height of one frame and is an explicit argument to every
+generation and conversion operation. One codec can therefore process frames
+with different resolutions without retaining hidden state.
+
+Canonical frame shapes are `(height, width)` for one color plane and
+`(height, width, planes)` for multiple planes. Sample zero occupies the least
+significant payload bits. In parallel-plane mode each pixel's planes are
+adjacent; in serial-plane mode each beat carries one plane for
+`pixels_in_parallel` adjacent pixels. Incomplete pixel groups are zero padded
+and decoders validate that padding.
+
+`ImageGenerator` provides `constant`, `linspace`, `random`, and
+`horizontal_ramp`. `VideoPayloadCodec` provides frame/row/symbol/beat
+round-trips and strict shape, range, payload-length, and padding validation.
+
 ## Avalon-ST Protocols
 
 Avalon-ST helpers follow the Avalon interface terminology used by Intel/Altera.
