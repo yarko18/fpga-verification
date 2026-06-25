@@ -40,10 +40,13 @@ python -m pip install "fpga-verification[all]"
 ```python
 from fpga_verification.formats import QFormat, UIntFormat
 from fpga_verification.protocols.avalon_st.intel_video import (
+    IntelVIPFrameCodec,
     VIPControlPacket,
     VIPFrame,
     VIPInterlacing,
     VIPPacketType,
+    VIPProtocolChecker,
+    VIPProtocolError,
     VIPUserPacket,
     VIPVideoPacket,
     vip_packet_from_symbols,
@@ -62,6 +65,7 @@ from fpga_verification.sim.bfms.intel_dma import (
     IntelDMACommandMonitor,
     SparseByteMemory,
 )
+from fpga_verification.sim.agents import VIPAgent, VIPItem, VIPSequence
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession

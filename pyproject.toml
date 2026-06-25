@@ -19,6 +19,7 @@ authors = [
 sim = [
     "cocotb",
     "cocotb-bus",
+    "pyuvm",
 ]
 hil = [
     "tqdm",
@@ -26,6 +27,7 @@ hil = [
 all = [
     "cocotb",
     "cocotb-bus",
+    "pyuvm",
     "tqdm",
 ]
 
