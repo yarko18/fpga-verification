@@ -8,8 +8,36 @@ SPDX-License-Identifier: Apache-2.0
 Reference documentation: [Video and Image Processing Suite](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import VIPControlPacket
+from fpga_verification.protocols.avalon_st.intel_video import (
+    IntelVIPFrameCodec,
+    VIPControlPacket,
+)
+from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
+
+fmt = VideoFormat(
+    bits_per_symbol=10,
+    pixels_in_parallel=2,
+)
+size = FrameSize(width=640, height=480)
+frame = ImageGenerator(fmt, rng=1).random(size)
+codec = IntelVIPFrameCodec(fmt)
+
+packet_symbols = codec.frame_to_packet_symbols(frame, size)
+decoded = codec.packet_symbols_to_frame(packet_symbols, size)
 ```
+
+Every encoded packet starts with a complete identifier beat. Unused symbols
+in that beat and final partial beats are zero padded.
+
+Pixel decoding always uses the explicit `FrameSize`; it never derives geometry
+from the control packet. Control validation is a separate operation:
+
+```python
+codec.validate_control_packet(control_packet, size)
+```
+
+The codec is stateless. User, control, and video packet adapters do not retain
+packet history and do not run an internal state machine.
 
 
 ### Packet Type Identifiers

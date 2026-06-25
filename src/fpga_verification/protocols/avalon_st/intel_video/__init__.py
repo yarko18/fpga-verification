@@ -1,6 +1,7 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+from .codec import IntelVIPFrameCodec
 from .packets import (
     VIPControlPacket,
     VIPFrame,
@@ -13,6 +14,7 @@ from .packets import (
 )
 
 __all__ = [
+    "IntelVIPFrameCodec",
     "VIPControlPacket",
     "VIPFrame",
     "VIPInterlacing",
