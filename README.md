@@ -38,7 +38,7 @@ python -m pip install "fpga-verification[all]"
 ## Public API
 
 ```python
-from fpga_verification.formats import QFormat, UIntFormat, qformat
+from fpga_verification.formats import QFormat, UIntFormat
 from fpga_verification.protocols.avalon_st.intel_video import (
     VIPControlPacket,
     VIPFrame,
