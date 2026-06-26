@@ -227,6 +227,7 @@ class AvalonSTBase:
     def __init__(
         self,
         bus,
+        fmt,
         clock,
         reset=None,
         reset_active_level=True,
@@ -235,16 +236,14 @@ class AvalonSTBase:
         packets=None,
         strict_ready_latency=False,
         timeout_cycles=0,
-        fmt=None,
         *args,
         **kwargs,
     ):
-        if fmt is not None:
-            if not isinstance(fmt, AvalonFormat):
-                raise TypeError("fmt must be an AvalonFormat")
-            data_bits_per_symbol = fmt.data_bits_per_symbol
-            symbols_per_beat = fmt.symbols_per_beat
-            first_symbol_in_high_order_bits = fmt.first_symbol_in_high_order_bits
+        if not isinstance(fmt, AvalonFormat):
+            raise TypeError("fmt must be an AvalonFormat")
+        data_bits_per_symbol = fmt.data_bits_per_symbol
+        symbols_per_beat = fmt.symbols_per_beat
+        first_symbol_in_high_order_bits = fmt.first_symbol_in_high_order_bits
         self.fmt = fmt
 
         if ready_allowance is None:
@@ -579,6 +578,7 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
     def __init__(
         self,
         bus,
+        fmt,
         clock,
         reset=None,
         reset_active_level=True,
@@ -586,7 +586,6 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
         ready_allowance=None,
         packets=None,
         idle_value="x",
-        fmt=None,
         *args,
         **kwargs,
     ):
@@ -595,6 +594,7 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
 
         super().__init__(
             bus,
+            fmt,
             clock,
             reset,
             reset_active_level,
@@ -602,7 +602,6 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
             ready_allowance,
             packets,
             *args,
-            fmt=fmt,
             **kwargs,
         )
 
@@ -881,18 +880,19 @@ class AvalonSTMonitor(AvalonSTBase):
     def __init__(
         self,
         bus,
+        fmt,
         clock,
         reset=None,
         reset_active_level=True,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
-        fmt=None,
         *args,
         **kwargs,
     ):
         super().__init__(
             bus,
+            fmt,
             clock,
             reset,
             reset_active_level,
@@ -900,7 +900,6 @@ class AvalonSTMonitor(AvalonSTBase):
             ready_allowance,
             packets,
             *args,
-            fmt=fmt,
             **kwargs,
         )
 
@@ -1248,13 +1247,13 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
     def __init__(
         self,
         bus,
+        fmt,
         clock,
         reset=None,
         reset_active_level=True,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
-        fmt=None,
         *args,
         **kwargs,
     ):
@@ -1265,6 +1264,7 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
 
         super().__init__(
             bus,
+            fmt,
             clock,
             reset,
             reset_active_level,
@@ -1272,7 +1272,6 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             ready_allowance,
             packets,
             *args,
-            fmt=fmt,
             **kwargs,
         )
 

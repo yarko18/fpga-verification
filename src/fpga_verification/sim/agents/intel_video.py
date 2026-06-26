@@ -46,10 +46,9 @@ def _validate_vip_bus(bus, name, fmt):
         )
 
 
-def _bfm_kwargs(fmt, reset_active_level, ready_latency=0, ready_allowance=None):
+def _bfm_kwargs(reset_active_level, ready_latency=0, ready_allowance=None):
     return {
         "reset_active_level": reset_active_level,
-        "fmt": fmt,
         "ready_latency": ready_latency,
         "ready_allowance": ready_allowance,
         "packets": True,
@@ -68,9 +67,10 @@ def _make_vip_monitor(
     _validate_vip_bus(bus, "VIP bus", fmt)
     return AvalonSTMonitor(
         bus,
+        fmt,
         clock,
         reset=reset,
-        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
+        **_bfm_kwargs(reset_active_level, ready_latency, ready_allowance),
     )
 
 
@@ -87,10 +87,11 @@ def _make_vip_source(
     _validate_vip_bus(bus, "VIP source bus", fmt)
     return AvalonSTSource(
         bus,
+        fmt,
         clock,
         reset=reset,
         idle_value=idle_value,
-        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
+        **_bfm_kwargs(reset_active_level, ready_latency, ready_allowance),
     )
 
 
@@ -106,9 +107,10 @@ def _make_vip_sink(
     _validate_vip_bus(bus, "VIP sink bus", fmt)
     return AvalonSTSink(
         bus,
+        fmt,
         clock,
         reset=reset,
-        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
+        **_bfm_kwargs(reset_active_level, ready_latency, ready_allowance),
     )
 
 
