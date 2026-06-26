@@ -11,29 +11,14 @@ HIL transport.
 
 ## Install
 
-Install the base package for format conversion and protocol codecs:
+Install the package:
 
 ```bash
 python -m pip install fpga-verification
 ```
 
-Install cocotb simulation helpers:
-
-```bash
-python -m pip install "fpga-verification[sim]"
-```
-
-Install Intel System Console HIL helpers:
-
-```bash
-python -m pip install "fpga-verification[hil]"
-```
-
-Install everything:
-
-```bash
-python -m pip install "fpga-verification[all]"
-```
+This installs the numeric format helpers, protocol codecs, cocotb simulation
+utilities, pyuvm agents, and Intel System Console HIL helpers together.
 
 ## Public API
 

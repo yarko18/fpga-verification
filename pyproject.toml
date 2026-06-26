@@ -9,26 +9,14 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy",
+    "cocotb",
+    "cocotb-bus",
+    "pyuvm",
+    "tqdm",
 ]
 
 authors = [
     { name = "Yaroslav Mariukha"  }
-]
-
-[project.optional-dependencies]
-sim = [
-    "cocotb",
-    "cocotb-bus",
-    "pyuvm",
-]
-hil = [
-    "tqdm",
-]
-all = [
-    "cocotb",
-    "cocotb-bus",
-    "pyuvm",
-    "tqdm",
 ]
 
 [tool.setuptools.packages.find]
