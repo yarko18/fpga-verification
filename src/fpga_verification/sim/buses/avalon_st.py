@@ -25,6 +25,7 @@ Not supported yet:
 
 import logging
 import random
+from numbers import Integral
 
 import cocotb
 from cocotb.queue import Queue, QueueFull
@@ -37,6 +38,38 @@ try:
     from cocotb.types import LogicArray
 except ImportError:
     LogicArray = None
+
+class AvalonFormat:
+    """Static symbol layout of an Avalon-ST data interface."""
+
+    def __init__(
+        self,
+        data_bits_per_symbol=8,
+        symbols_per_beat=1,
+        first_symbol_in_high_order_bits=False,
+    ):
+        self.data_bits_per_symbol = self._require_positive_int(
+            "data_bits_per_symbol",
+            data_bits_per_symbol,
+        )
+        self.symbols_per_beat = self._require_positive_int(
+            "symbols_per_beat",
+            symbols_per_beat,
+        )
+        self.first_symbol_in_high_order_bits = bool(first_symbol_in_high_order_bits)
+
+    @staticmethod
+    def _require_positive_int(name, value):
+        if not isinstance(value, Integral):
+            raise TypeError(f"{name} must be an integer")
+        value = int(value)
+        if value <= 0:
+            raise ValueError(f"{name} must be > 0, got {value}")
+        return value
+
+    @property
+    def payload_width(self):
+        return int(self.data_bits_per_symbol) * int(self.symbols_per_beat)
 
 
 class AvalonSTFrame:
@@ -197,17 +230,23 @@ class AvalonSTBase:
         clock,
         reset=None,
         reset_active_level=True,
-        data_bits_per_symbol=8,
-        symbols_per_beat=None,
-        first_symbol_in_high_order_bits=False,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
         strict_ready_latency=False,
         timeout_cycles=0,
+        fmt=None,
         *args,
         **kwargs,
     ):
+        if fmt is not None:
+            if not isinstance(fmt, AvalonFormat):
+                raise TypeError("fmt must be an AvalonFormat")
+            data_bits_per_symbol = fmt.data_bits_per_symbol
+            symbols_per_beat = fmt.symbols_per_beat
+            first_symbol_in_high_order_bits = fmt.first_symbol_in_high_order_bits
+        self.fmt = fmt
+
         if ready_allowance is None:
             ready_allowance = ready_latency
 
@@ -267,6 +306,12 @@ class AvalonSTBase:
                 raise ValueError("packets=True requires startofpacket and endofpacket signals")
 
         self.width = len(self.bus.data)
+
+        if fmt is not None and self.width != fmt.payload_width:
+            raise ValueError(
+                f"AvalonFormat payload_width must match Avalon-ST data width "
+                f"({fmt.payload_width} != {self.width})"
+            )
 
         if data_bits_per_symbol <= 0:
             raise ValueError("data_bits_per_symbol must be > 0")
@@ -537,13 +582,11 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
         clock,
         reset=None,
         reset_active_level=True,
-        data_bits_per_symbol=8,
-        symbols_per_beat=None,
-        first_symbol_in_high_order_bits=False,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
         idle_value="x",
+        fmt=None,
         *args,
         **kwargs,
     ):
@@ -555,13 +598,11 @@ class AvalonSTSource(AvalonSTBase, AvalonSTPause):
             clock,
             reset,
             reset_active_level,
-            data_bits_per_symbol,
-            symbols_per_beat,
-            first_symbol_in_high_order_bits,
             ready_latency,
             ready_allowance,
             packets,
             *args,
+            fmt=fmt,
             **kwargs,
         )
 
@@ -843,12 +884,10 @@ class AvalonSTMonitor(AvalonSTBase):
         clock,
         reset=None,
         reset_active_level=True,
-        data_bits_per_symbol=8,
-        symbols_per_beat=None,
-        first_symbol_in_high_order_bits=False,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
+        fmt=None,
         *args,
         **kwargs,
     ):
@@ -857,13 +896,11 @@ class AvalonSTMonitor(AvalonSTBase):
             clock,
             reset,
             reset_active_level,
-            data_bits_per_symbol,
-            symbols_per_beat,
-            first_symbol_in_high_order_bits,
             ready_latency,
             ready_allowance,
             packets,
             *args,
+            fmt=fmt,
             **kwargs,
         )
 
@@ -1214,12 +1251,10 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
         clock,
         reset=None,
         reset_active_level=True,
-        data_bits_per_symbol=8,
-        symbols_per_beat=None,
-        first_symbol_in_high_order_bits=False,
         ready_latency=0,
         ready_allowance=None,
         packets=None,
+        fmt=None,
         *args,
         **kwargs,
     ):
@@ -1233,13 +1268,11 @@ class AvalonSTSink(AvalonSTMonitor, AvalonSTPause):
             clock,
             reset,
             reset_active_level,
-            data_bits_per_symbol,
-            symbols_per_beat,
-            first_symbol_in_high_order_bits,
             ready_latency,
             ready_allowance,
             packets,
             *args,
+            fmt=fmt,
             **kwargs,
         )
 

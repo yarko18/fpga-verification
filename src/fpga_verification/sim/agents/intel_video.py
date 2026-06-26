@@ -49,9 +49,7 @@ def _validate_vip_bus(bus, name, fmt):
 def _bfm_kwargs(fmt, reset_active_level, ready_latency=0, ready_allowance=None):
     return {
         "reset_active_level": reset_active_level,
-        "data_bits_per_symbol": fmt.bits_per_symbol,
-        "symbols_per_beat": fmt.samples_per_beat,
-        "first_symbol_in_high_order_bits": False,
+        "fmt": fmt,
         "ready_latency": ready_latency,
         "ready_allowance": ready_allowance,
         "packets": True,

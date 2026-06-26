@@ -9,6 +9,7 @@ from numbers import Integral
 import numpy as np
 
 from fpga_verification.formats import UIntFormat
+from fpga_verification.sim.buses.avalon_st import AvalonFormat
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class FrameSize:
 
 
 @dataclass(frozen=True)
-class VideoFormat:
+class VideoFormat(AvalonFormat):
     """Static sample layout of a video stream interface."""
 
     bits_per_symbol: int
@@ -54,6 +55,18 @@ class VideoFormat:
             "color_planes_are_in_parallel",
             bool(self.color_planes_are_in_parallel),
         )
+
+    @property
+    def data_bits_per_symbol(self):
+        return int(self.bits_per_symbol)
+
+    @property
+    def symbols_per_beat(self):
+        return self.samples_per_beat
+
+    @property
+    def first_symbol_in_high_order_bits(self):
+        return False
 
     @property
     def sample_format(self):
