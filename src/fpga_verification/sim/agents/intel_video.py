@@ -46,46 +46,71 @@ def _validate_vip_bus(bus, name, fmt):
         )
 
 
-def _bfm_kwargs(fmt, reset_active_level):
+def _bfm_kwargs(fmt, reset_active_level, ready_latency=0, ready_allowance=None):
     return {
         "reset_active_level": reset_active_level,
         "data_bits_per_symbol": fmt.bits_per_symbol,
         "symbols_per_beat": fmt.samples_per_beat,
         "first_symbol_in_high_order_bits": False,
-        "ready_latency": 0,
-        "ready_allowance": None,
+        "ready_latency": ready_latency,
+        "ready_allowance": ready_allowance,
         "packets": True,
     }
 
 
-def _make_vip_monitor(bus, clock, reset, fmt, reset_active_level):
+def _make_vip_monitor(
+    bus,
+    clock,
+    reset,
+    fmt,
+    reset_active_level,
+    ready_latency=0,
+    ready_allowance=None,
+):
     _validate_vip_bus(bus, "VIP bus", fmt)
     return AvalonSTMonitor(
         bus,
         clock,
         reset=reset,
-        **_bfm_kwargs(fmt, reset_active_level),
+        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
     )
 
 
-def _make_vip_source(bus, clock, reset, fmt, reset_active_level):
+def _make_vip_source(
+    bus,
+    clock,
+    reset,
+    fmt,
+    reset_active_level,
+    ready_latency=0,
+    ready_allowance=None,
+    idle_value=0,
+):
     _validate_vip_bus(bus, "VIP source bus", fmt)
     return AvalonSTSource(
         bus,
         clock,
         reset=reset,
-        idle_value=0,
-        **_bfm_kwargs(fmt, reset_active_level),
+        idle_value=idle_value,
+        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
     )
 
 
-def _make_vip_sink(bus, clock, reset, fmt, reset_active_level):
+def _make_vip_sink(
+    bus,
+    clock,
+    reset,
+    fmt,
+    reset_active_level,
+    ready_latency=0,
+    ready_allowance=None,
+):
     _validate_vip_bus(bus, "VIP sink bus", fmt)
     return AvalonSTSink(
         bus,
         clock,
         reset=reset,
-        **_bfm_kwargs(fmt, reset_active_level),
+        **_bfm_kwargs(fmt, reset_active_level, ready_latency, ready_allowance),
     )
 
 
@@ -153,6 +178,8 @@ class VIPMonitor(uvm_monitor):
         fmt,
         reset=None,
         reset_active_level=True,
+        ready_latency=0,
+        ready_allowance=None,
         drive_ready=False,
         randomize=False,
     ):
@@ -163,6 +190,8 @@ class VIPMonitor(uvm_monitor):
         self.clock = clock
         self.reset = reset
         self.reset_active_level = bool(reset_active_level)
+        self.ready_latency = ready_latency
+        self.ready_allowance = ready_allowance
         self.fmt = fmt
         self.drive_ready = drive_ready
         self.randomize = randomize
@@ -179,6 +208,8 @@ class VIPMonitor(uvm_monitor):
                 self.reset,
                 self.fmt,
                 self.reset_active_level,
+                self.ready_latency,
+                self.ready_allowance,
             )
             if self.randomize:
                 self.monitor.set_pause_generator(_random_pause_generator())
@@ -189,6 +220,8 @@ class VIPMonitor(uvm_monitor):
                 self.reset,
                 self.fmt,
                 self.reset_active_level,
+                self.ready_latency,
+                self.ready_allowance,
             )
 
     async def recv_packet(self):
@@ -244,6 +277,9 @@ class VIPAgent(uvm_agent):
         source_fmt=None,
         sink_fmt=None,
         reset_active_level=True,
+        ready_latency=0,
+        ready_allowance=None,
+        idle_value=0,
         randomize=False,
         is_active=uvm_active_passive_enum.UVM_ACTIVE,
     ):
@@ -265,6 +301,9 @@ class VIPAgent(uvm_agent):
         self.clock = clock
         self.reset = reset
         self.reset_active_level = bool(reset_active_level)
+        self.ready_latency = ready_latency
+        self.ready_allowance = ready_allowance
+        self.idle_value = idle_value
         self.source_bus = source_bus
         self.source_fmt = source_fmt
         self.sink_bus = sink_bus
@@ -291,6 +330,8 @@ class VIPAgent(uvm_agent):
                 self.source_fmt,
                 self.reset,
                 self.reset_active_level,
+                self.ready_latency,
+                self.ready_allowance,
             )
 
         if self.sink_bus is not None:
@@ -302,6 +343,8 @@ class VIPAgent(uvm_agent):
                 self.sink_fmt,
                 self.reset,
                 self.reset_active_level,
+                self.ready_latency,
+                self.ready_allowance,
                 drive_ready=self.active(),
                 randomize=self.randomize,
             )
@@ -313,6 +356,9 @@ class VIPAgent(uvm_agent):
                 self.reset,
                 self.source_fmt,
                 self.reset_active_level,
+                self.ready_latency,
+                self.ready_allowance,
+                self.idle_value,
             )
             if self.randomize:
                 self.source.set_pause_generator(_random_pause_generator())
