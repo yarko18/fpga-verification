@@ -14,10 +14,10 @@ def _validate_symbols_per_beat(symbols_per_beat):
     return symbols_per_beat
 
 
-def _encode_packet(packet_type, payload, symbols_per_beat):
+def _encode_packet(packet_type, payload, symbols_per_beat, *, pad_payload):
     symbols_per_beat = _validate_symbols_per_beat(symbols_per_beat)
     payload = [int(symbol) for symbol in payload]
-    padding = (-len(payload)) % symbols_per_beat
+    padding = (-len(payload)) % symbols_per_beat if pad_payload else 0
     return [
         int(packet_type),
         *([0] * (symbols_per_beat - 1)),
@@ -26,12 +26,20 @@ def _encode_packet(packet_type, payload, symbols_per_beat):
     ]
 
 
-def _decode_payload(symbols, packet_type, symbols_per_beat):
+def _decode_payload(
+    symbols,
+    packet_type,
+    symbols_per_beat,
+    *,
+    require_complete_beats,
+):
     symbols_per_beat = _validate_symbols_per_beat(symbols_per_beat)
     symbols = [int(symbol) for symbol in symbols]
     if not symbols:
         raise ValueError("Empty VIP packet")
-    if len(symbols) % symbols_per_beat:
+    if len(symbols) < symbols_per_beat:
+        raise ValueError("VIP packet must contain a complete identifier beat")
+    if require_complete_beats and len(symbols) % symbols_per_beat:
         raise ValueError("VIP packet symbol count must contain complete beats")
     if (symbols[0] & 0xF) != int(packet_type):
         raise ValueError(
@@ -198,6 +206,7 @@ class VIPControlPacket(VIPPacket):
             VIPPacketType.CONTROL,
             payload,
             symbols_per_beat,
+            pad_payload=True,
         )
 
     @classmethod
@@ -206,6 +215,7 @@ class VIPControlPacket(VIPPacket):
             symbols,
             VIPPacketType.CONTROL,
             symbols_per_beat,
+            require_complete_beats=True,
         )
 
         if len(payload) < 9:
@@ -249,6 +259,7 @@ class VIPVideoPacket(VIPPacket):
             VIPPacketType.VIDEO,
             self.payload,
             symbols_per_beat,
+            pad_payload=False,
         )
 
     @classmethod
@@ -258,6 +269,7 @@ class VIPVideoPacket(VIPPacket):
                 symbols,
                 VIPPacketType.VIDEO,
                 symbols_per_beat,
+                require_complete_beats=False,
             )
         )
     
@@ -279,6 +291,7 @@ class VIPUserPacket(VIPPacket):
             self.packet_type,
             self.payload,
             symbols_per_beat,
+            pad_payload=False,
         )
 
     @classmethod
@@ -297,6 +310,7 @@ class VIPUserPacket(VIPPacket):
                 symbols,
                 VIPPacketType(user_type),
                 symbols_per_beat,
+                require_complete_beats=False,
             ),
         )
     

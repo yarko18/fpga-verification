@@ -92,6 +92,44 @@ def test_serial_plane_wire_order():
     )
 
 
+def test_frame_symbols_are_continuous_without_row_padding():
+    fmt = VideoFormat(8, pixels_in_parallel=4)
+    size = FrameSize(3, 2)
+    frame = np.arange(1, 7, dtype=np.uint8).reshape(2, 3)
+    codec = VideoPayloadCodec(fmt)
+
+    assert codec.row_to_symbols(frame[0], size) == [1, 2, 3, 0]
+    assert codec.row_to_symbols(frame[1], size) == [4, 5, 6, 0]
+    assert codec.frame_to_symbols(frame, size) == [1, 2, 3, 4, 5, 6]
+    assert fmt.frame_symbol_count(size) == 6
+    assert fmt.frame_beat_count(size) == 2
+    assert fmt.frame_padding_symbols(size) == 2
+    assert np.array_equal(
+        codec.symbols_to_frame([1, 2, 3, 4, 5, 6], size),
+        frame,
+    )
+
+
+def test_serial_frame_symbols_cross_row_boundaries_without_padding():
+    fmt = VideoFormat(8, 3, False, 4)
+    size = FrameSize(3, 2)
+    frame = np.arange(1, 19, dtype=np.uint8).reshape(2, 3, 3)
+    codec = VideoPayloadCodec(fmt)
+
+    assert codec.frame_to_symbols(frame, size) == [
+        1, 4, 7, 10,
+        2, 5, 8, 11,
+        3, 6, 9, 12,
+        13, 16,
+        14, 17,
+        15, 18,
+    ]
+    assert np.array_equal(
+        codec.symbols_to_frame(codec.frame_to_symbols(frame, size), size),
+        frame,
+    )
+
+
 def test_non_zero_padding_is_rejected():
     fmt = VideoFormat(8, pixels_in_parallel=2)
     size = FrameSize(3, 1)

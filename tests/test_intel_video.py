@@ -31,18 +31,30 @@ def test_control_packet_uses_separate_identifier_beat(symbols_per_beat):
     assert decoded.interlacing == packet.interlacing
 
 
-def test_user_and_video_packet_padding():
+def test_user_and_video_packets_do_not_add_payload_padding():
     user_symbols = VIPUserPacket(2, [1, 2, 3, 4]).to_symbols(3)
     video_symbols = VIPVideoPacket([5, 6, 7, 8]).to_symbols(3)
 
-    assert user_symbols == [2, 0, 0, 1, 2, 3, 4, 0, 0]
-    assert video_symbols == [0, 0, 0, 5, 6, 7, 8, 0, 0]
-    assert vip_packet_from_symbols(user_symbols, 3).payload == [
-        1, 2, 3, 4, 0, 0,
+    assert user_symbols == [2, 0, 0, 1, 2, 3, 4]
+    assert video_symbols == [0, 0, 0, 5, 6, 7, 8]
+    assert len(user_symbols) % 3 != 0
+    assert len(video_symbols) % 3 != 0
+    assert vip_packet_from_symbols(user_symbols, 3).payload == [1, 2, 3, 4]
+    assert vip_packet_from_symbols(video_symbols, 3).payload == [5, 6, 7, 8]
+
+
+def test_control_packet_keeps_fixed_payload_padding():
+    symbols = VIPControlPacket(1, 1).to_symbols(3)
+
+    assert symbols == [
+        0xF, 0, 0,
+        0, 0, 0,
+        1, 0, 0,
+        0, 1, 2,
     ]
-    assert vip_packet_from_symbols(video_symbols, 3).payload == [
-        5, 6, 7, 8, 0, 0,
-    ]
+    decoded = vip_packet_from_symbols(symbols, 3)
+    assert decoded.width == 1
+    assert decoded.height == 1
 
 
 @pytest.mark.parametrize(
@@ -102,6 +114,22 @@ def test_adapters_are_stateless_and_packet_roles_are_explicit():
 
     assert not hasattr(codec, "push")
     assert not hasattr(codec, "reset")
+
+
+def test_vip_video_payload_is_continuous_raster_not_row_padded():
+    fmt = VideoFormat(8, pixels_in_parallel=4)
+    size = FrameSize(3, 2)
+    frame = np.arange(1, 7, dtype=np.uint8).reshape(2, 3)
+    codec = IntelVIPFrameCodec(fmt)
+    packet = codec.frame_to_video_packet(frame, size)
+
+    assert packet.payload == [1, 2, 3, 4, 5, 6]
+    assert packet.to_symbols(codec.symbols_per_beat) == [
+        0, 0, 0, 0,
+        1, 2, 3, 4,
+        5, 6,
+    ]
+    assert np.array_equal(codec.video_packet_to_frame(packet, size), frame)
 
 
 def test_packets_to_frame_requires_exactly_one_video_packet():

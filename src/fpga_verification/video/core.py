@@ -108,6 +108,24 @@ class VideoFormat:
     def symbols_per_row(self, size):
         return self.beats_per_row(size) * self.samples_per_beat
 
+    def frame_symbol_count(self, size):
+        size = _require_frame_size(size)
+        return (
+            int(size.width)
+            * int(size.height)
+            * int(self.number_of_color_planes)
+        )
+
+    def frame_beat_count(self, size):
+        symbols = self.frame_symbol_count(size)
+        return (symbols + self.samples_per_beat - 1) // self.samples_per_beat
+
+    def frame_padding_symbols(self, size):
+        return (
+            self.frame_beat_count(size) * self.samples_per_beat
+            - self.frame_symbol_count(size)
+        )
+
 
 class ImageGenerator:
     """Generate numpy frames for an explicit format and frame size."""
@@ -365,30 +383,64 @@ class VideoPayloadCodec:
         return self.rows_to_frame(rows, size)
 
     def frame_to_symbols(self, frame, size):
-        return [
-            symbol
-            for row in self.frame_to_rows(frame, size)
-            for symbol in self.row_to_symbols(row, size)
-        ]
+        size = _require_frame_size(size)
+        frame = self.validate_frame(frame, size)
+        pixels = self._frame_as_plane_pixels(frame, size)
+        symbols = []
+        planes = self.fmt.number_of_color_planes
+        pixels_per_group = self.fmt.pixels_in_parallel
+
+        if self.fmt.color_planes_are_in_parallel:
+            for pixel in pixels:
+                for plane in range(planes):
+                    symbols.append(int(pixel[plane]))
+            return symbols
+
+        for start in range(0, len(pixels), pixels_per_group):
+            group = pixels[start : start + pixels_per_group]
+            for plane in range(planes):
+                for pixel in group:
+                    symbols.append(int(pixel[plane]))
+
+        return symbols
 
     def symbols_to_frame(self, symbols, size):
         size = _require_frame_size(size)
-        symbols = list(symbols)
-        symbols_per_row = self.fmt.symbols_per_row(size)
-        expected = size.height * symbols_per_row
+        symbols = [int(symbol) for symbol in symbols]
+        expected = self.fmt.frame_symbol_count(size)
         if len(symbols) != expected:
             raise ValueError(
                 f"expected {expected} frame symbols, got {len(symbols)}"
             )
-        rows = []
-        for start in range(0, expected, symbols_per_row):
-            rows.append(
-                self.symbols_to_row(
-                    symbols[start : start + symbols_per_row],
-                    size,
-                )
-            )
-        return self.rows_to_frame(rows, size)
+        self._validate_integer_samples(
+            np.asarray(symbols, dtype=object),
+            "symbols",
+        )
+
+        planes = self.fmt.number_of_color_planes
+        pixels_per_group = self.fmt.pixels_in_parallel
+        pixels = np.zeros(
+            (size.width * size.height, planes),
+            dtype=self.fmt.dtype,
+        )
+        symbol_index = 0
+
+        if self.fmt.color_planes_are_in_parallel:
+            for pixel_index in range(len(pixels)):
+                for plane in range(planes):
+                    pixels[pixel_index, plane] = symbols[symbol_index]
+                    symbol_index += 1
+        else:
+            for start in range(0, len(pixels), pixels_per_group):
+                group_size = min(pixels_per_group, len(pixels) - start)
+                for plane in range(planes):
+                    for pixel_offset in range(group_size):
+                        pixels[start + pixel_offset, plane] = symbols[
+                            symbol_index
+                        ]
+                        symbol_index += 1
+
+        return self._frame_from_plane_pixels(pixels, size)
 
     def _validate_row(self, row, size):
         row = np.asarray(row)
@@ -410,6 +462,24 @@ class VideoPayloadCodec:
         if self.fmt.number_of_color_planes == 1:
             return row[:, 0]
         return row
+
+    def _frame_as_plane_pixels(self, frame, size):
+        frame = self.validate_frame(frame, size)
+        if self.fmt.number_of_color_planes == 1:
+            return frame.reshape(size.width * size.height, 1)
+        return frame.reshape(
+            size.width * size.height,
+            self.fmt.number_of_color_planes,
+        )
+
+    def _frame_from_plane_pixels(self, pixels, size):
+        if self.fmt.number_of_color_planes == 1:
+            return pixels[:, 0].reshape(size.height, size.width)
+        return pixels.reshape(
+            size.height,
+            size.width,
+            self.fmt.number_of_color_planes,
+        )
 
     def _validate_integer_samples(self, values, name):
         values = np.asarray(values)

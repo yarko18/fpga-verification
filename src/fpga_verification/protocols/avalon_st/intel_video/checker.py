@@ -36,7 +36,7 @@ class VIPProtocolChecker:
         size = self._control_size if size is None else size
         if not isinstance(size, FrameSize):
             raise TypeError("size must be a FrameSize")
-        return int(size.height) * self.fmt.symbols_per_row(size)
+        return self.fmt.frame_symbol_count(size)
 
     def observe(self, packet):
         if not isinstance(packet, VIPPacket):

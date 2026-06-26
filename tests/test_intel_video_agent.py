@@ -15,7 +15,7 @@ from fpga_verification.video import FrameSize, VideoFormat
 
 
 def _video_packet(fmt, size):
-    symbol_count = size.height * fmt.symbols_per_row(size)
+    symbol_count = fmt.frame_symbol_count(size)
     return VIPVideoPacket([0] * symbol_count)
 
 
@@ -58,7 +58,7 @@ def test_size_change_requires_new_control_packet():
     assert checker.control_size == second_size
 
 
-def test_checker_uses_padded_wire_symbol_count():
+def test_checker_uses_valid_video_payload_symbol_count():
     fmt = VideoFormat(
         bits_per_symbol=10,
         number_of_color_planes=3,
@@ -69,9 +69,7 @@ def test_checker_uses_padded_wire_symbol_count():
     checker = VIPProtocolChecker(fmt)
 
     checker.observe(VIPControlPacket(size.width, size.height))
-    assert checker.expected_video_symbols() == (
-        size.height * fmt.symbols_per_row(size)
-    )
+    assert checker.expected_video_symbols() == size.width * size.height * 3
     checker.observe(_video_packet(fmt, size))
 
 

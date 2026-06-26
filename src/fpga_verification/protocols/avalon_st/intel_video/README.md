@@ -27,7 +27,15 @@ decoded = codec.packet_symbols_to_frame(packet_symbols, size)
 ```
 
 Every encoded packet starts with a complete identifier beat. Unused symbols
-in that beat and final partial beats are zero padded.
+in that identifier beat are zero. Control packets are padded to complete beats
+because the control payload has a fixed nine-symbol format. Video and user
+packets do not add payload padding to `to_symbols()`; a final partial wire beat
+is represented by Avalon-ST `empty` when driven through the bus helpers.
+
+Intel VIP video payload is a continuous raster stream. It is not padded at the
+end of every row. For a frame of size `width × height` with `planes` color
+planes, the valid video payload contains exactly `width * height * planes`
+symbols.
 
 Pixel decoding always uses the explicit `FrameSize`; it never derives geometry
 from the control packet. Control validation is a separate operation:
@@ -93,11 +101,11 @@ for packet in observed_packets:
 ```
 
 Intel VIP video packets carry samples but no width or height. Consequently,
-two different geometries that produce exactly the same number of wire symbols
-cannot be distinguished by a passive monitor. This includes equal-area
-resolutions and some widths that have the same parallel-pixel padding. Such a
-change can only be checked where the intended `FrameSize` is available, while
-the passive agent strictly checks all changes observable on the wire.
+two different geometries that produce exactly the same number of valid payload
+symbols cannot be distinguished by a passive monitor. This includes equal-area
+resolutions. Such a change can only be checked where the intended `FrameSize`
+is available, while the passive agent strictly checks all changes observable on
+the wire.
 
 
 ### Packet Type Identifiers

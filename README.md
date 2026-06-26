@@ -178,8 +178,13 @@ Canonical frame shapes are `(height, width)` for one color plane and
 `(height, width, planes)` for multiple planes. Sample zero occupies the least
 significant payload bits. In parallel-plane mode each pixel's planes are
 adjacent; in serial-plane mode each beat carries one plane for
-`pixels_in_parallel` adjacent pixels. Incomplete pixel groups are zero padded
-and decoders validate that padding.
+`pixels_in_parallel` adjacent pixels.
+
+Row-oriented adapters (`row_to_symbols`, `pack_row`, `pack_frame`) pad each
+incomplete row to the configured interface beat width and validate that padding
+on decode. Frame-symbol adapters (`frame_to_symbols`, `symbols_to_frame`) use a
+continuous raster stream with no per-row padding; protocols such as Intel VIP
+carry any final partial beat with Avalon-ST `empty`.
 
 `ImageGenerator` provides `constant`, `linspace`, `random`, and
 `horizontal_ramp`. `VideoPayloadCodec` provides frame/row/symbol/beat
