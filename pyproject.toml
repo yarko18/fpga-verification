@@ -3,7 +3,7 @@
 
 [project]
 name = "fpga-verification"
-version = "0.2.1"
+version = "0.2.2"
 description = "Reusable FPGA simulation and hardware-in-the-loop verification tools"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,7 @@ authors = [
 sim = [
     "cocotb",
     "cocotb-bus",
+    "pyuvm",
 ]
 hil = [
     "tqdm",
@@ -26,6 +27,7 @@ hil = [
 all = [
     "cocotb",
     "cocotb-bus",
+    "pyuvm",
     "tqdm",
 ]
 

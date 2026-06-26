@@ -1,8 +1,9 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
-from .protocols.avalon_st.intel_video import IntelVIPFrameCodec
-from .video import (
+"""Simulator-independent image generation and video payload codecs."""
+
+from .core import (
     FrameSize,
     ImageGenerator,
     VideoFormat,
@@ -12,7 +13,6 @@ from .video import (
 
 __all__ = [
     "FrameSize",
-    "IntelVIPFrameCodec",
     "ImageGenerator",
     "VideoFormat",
     "VideoPayloadCodec",

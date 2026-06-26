@@ -7,6 +7,49 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 
 
+def _validate_symbols_per_beat(symbols_per_beat):
+    symbols_per_beat = int(symbols_per_beat)
+    if symbols_per_beat <= 0:
+        raise ValueError("symbols_per_beat must be > 0")
+    return symbols_per_beat
+
+
+def _encode_packet(packet_type, payload, symbols_per_beat, *, pad_payload):
+    symbols_per_beat = _validate_symbols_per_beat(symbols_per_beat)
+    payload = [int(symbol) for symbol in payload]
+    padding = (-len(payload)) % symbols_per_beat if pad_payload else 0
+    return [
+        int(packet_type),
+        *([0] * (symbols_per_beat - 1)),
+        *payload,
+        *([0] * padding),
+    ]
+
+
+def _decode_payload(
+    symbols,
+    packet_type,
+    symbols_per_beat,
+    *,
+    require_complete_beats,
+):
+    symbols_per_beat = _validate_symbols_per_beat(symbols_per_beat)
+    symbols = [int(symbol) for symbol in symbols]
+    if not symbols:
+        raise ValueError("Empty VIP packet")
+    if len(symbols) < symbols_per_beat:
+        raise ValueError("VIP packet must contain a complete identifier beat")
+    if require_complete_beats and len(symbols) % symbols_per_beat:
+        raise ValueError("VIP packet symbol count must contain complete beats")
+    if (symbols[0] & 0xF) != int(packet_type):
+        raise ValueError(
+            f"Unexpected VIP packet type: 0x{symbols[0] & 0xF:X}"
+        )
+    if any(symbol != 0 for symbol in symbols[1:symbols_per_beat]):
+        raise ValueError("VIP identifier beat padding must be zero")
+    return symbols[symbols_per_beat:]
+
+
 class VIPPacketType(IntEnum):
     VIDEO = 0x0
     CONTROL = 0xF
@@ -115,7 +158,7 @@ class VIPInterlacing:
 class VIPPacket:
     packet_type: VIPPacketType
 
-    def to_symbols(self) -> list[int]:
+    def to_symbols(self, symbols_per_beat: int = 1) -> list[int]:
         raise NotImplementedError
 
 @dataclass
@@ -147,9 +190,8 @@ class VIPControlPacket(VIPPacket):
         if not 0 <= self.height <= 0xFFFF:
             raise ValueError("height must fit into 16 bits")
 
-    def to_symbols(self) -> list[int]:
-        return [
-            int(VIPPacketType.CONTROL),
+    def to_symbols(self, symbols_per_beat: int = 1) -> list[int]:
+        payload = [
             (self.width >> 12) & 0xF,
             (self.width >> 8) & 0xF,
             (self.width >> 4) & 0xF,
@@ -160,21 +202,26 @@ class VIPControlPacket(VIPPacket):
             self.height & 0xF,
             int(self.interlacing) & 0xF,
         ]
+        return _encode_packet(
+            VIPPacketType.CONTROL,
+            payload,
+            symbols_per_beat,
+            pad_payload=True,
+        )
 
     @classmethod
     def from_symbols(cls, symbols: list[int], symbols_per_beat: int = 1):
-        if not symbols:
-            raise ValueError("Empty control packet")
-
-        if (symbols[0] & 0xF) != int(VIPPacketType.CONTROL):
-            raise ValueError(f"Not a control packet: type=0x{symbols[0] & 0xF:X}")
-
-        # Весь первый beat содержит только packet identifier.
-        # Остальные symbols первого beat игнорируются.
-        payload = symbols[symbols_per_beat:]
+        payload = _decode_payload(
+            symbols,
+            VIPPacketType.CONTROL,
+            symbols_per_beat,
+            require_complete_beats=True,
+        )
 
         if len(payload) < 9:
             raise ValueError(f"Control packet too short: {len(payload)} payload symbols")
+        if any(symbol != 0 for symbol in payload[9:]):
+            raise ValueError("Control packet padding must be zero")
 
         width = (
             ((payload[0] & 0xF) << 12)
@@ -207,20 +254,24 @@ class VIPVideoPacket(VIPPacket):
         super().__init__(VIPPacketType.VIDEO)
         self.payload = payload
 
-    def to_symbols(self) -> list[int]:
-        return [int(VIPPacketType.VIDEO)] + self.payload
+    def to_symbols(self, symbols_per_beat: int = 1) -> list[int]:
+        return _encode_packet(
+            VIPPacketType.VIDEO,
+            self.payload,
+            symbols_per_beat,
+            pad_payload=False,
+        )
 
     @classmethod
     def from_symbols(cls, symbols: list[int], symbols_per_beat: int = 1):
-        if not symbols:
-            raise ValueError("Empty video packet")
-
-        if (symbols[0] & 0xF) != int(VIPPacketType.VIDEO):
-            raise ValueError(f"Not a VIP video packet: type=0x{symbols[0] & 0xF:X}")
-
-        payload = symbols[symbols_per_beat:]
-
-        return cls(payload=list(payload))
+        return cls(
+            payload=_decode_payload(
+                symbols,
+                VIPPacketType.VIDEO,
+                symbols_per_beat,
+                require_complete_beats=False,
+            )
+        )
     
 @dataclass
 class VIPUserPacket(VIPPacket):
@@ -235,24 +286,32 @@ class VIPUserPacket(VIPPacket):
         self.user_type = user_type
         self.payload = payload
 
-    def to_symbols(self) -> list[int]:
-        return [self.user_type & 0xF] + self.payload
+    def to_symbols(self, symbols_per_beat: int = 1) -> list[int]:
+        return _encode_packet(
+            self.packet_type,
+            self.payload,
+            symbols_per_beat,
+            pad_payload=False,
+        )
 
     @classmethod
     def from_symbols(cls, symbols: list[int], symbols_per_beat: int = 1):
         if not symbols:
             raise ValueError("Empty user packet")
 
-        user_type = symbols[0] & 0xF
+        user_type = int(symbols[0]) & 0xF
 
         if not 1 <= user_type <= 8:
             raise ValueError(f"Not a VIP user packet: type=0x{user_type:X}")
 
-        payload = symbols[symbols_per_beat:]
-
         return cls(
             user_type=user_type,
-            payload=list(payload),
+            payload=_decode_payload(
+                symbols,
+                VIPPacketType(user_type),
+                symbols_per_beat,
+                require_complete_beats=False,
+            ),
         )
     
 @dataclass

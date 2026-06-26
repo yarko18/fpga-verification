@@ -123,7 +123,3 @@ class QFormat:
         high = self.max_float if high is None else float(high)
         dtype = np.float64 if dtype is None else dtype
         return np.asarray(np.random.uniform(low, high, size=size), dtype=dtype)
-
-
-# Compatibility name for code currently using the local NUC helper.
-qformat = QFormat
