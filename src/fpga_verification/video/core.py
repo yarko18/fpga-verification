@@ -57,7 +57,7 @@ class VideoFormat(AvalonFormat):
         )
 
     @property
-    def data_bits_per_color(self):
+    def bits_per_symbol(self):
         return int(self.bits_per_color)
 
     @property

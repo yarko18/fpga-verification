@@ -44,13 +44,13 @@ class AvalonFormat:
 
     def __init__(
         self,
-        data_bits_per_symbol=8,
+        bits_per_symbol=8,
         symbols_per_beat=1,
         first_symbol_in_high_order_bits=False,
     ):
-        self.data_bits_per_symbol = self._require_positive_int(
-            "data_bits_per_symbol",
-            data_bits_per_symbol,
+        self.bits_per_symbol = self._require_positive_int(
+            "bits_per_symbol",
+            bits_per_symbol,
         )
         self.symbols_per_beat = self._require_positive_int(
             "symbols_per_beat",
@@ -69,7 +69,7 @@ class AvalonFormat:
 
     @property
     def payload_width(self):
-        return int(self.data_bits_per_symbol) * int(self.symbols_per_beat)
+        return int(self.bits_per_symbol) * int(self.symbols_per_beat)
 
 
 class AvalonSTFrame:
@@ -241,9 +241,6 @@ class AvalonSTBase:
     ):
         if not isinstance(fmt, AvalonFormat):
             raise TypeError("fmt must be an AvalonFormat")
-        data_bits_per_symbol = fmt.data_bits_per_symbol
-        symbols_per_beat = fmt.symbols_per_beat
-        first_symbol_in_high_order_bits = fmt.first_symbol_in_high_order_bits
         self.fmt = fmt
 
         if ready_allowance is None:
@@ -312,28 +309,23 @@ class AvalonSTBase:
                 f"({fmt.payload_width} != {self.width})"
             )
 
-        if data_bits_per_symbol <= 0:
-            raise ValueError("data_bits_per_symbol must be > 0")
+        self.bits_per_symbol = fmt.bits_per_symbol
+        self.symbols_per_beat = fmt.symbols_per_beat
 
-        self.data_bits_per_symbol = data_bits_per_symbol
-        self.symbol_mask = (1 << self.data_bits_per_symbol) - 1
+        if self.bits_per_symbol <= 0:
+            raise ValueError("bits_per_symbol must be > 0")
 
-        if symbols_per_beat is None:
-            if self.width % self.data_bits_per_symbol:
-                raise ValueError(
-                    f"Data width must be divisible by data_bits_per_symbol "
-                    f"({self.width} % {self.data_bits_per_symbol} != 0)"
-                )
-            self.symbols_per_beat = self.width // self.data_bits_per_symbol
-        else:
-            self.symbols_per_beat = symbols_per_beat
-            if self.symbols_per_beat * self.data_bits_per_symbol > self.width:
-                raise ValueError(
-                    f"symbols_per_beat * data_bits_per_symbol exceeds data width "
-                    f"({self.symbols_per_beat} * {self.data_bits_per_symbol} > {self.width})"
-                )
+        self.symbol_mask = (1 << self.bits_per_symbol) - 1
 
-        self.first_symbol_in_high_order_bits = first_symbol_in_high_order_bits
+        
+        if self.symbols_per_beat * self.bits_per_symbol > self.width:
+            raise ValueError(
+                f"symbols_per_beat * bits_per_symbol exceeds data width "
+                f"({self.symbols_per_beat} * {self.bits_per_symbol} > {self.width})"
+            )
+
+
+        self.first_symbol_in_high_order_bits = fmt.first_symbol_in_high_order_bits
 
         self.ready_latency = ready_latency
         self.ready_allowance = ready_allowance
@@ -352,7 +344,7 @@ class AvalonSTBase:
 
         self.log.debug("Avalon-ST %s configuration:", self._type)
         self.log.debug("  Data width: %d bits", self.width)
-        self.log.debug("  Data bits per symbol: %d", self.data_bits_per_symbol)
+        self.log.debug("  Bits per symbol: %d", self.bits_per_symbol)
         self.log.debug("  Symbols per beat: %d", self.symbols_per_beat)
         self.log.debug("  First symbol in high-order bits: %s", self.first_symbol_in_high_order_bits)
         self.log.debug("  Packets: %s", self.has_packets)
@@ -469,9 +461,9 @@ class AvalonSTBase:
             symbol &= self.symbol_mask
 
             if self.first_symbol_in_high_order_bits:
-                shift = (self.symbols_per_beat - 1 - i) * self.data_bits_per_symbol
+                shift = (self.symbols_per_beat - 1 - i) * self.bits_per_symbol
             else:
-                shift = i * self.data_bits_per_symbol
+                shift = i * self.bits_per_symbol
 
             value |= symbol << shift
 
@@ -482,9 +474,9 @@ class AvalonSTBase:
 
         for i in range(self.symbols_per_beat):
             if self.first_symbol_in_high_order_bits:
-                shift = (self.symbols_per_beat - 1 - i) * self.data_bits_per_symbol
+                shift = (self.symbols_per_beat - 1 - i) * self.bits_per_symbol
             else:
-                shift = i * self.data_bits_per_symbol
+                shift = i * self.bits_per_symbol
 
             symbols.append((data_word >> shift) & self.symbol_mask)
 
