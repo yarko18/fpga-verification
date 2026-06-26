@@ -60,7 +60,7 @@ def test_size_change_requires_new_control_packet():
 
 def test_checker_uses_valid_video_payload_symbol_count():
     fmt = VideoFormat(
-        bits_per_symbol=10,
+        bits_per_color=10,
         number_of_color_planes=3,
         color_planes_are_in_parallel=False,
         pixels_in_parallel=4,

@@ -15,7 +15,7 @@ from fpga_verification.protocols.avalon_st.intel_video import (
 from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
 
 fmt = VideoFormat(
-    bits_per_symbol=10,
+    bits_per_color=10,
     pixels_in_parallel=2,
 )
 size = FrameSize(width=640, height=480)

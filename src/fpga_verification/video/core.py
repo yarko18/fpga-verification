@@ -32,14 +32,14 @@ class FrameSize:
 class VideoFormat(AvalonFormat):
     """Static sample layout of a video stream interface."""
 
-    bits_per_symbol: int
+    bits_per_color: int
     number_of_color_planes: int = 1
     color_planes_are_in_parallel: bool = True
     pixels_in_parallel: int = 1
 
     def __post_init__(self):
         for name in (
-            "bits_per_symbol",
+            "bits_per_color",
             "number_of_color_planes",
             "pixels_in_parallel",
         ):
@@ -49,7 +49,7 @@ class VideoFormat(AvalonFormat):
             if int(value) <= 0:
                 raise ValueError(f"{name} must be > 0, got {value}")
 
-        UIntFormat(int(self.bits_per_symbol))
+        UIntFormat(int(self.bits_per_color))
         object.__setattr__(
             self,
             "color_planes_are_in_parallel",
@@ -57,8 +57,8 @@ class VideoFormat(AvalonFormat):
         )
 
     @property
-    def data_bits_per_symbol(self):
-        return int(self.bits_per_symbol)
+    def data_bits_per_color(self):
+        return int(self.bits_per_color)
 
     @property
     def symbols_per_beat(self):
@@ -70,7 +70,7 @@ class VideoFormat(AvalonFormat):
 
     @property
     def sample_format(self):
-        return UIntFormat(int(self.bits_per_symbol))
+        return UIntFormat(int(self.bits_per_color))
 
     @property
     def dtype(self):
@@ -91,7 +91,7 @@ class VideoFormat(AvalonFormat):
 
     @property
     def payload_width(self):
-        return int(self.bits_per_symbol) * self.samples_per_beat
+        return int(self.bits_per_color) * self.samples_per_beat
 
     def frame_shape(self, size):
         size = _require_frame_size(size)
@@ -222,7 +222,7 @@ class ImageGenerator:
     def _validate_range(self, start, stop):
         if int(start) < 0 or int(stop) > self.fmt.sample_mask:
             raise ValueError(
-                f"generated values must fit in {self.fmt.bits_per_symbol} bits"
+                f"generated values must fit in {self.fmt.bits_per_color} bits"
             )
 
     def _validate_generated(self, frame, size):
@@ -340,7 +340,7 @@ class VideoPayloadCodec:
                 symbols[start : start + self.fmt.samples_per_beat]
             ):
                 word |= int(sample) << (
-                    index * self.fmt.bits_per_symbol
+                    index * self.fmt.bits_per_color
                 )
             packed.append(word)
         return packed
@@ -364,7 +364,7 @@ class VideoPayloadCodec:
                 )
             for index in range(self.fmt.samples_per_beat):
                 symbols.append(
-                    (word >> (index * self.fmt.bits_per_symbol))
+                    (word >> (index * self.fmt.bits_per_color))
                     & self.fmt.sample_mask
                 )
         return self.symbols_to_row(symbols, size)
@@ -508,7 +508,7 @@ class VideoPayloadCodec:
             if value < 0 or value > self.fmt.sample_mask:
                 raise ValueError(
                     f"{name} sample {value} does not fit in "
-                    f"{self.fmt.bits_per_symbol} bits"
+                    f"{self.fmt.bits_per_color} bits"
                 )
 
 
