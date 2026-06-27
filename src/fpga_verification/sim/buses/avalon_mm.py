@@ -144,6 +144,7 @@ class AvalonMMMasterBFM:
         self._validate_address(address)
         self._validate_data(data)
 
+        await RisingEdge(self.clock)
         await self._start_access(address, data, byteenable, write=1, read=0)
         await self._wait_accepted(timeout_cycles)
         self._end_access()
@@ -153,6 +154,7 @@ class AvalonMMMasterBFM:
 
         self._validate_address(address)
 
+        await RisingEdge(self.clock)
         await self._start_access(address, 0, byteenable, write=0, read=1)
         await self._wait_accepted(timeout_cycles)
         self._end_access()
