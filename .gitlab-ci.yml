@@ -7,7 +7,7 @@ stages:
 
 variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
+  CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
   CIBW_SKIP: "pp* *-win32 *-manylinux_i686 *-musllinux_*"
   CIBW_ENVIRONMENT: "FPGA_VERIFICATION_BINARY=1"
   CIBW_TEST_COMMAND: "python -c \"from fpga_verification.formats import QFormat, UIntFormat; print(QFormat(3, 2).float_to_qraw([1.25, -1.0]).tolist()); print(UIntFormat(8).array([257, 258]).tolist())\""
