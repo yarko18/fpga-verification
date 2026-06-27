@@ -11,6 +11,7 @@ from cocotb.queue import Queue
 from cocotb.triggers import ClockCycles
 
 from fpga_verification.sim.buses import (
+    AvalonFormat,
     AvalonSTBus,
     AvalonSTFrame,
     AvalonSTMonitor,
@@ -158,14 +159,8 @@ class IntelDMACommandMonitor:
         if bus is None:
             return None
 
-        return AvalonSTMonitor(
-            bus,
-            clock,
-            reset=reset,
-            data_bits_per_symbol=len(bus.data),
-            symbols_per_beat=1,
-            packets=False,
-        )
+        fmt = AvalonFormat(bits_per_symbol=len(bus.data), symbols_per_beat=1)
+        return AvalonSTMonitor(bus, fmt, clock, reset=reset, packets=False)
 
     def start(self):
         if self._tasks:
@@ -305,12 +300,12 @@ class IntelDMABFM:
         if self.enable_read:
             self.rdma_cmd_sink = self._make_control_sink("rdma_cmd", rdma_cmd_bus)
             self.rdma_resp_source = self._make_control_source("rdma_resp", rdma_resp_bus)
+            din_bus = din_bus if din_bus is not None else AvalonSTBus.from_prefix(dut, "din")
             self.din_source = AvalonSTSource(
-                din_bus if din_bus is not None else AvalonSTBus.from_prefix(dut, "din"),
+                din_bus,
+                self._make_byte_stream_format(din_bus),
                 self.clock,
                 reset=self.reset,
-                data_bits_per_symbol=8,
-                first_symbol_in_high_order_bits=True,
                 packets=True,
                 idle_value=0,
             )
@@ -319,12 +314,12 @@ class IntelDMABFM:
         if self.enable_write:
             self.wdma_cmd_sink = self._make_control_sink("wdma_cmd", wdma_cmd_bus)
             self.wdma_resp_source = self._make_control_source("wdma_resp", wdma_resp_bus)
+            dout_bus = dout_bus if dout_bus is not None else AvalonSTBus.from_prefix(dut, "dout")
             self.dout_sink = AvalonSTSink(
-                dout_bus if dout_bus is not None else AvalonSTBus.from_prefix(dut, "dout"),
+                dout_bus,
+                self._make_byte_stream_format(dout_bus),
                 self.clock,
                 reset=self.reset,
-                data_bits_per_symbol=8,
-                first_symbol_in_high_order_bits=True,
                 packets=False,
             )
             self.write_data_bytes_per_beat = self.dout_sink.symbols_per_beat
@@ -344,6 +339,16 @@ class IntelDMABFM:
             self.read_response_delay_cycles,
             self.write_response_delay_cycles,
             logging.INFO,
+        )
+
+    def _make_byte_stream_format(self, bus):
+        data_width = len(bus.data)
+        if data_width % 8:
+            raise ValueError("DMA data bus width must be byte-aligned")
+        return AvalonFormat(
+            bits_per_symbol=8,
+            symbols_per_beat=data_width // 8,
+            first_symbol_in_high_order_bits=True,
         )
 
     def _decode_mode(self, mode):
@@ -368,25 +373,19 @@ class IntelDMABFM:
         if bus is None:
             bus = AvalonSTBus.from_prefix(self.dut, prefix)
 
-        return AvalonSTSink(
-            bus,
-            self.clock,
-            reset=self.reset,
-            data_bits_per_symbol=len(bus.data),
-            symbols_per_beat=1,
-            packets=False,
-        )
+        fmt = AvalonFormat(bits_per_symbol=len(bus.data), symbols_per_beat=1)
+        return AvalonSTSink(bus, fmt, self.clock, reset=self.reset, packets=False)
 
     def _make_control_source(self, prefix, bus=None):
         if bus is None:
             bus = AvalonSTBus.from_prefix(self.dut, prefix)
 
+        fmt = AvalonFormat(bits_per_symbol=len(bus.data), symbols_per_beat=1)
         return AvalonSTSource(
             bus,
+            fmt,
             self.clock,
             reset=self.reset,
-            data_bits_per_symbol=len(bus.data),
-            symbols_per_beat=1,
             packets=False,
             idle_value=0,
         )
