@@ -3,7 +3,9 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# fpga-verification
+### Warning: 
+- The project is currently under development
+- I try to release stable versions, but there may be bugs until the code has been fully tested and completed.
 
 Reusable FPGA verification helpers. The package provides shared data formats,
 wire-protocol codecs, cocotb simulation utilities, and an Intel System Console
@@ -392,7 +394,7 @@ Supported Avalon-MM features:
 - Optional `byteenable`, defaulting to all byte lanes asserted when present.
 - Width validation for address, data, and byteenable values.
 
-Not currently modeled:
+Unsupported features:
 
 - Multiple outstanding or pipelined reads.
 - Burst transfers: `burstcount` and `beginbursttransfer`.
