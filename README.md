@@ -3,7 +3,9 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# fpga-verification
+### Warning: 
+- The project is currently under development
+- I try to release stable versions, but there may be bugs until the code has been fully tested and completed.
 
 Reusable FPGA verification helpers. The package provides shared data formats,
 wire-protocol codecs, cocotb simulation utilities, and an Intel System Console
@@ -37,6 +39,9 @@ from fpga_verification.protocols.avalon_st.intel_video import (
     vip_packet_from_symbols,
 )
 from fpga_verification.sim.buses import (
+    AvalonFormat,
+    AvalonMMBus,
+    AvalonMMMasterBFM,
     AvalonSTBeat,
     AvalonSTBus,
     AvalonSTFrame,
@@ -254,6 +259,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 
 from fpga_verification.sim.buses import (
+    AvalonFormat,
     AvalonSTBus,
     AvalonSTFrame,
     AvalonSTSink,
@@ -269,18 +275,20 @@ async def stream_loopback_test(dut):
     await RisingEdge(dut.clk)
     dut.reset.value = 0
 
+    fmt = AvalonFormat(bits_per_symbol=8, symbols_per_beat=1)
+
     source = AvalonSTSource(
         AvalonSTBus.from_prefix(dut, "sink"),
+        fmt,
         dut.clk,
         reset=dut.reset,
-        data_bits_per_symbol=8,
         packets=True,
     )
     sink = AvalonSTSink(
         AvalonSTBus.from_prefix(dut, "source"),
+        fmt,
         dut.clk,
         reset=dut.reset,
-        data_bits_per_symbol=8,
         packets=True,
     )
 
@@ -297,11 +305,13 @@ Inputs:
   `<prefix>_startofpacket`, and `<prefix>_endofpacket`.
 - `AvalonSTFrame(data, channel=None, error=None, empty=None, tx_complete=None)`:
   frame payload and optional sideband metadata.
-- `AvalonSTSource(bus, clock, reset=None, data_bits_per_symbol=8,
-  symbols_per_beat=None, first_symbol_in_high_order_bits=False,
+- `AvalonFormat(bits_per_symbol=8, symbols_per_beat=1,
+  first_symbol_in_high_order_bits=False)`: static symbol layout for the
+  stream data word.
+- `AvalonSTSource(bus, fmt, clock, reset=None, reset_active_level=True,
   ready_latency=0, ready_allowance=None, packets=None, idle_value="x")`.
-- `AvalonSTSink(...)` and `AvalonSTMonitor(...)`: use the same bus format
-  options as `AvalonSTSource`.
+- `AvalonSTSink(...)` and `AvalonSTMonitor(...)`: use the same `AvalonFormat`
+  and timing options as `AvalonSTSource`.
 - `send(frame)` / `send_nowait(frame)`: queue transmit data.
 - `recv()` / `recv_nowait()`: receive complete frames.
 - `recv_beat()` / `recv_beat_nowait()`: receive one transferred beat.
@@ -317,6 +327,83 @@ Outputs:
   `eop`, `empty`, `error`, `channel`, and `sim_time`.
 - `wait()`: waits for a source to become idle or a monitor/sink to see
   activity, depending on the helper type.
+
+
+## Avalon-MM Cocotb Bus Helper
+
+`AvalonMMMasterBFM` is a lightweight Avalon-MM host BFM for register-style
+cocotb tests. It issues one transaction at a time and is intentionally simpler
+than the full Avalon-MM protocol surface.
+
+```python
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import RisingEdge
+
+from fpga_verification.sim.buses import AvalonMMMasterBFM
+
+
+@cocotb.test()
+async def control_register_test(dut):
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+
+    mm = AvalonMMMasterBFM.from_prefix(
+        dut,
+        "control",
+        dut.clk,
+        reset=dut.reset,
+        default_byteenable=0xF,
+    )
+    mm.init_idle()
+
+    dut.reset.value = 1
+    await RisingEdge(dut.clk)
+    dut.reset.value = 0
+    await mm.wait_reset_release(active_value=1)
+
+    await mm.write(0x00, 0x00000001, timeout_cycles=32)
+    status = await mm.read(0x04, timeout_cycles=32)
+    await mm.wait_set(0x04, 0x1, timeout_cycles=256)
+```
+
+Inputs:
+
+- `AvalonMMBus.from_prefix(dut, prefix)`: binds required signals named
+  `<prefix>_address`, `<prefix>_writedata`, `<prefix>_write`,
+  `<prefix>_read`, and `<prefix>_readdata`; optional signals are
+  `<prefix>_waitrequest`, `<prefix>_readdatavalid`, and
+  `<prefix>_byteenable`.
+- `AvalonMMMasterBFM(bus, clock, reset=None, read_response_latency=0,
+  default_byteenable=None)`: creates a single-beat Avalon-MM host.
+- `init_idle()`: drives host outputs to idle values.
+- `write(address, data, byteenable=None, timeout_cycles=None)`: issues one
+  write and waits until `waitrequest` is deasserted, when present.
+- `read(address, byteenable=None, timeout_cycles=None)`: issues one read and
+  waits for `readdatavalid` when present, otherwise waits the configured fixed
+  `read_response_latency`.
+- `read_modify_write(address, update, ...)`: convenience read/update/write.
+- `poll(address, predicate, ...)`, `wait_set(address, mask, ...)`, and
+  `wait_clear(address, mask, ...)`: register polling helpers.
+
+Supported Avalon-MM features:
+
+- Single-beat read and write transfers.
+- Optional `waitrequest` backpressure.
+- Optional `readdatavalid` variable-latency read completion.
+- Optional fixed read response latency when `readdatavalid` is absent.
+- Optional `byteenable`, defaulting to all byte lanes asserted when present.
+- Width validation for address, data, and byteenable values.
+
+Unsupported features:
+
+- Multiple outstanding or pipelined reads.
+- Burst transfers: `burstcount` and `beginbursttransfer`.
+- Read/write response status: `response` and `writeresponsevalid`.
+- `waitrequestAllowance`, `lock`, `debugaccess`, active-low role variants,
+  reset-interface timing, and address-unit/alignment property modeling.
+- Avalon-MM agent/slave behavior; this helper is host/master-side only.
+
+Reference: https://docs.altera.com/r/docs/683091/current
 
 ## Intel DMA BFM
 
