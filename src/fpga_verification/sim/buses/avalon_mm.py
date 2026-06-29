@@ -192,7 +192,7 @@ class AvalonMMMasterBFM:
     def from_prefix(cls, entity, prefix, clock, reset=None, **kwargs):
         return cls(AvalonMMBus.from_prefix(entity, prefix), clock, reset, **kwargs)
 
-    def init_idle(self):
+    def start(self):
         """Drive the master outputs to an idle state."""
 
         _drive(self.bus.address, 0)
