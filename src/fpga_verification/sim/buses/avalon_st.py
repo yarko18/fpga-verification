@@ -1008,12 +1008,33 @@ class AvalonSTMonitor(AvalonSTBase):
         except ValueError:
             return False
 
+    def _bus_label(self):
+        return self.log.name.removeprefix("cocotb.")
+
+    def _signal_snapshot(self):
+        names = (
+            "valid",
+            "ready",
+            "startofpacket",
+            "endofpacket",
+            "empty",
+            "channel",
+            "error",
+            "data",
+        )
+        parts = []
+        for name in names:
+            if hasattr(self.bus, name):
+                parts.append(f"{name}={getattr(self.bus, name).value}")
+        return ", ".join(parts)
+
     def _safe_int(self, value, signal_name):
         try:
             return int(value)
         except ValueError as exc:
             raise RuntimeError(
-                f"Avalon-ST {signal_name} is X/Z during valid-ready handshake"
+                f"{self._bus_label()}: Avalon-ST {signal_name} is X/Z "
+                f"during valid-ready handshake ({self._signal_snapshot()})"
             ) from exc
 
     def _safe_optional_int(self, value, default=0):
