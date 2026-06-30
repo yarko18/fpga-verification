@@ -35,6 +35,17 @@ def _drive(signal, value):
         signal.value = int(value)
 
 
+def _drive_cached(cache, signal, value):
+    if signal is None:
+        return
+
+    value = int(value)
+    key = id(signal)
+    if cache.get(key) != value:
+        signal.value = value
+        cache[key] = value
+
+
 def _read_int(signal, name, default=None):
     if signal is None:
         if default is not None:
@@ -401,6 +412,7 @@ class AvalonMMSlaveBFM:
         waitrequest_during_reset=True,
         idle_readdata=0,
         logger=None,
+        record_transactions=False,
     ):
         self.bus = bus
         self.clock = clock
@@ -410,6 +422,7 @@ class AvalonMMSlaveBFM:
         self.waitrequest_during_reset = bool(waitrequest_during_reset)
         self.idle_readdata = int(idle_readdata)
         self.log = logger or logging.getLogger("cocotb.avalon_mm.slave")
+        self.record_transactions = bool(record_transactions)
 
         if self.read_latency < 0:
             raise ValueError("read_latency must be non-negative")
@@ -447,6 +460,7 @@ class AvalonMMSlaveBFM:
         self._pause_generator = None
         self._task = None
         self._waitrequest_asserted = False
+        self._drive_cache = {}
 
         self.read_transactions = []
         self.write_transactions = []
@@ -472,10 +486,10 @@ class AvalonMMSlaveBFM:
     def init_idle(self):
         reset_active = self._reset_active()
         self._drive_waitrequest(reset_active and self.waitrequest_during_reset)
-        _drive(self.bus.readdata, self.idle_readdata)
-        _drive(self.bus.readdatavalid, 0)
-        _drive(self.bus.response, 0)
-        _drive(self.bus.writeresponsevalid, 0)
+        _drive_cached(self._drive_cache, self.bus.readdata, self.idle_readdata)
+        _drive_cached(self._drive_cache, self.bus.readdatavalid, 0)
+        _drive_cached(self._drive_cache, self.bus.response, 0)
+        _drive_cached(self._drive_cache, self.bus.writeresponsevalid, 0)
 
     def start(self):
         if self._task is None:
@@ -528,9 +542,9 @@ class AvalonMMSlaveBFM:
     def _handle_reset(self):
         self._read_queue.clear()
         self._write_burst_remaining = 0
-        _drive(self.bus.readdatavalid, 0)
-        _drive(self.bus.writeresponsevalid, 0)
-        _drive(self.bus.readdata, self.idle_readdata)
+        _drive_cached(self._drive_cache, self.bus.readdatavalid, 0)
+        _drive_cached(self._drive_cache, self.bus.writeresponsevalid, 0)
+        _drive_cached(self._drive_cache, self.bus.readdata, self.idle_readdata)
         self._drive_waitrequest(self.waitrequest_during_reset)
 
     def _accept_read(self):
@@ -543,16 +557,17 @@ class AvalonMMSlaveBFM:
             data = self.read_word(beat_address, byteenable)
             data = _check_width("readdata", data, self.bus.read_data_width)
             self._queue_read_data(data)
-            self.read_transactions.append(
-                AvalonMMTransaction(
-                    "read",
-                    beat_address,
-                    None,
-                    byteenable,
-                    burstcount,
-                    beat_index,
+            if self.record_transactions:
+                self.read_transactions.append(
+                    AvalonMMTransaction(
+                        "read",
+                        beat_address,
+                        None,
+                        byteenable,
+                        burstcount,
+                        beat_index,
+                    )
                 )
-            )
 
         self.log.debug(
             "READ address=0x%X burstcount=%d byteenable=0x%X",
@@ -574,16 +589,17 @@ class AvalonMMSlaveBFM:
         data = _read_int(self.bus.writedata, "writedata")
 
         self.write_word(beat_address, data, byteenable)
-        self.write_transactions.append(
-            AvalonMMTransaction(
-                "write",
-                beat_address,
-                data,
-                byteenable,
-                self._write_burst_count,
-                beat_index,
+        if self.record_transactions:
+            self.write_transactions.append(
+                AvalonMMTransaction(
+                    "write",
+                    beat_address,
+                    data,
+                    byteenable,
+                    self._write_burst_count,
+                    beat_index,
+                )
             )
-        )
 
         self.log.debug(
             "WRITE address=0x%X data=0x%X burstcount=%d beat=%d byteenable=0x%X",
@@ -603,8 +619,8 @@ class AvalonMMSlaveBFM:
 
     def _drive_next_read_response(self):
         if not self._read_queue:
-            _drive(self.bus.readdatavalid, 0)
-            _drive(self.bus.readdata, self.idle_readdata)
+            _drive_cached(self._drive_cache, self.bus.readdatavalid, 0)
+            _drive_cached(self._drive_cache, self.bus.readdata, self.idle_readdata)
             return
 
         entry = self._read_queue[0]
@@ -613,10 +629,10 @@ class AvalonMMSlaveBFM:
 
         if entry[0] <= 0:
             _, data = self._read_queue.popleft()
-            _drive(self.bus.readdata, data)
-            _drive(self.bus.readdatavalid, 1)
+            _drive_cached(self._drive_cache, self.bus.readdata, data)
+            _drive_cached(self._drive_cache, self.bus.readdatavalid, 1)
         else:
-            _drive(self.bus.readdatavalid, 0)
+            _drive_cached(self._drive_cache, self.bus.readdatavalid, 0)
 
     def _next_waitrequest(self):
         if self._pause_generator is not None:
@@ -629,7 +645,7 @@ class AvalonMMSlaveBFM:
 
     def _drive_waitrequest(self, value):
         self._waitrequest_asserted = bool(value)
-        _drive(self.bus.waitrequest, int(self._waitrequest_asserted))
+        _drive_cached(self._drive_cache, self.bus.waitrequest, int(self._waitrequest_asserted))
 
     def _sample_burstcount(self):
         if self.bus.burstcount is None:
@@ -683,29 +699,36 @@ class AvalonMMMemoryBFM(AvalonMMSlaveBFM):
         self.memory = memory
         self.byteorder = byteorder
         super().__init__(bus, clock, reset, **kwargs)
+        self._full_byteenable = _mask(self.word_bytes)
 
     @classmethod
     def from_prefix(cls, entity, prefix, clock, reset=None, **kwargs):
         return cls(AvalonMMBus.from_prefix(entity, prefix), clock, reset, **kwargs)
 
     def read_word(self, address, byteenable):
-        raw = bytearray(self.memory.read(address, self.word_bytes))
+        raw = self.memory.read(address, self.word_bytes)
 
         if len(raw) != self.word_bytes:
             raise RuntimeError(
                 f"memory.read(0x{address:X}, {self.word_bytes}) returned {len(raw)} bytes"
             )
 
-        for lane in range(self.word_bytes):
-            if not (byteenable & (1 << lane)):
-                raw[lane] = 0
+        if byteenable != self._full_byteenable:
+            raw = bytearray(raw)
+            for lane in range(self.word_bytes):
+                if not (byteenable & (1 << lane)):
+                    raw[lane] = 0
 
         return int.from_bytes(raw, self.byteorder)
 
     def write_word(self, address, data, byteenable):
-        current = bytearray(self.memory.read(address, self.word_bytes))
         incoming = int(data).to_bytes(self.word_bytes, self.byteorder)
 
+        if byteenable == self._full_byteenable:
+            self.memory.write(address, incoming)
+            return
+
+        current = bytearray(self.memory.read(address, self.word_bytes))
         if len(current) != self.word_bytes:
             raise RuntimeError(
                 f"memory.read(0x{address:X}, {self.word_bytes}) returned "
