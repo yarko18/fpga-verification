@@ -84,7 +84,16 @@ def rtl_test_cocotb(
     test_args = []
 
     if sim == "questa":
-        test_args += ["-voptargs=+acc"]
+        enable_acc = debug or os.getenv("QUESTA_ACC", "0").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if enable_acc:
+            test_args += ["-voptargs=+acc"]
+        else:
+            test_args += ["-no_autoacc"]
 
     if debug and sim == "questa":
         test_args += ["-do", "wave.do"]
