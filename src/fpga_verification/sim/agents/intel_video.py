@@ -37,12 +37,26 @@ def _random_pause_generator():
         yield random() < 0.25
 
 
+def _bus_label(bus):
+    entity = getattr(bus, "_entity", None)
+    entity_name = getattr(entity, "_name", None)
+    bus_name = getattr(bus, "_name", None)
+
+    if entity_name and bus_name:
+        return f"{entity_name}.{bus_name}"
+    if entity_name:
+        return str(entity_name)
+    if bus_name:
+        return str(bus_name)
+    return "VIP bus"
+
+
 def _validate_vip_bus(bus, name, fmt):
     data_width = len(bus.data)
     if data_width != fmt.payload_width:
         raise ValueError(
-            f"{name} data width must be {fmt.payload_width} bits, "
-            f"got {data_width}"
+            f"{_bus_label(bus)}: {name} data width must be "
+            f"{fmt.payload_width} bits, got {data_width}"
         )
 
 
@@ -227,12 +241,15 @@ class VIPMonitor(uvm_monitor):
     async def recv_packet(self):
         frame = await self.monitor.recv()
         self.monitor.log.debug("RX VIP packet: %s", frame)
-        packet = vip_packet_from_symbols(
-            frame.data,
-            symbols_per_beat=self.fmt.samples_per_beat,
-        )
-        self.protocol_checker.observe(packet)
-        return packet
+        try:
+            packet = vip_packet_from_symbols(
+                frame.data,
+                symbols_per_beat=self.fmt.samples_per_beat,
+            )
+            self.protocol_checker.observe(packet)
+            return packet
+        except ValueError as exc:
+            raise ValueError(f"{self.monitor._bus_label()}: {exc}") from exc
 
     async def _watch_reset(self):
         while True:

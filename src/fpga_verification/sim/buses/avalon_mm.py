@@ -46,22 +46,43 @@ def _drive_cached(cache, signal, value):
         cache[key] = value
 
 
-def _read_int(signal, name, default=None):
+def _format_entity_prefix(entity, prefix):
+    entity_name = getattr(entity, "_name", None)
+
+    if entity_name and prefix:
+        return f"{entity_name}.{prefix}"
+    if entity_name:
+        return str(entity_name)
+    if prefix:
+        return str(prefix)
+    return "avalon_mm"
+
+
+def _bus_label(bus):
+    return getattr(bus, "label", None) or "avalon_mm"
+
+
+def _qualified_signal_name(name, label=None):
+    return f"{label}.{name}" if label else name
+
+
+def _read_int(signal, name, default=None, label=None):
+    signal_name = _qualified_signal_name(name, label)
     if signal is None:
         if default is not None:
             return default
-        raise RuntimeError(f"Avalon-MM signal {name} is not present")
+        raise RuntimeError(f"{signal_name}: Avalon-MM signal is not present")
 
     try:
         return int(signal.value)
     except ValueError as exc:
         if default is not None:
             return default
-        raise RuntimeError(f"Avalon-MM signal {name} is X/Z") from exc
+        raise RuntimeError(f"{signal_name}: Avalon-MM signal is X/Z") from exc
 
 
-def _read_bool(signal, name, default=False):
-    return bool(_read_int(signal, name, int(default)))
+def _read_bool(signal, name, default=False, label=None):
+    return bool(_read_int(signal, name, int(default), label=label))
 
 
 @dataclass
@@ -87,6 +108,7 @@ class AvalonMMBus:
     writeresponsevalid: object = None
     lock: object = None
     debugaccess: object = None
+    label: str = ""
 
     @classmethod
     def from_prefix(cls, entity, prefix):
@@ -113,6 +135,7 @@ class AvalonMMBus:
             writeresponsevalid=optional("writeresponsevalid"),
             lock=optional("lock"),
             debugaccess=optional("debugaccess"),
+            label=_format_entity_prefix(entity, prefix),
         )
 
     @property
@@ -137,7 +160,9 @@ class AvalonMMBus:
             return self.write_data_width
         if self.readdata is not None:
             return self.read_data_width
-        raise ValueError("Avalon-MM bus has neither writedata nor readdata")
+        raise ValueError(
+            f"{_bus_label(self)}: Avalon-MM bus has neither writedata nor readdata"
+        )
 
     @property
     def byteenable_width(self):
@@ -193,11 +218,15 @@ class AvalonMMMasterBFM:
         self.bus = bus
         self.clock = clock
         self.reset = reset
+        self.label = _bus_label(bus)
+        self.log = logging.getLogger(f"cocotb.{self.label}.master")
         self.read_response_latency = int(read_response_latency)
         self.default_byteenable = default_byteenable
 
         if self.read_response_latency < 0:
-            raise ValueError("read_response_latency must be non-negative")
+            raise ValueError(
+                f"{self.label}: Avalon-MM read_response_latency must be non-negative"
+            )
 
     @classmethod
     def from_prefix(cls, entity, prefix, clock, reset=None, **kwargs):
@@ -237,7 +266,7 @@ class AvalonMMMasterBFM:
 
         await RisingEdge(self.clock)
         await self._start_access(address, data, byteenable, write=1, read=0)
-        await self._wait_accepted(timeout_cycles)
+        await self._wait_accepted(timeout_cycles, "write", address)
         self._end_access()
 
     async def read(self, address, byteenable=None, timeout_cycles=None):
@@ -248,11 +277,11 @@ class AvalonMMMasterBFM:
 
         await RisingEdge(self.clock)
         await self._start_access(address, 0, byteenable, write=0, read=1)
-        await self._wait_accepted(timeout_cycles)
+        await self._wait_accepted(timeout_cycles, "read", address)
         self._end_access()
 
         if self.bus.readdatavalid is not None:
-            await self._wait_readdatavalid(timeout_cycles)
+            await self._wait_readdatavalid(timeout_cycles, address)
         else:
             for _ in range(self.read_response_latency):
                 await RisingEdge(self.clock)
@@ -292,7 +321,10 @@ class AvalonMMMasterBFM:
 
             if cycles_left is not None:
                 if cycles_left <= 0:
-                    raise TimeoutError(f"Avalon-MM poll timeout at address {address}")
+                    raise TimeoutError(
+                        f"{self.label}: Avalon-MM poll timeout at "
+                        f"address 0x{int(address):X}"
+                    )
                 cycles_left -= interval_cycles
 
             for _ in range(interval_cycles):
@@ -330,7 +362,7 @@ class AvalonMMMasterBFM:
         if self.bus.burstcount is not None:
             _drive(self.bus.burstcount, 1)
 
-    async def _wait_accepted(self, timeout_cycles):
+    async def _wait_accepted(self, timeout_cycles, kind="access", address=None):
         cycles = 0
 
         while True:
@@ -339,26 +371,43 @@ class AvalonMMMasterBFM:
             if self.bus.waitrequest is None or not _read_bool(
                 self.bus.waitrequest,
                 "waitrequest",
+                label=self.label,
             ):
                 return
 
             cycles += 1
             if timeout_cycles is not None and cycles >= timeout_cycles:
                 self._end_access()
-                raise TimeoutError("Avalon-MM access waitrequest timeout")
+                address_text = (
+                    "unknown" if address is None else f"0x{int(address):X}"
+                )
+                raise TimeoutError(
+                    f"{self.label}: Avalon-MM {kind} waitrequest timeout "
+                    f"at address {address_text}"
+                )
 
-    async def _wait_readdatavalid(self, timeout_cycles):
+    async def _wait_readdatavalid(self, timeout_cycles, address=None):
         cycles = 0
 
         while True:
             await RisingEdge(self.clock)
 
-            if _read_bool(self.bus.readdatavalid, "readdatavalid"):
+            if _read_bool(
+                self.bus.readdatavalid,
+                "readdatavalid",
+                label=self.label,
+            ):
                 return
 
             cycles += 1
             if timeout_cycles is not None and cycles >= timeout_cycles:
-                raise TimeoutError("Avalon-MM read readdatavalid timeout")
+                address_text = (
+                    "unknown" if address is None else f"0x{int(address):X}"
+                )
+                raise TimeoutError(
+                    f"{self.label}: Avalon-MM read readdatavalid timeout "
+                    f"at address {address_text}"
+                )
 
     def _end_access(self):
         _drive(self.bus.write, 0)
@@ -377,18 +426,28 @@ class AvalonMMMasterBFM:
         return _mask(width)
 
     def _validate_address(self, address):
-        return _check_width("address", address, self.bus.address_width)
+        try:
+            return _check_width("address", address, self.bus.address_width)
+        except ValueError as exc:
+            raise ValueError(f"{self.label}: Avalon-MM {exc}") from exc
 
     def _validate_write_data(self, data):
-        return _check_width("data", data, self.bus.write_data_width)
+        try:
+            return _check_width("data", data, self.bus.write_data_width)
+        except ValueError as exc:
+            raise ValueError(f"{self.label}: Avalon-MM {exc}") from exc
 
     def _require_read(self):
         if self.bus.read is None or self.bus.readdata is None:
-            raise RuntimeError("Avalon-MM bus does not expose read/readdata")
+            raise RuntimeError(
+                f"{self.label}: Avalon-MM bus does not expose read/readdata"
+            )
 
     def _require_write(self):
         if self.bus.write is None or self.bus.writedata is None:
-            raise RuntimeError("Avalon-MM bus does not expose write/writedata")
+            raise RuntimeError(
+                f"{self.label}: Avalon-MM bus does not expose write/writedata"
+            )
 
 
 class AvalonMMSlaveBFM:
@@ -417,38 +476,48 @@ class AvalonMMSlaveBFM:
         self.bus = bus
         self.clock = clock
         self.reset = reset
+        self.label = _bus_label(bus)
         self.read_latency = int(read_latency)
         self.reset_active_level = bool(reset_active_level)
         self.waitrequest_during_reset = bool(waitrequest_during_reset)
         self.idle_readdata = int(idle_readdata)
-        self.log = logger or logging.getLogger("cocotb.avalon_mm.slave")
+        self.log = logger or logging.getLogger(f"cocotb.{self.label}.slave")
         self.record_transactions = bool(record_transactions)
 
         if self.read_latency < 0:
-            raise ValueError("read_latency must be non-negative")
+            raise ValueError(
+                f"{self.label}: Avalon-MM read_latency must be non-negative"
+            )
         if (
             self.bus.read_data_width is not None
             and self.bus.write_data_width is not None
             and self.bus.read_data_width != self.bus.write_data_width
         ):
             raise ValueError(
-                "Avalon-MM read and write data widths differ "
+                f"{self.label}: Avalon-MM read and write data widths differ "
                 f"({self.bus.read_data_width} != {self.bus.write_data_width})"
             )
         if self.bus.data_width % 8:
-            raise ValueError("Avalon-MM memory data width must be byte-aligned")
+            raise ValueError(
+                f"{self.label}: Avalon-MM memory data width must be byte-aligned"
+            )
         if (
             self.bus.byteenable is not None
             and self.bus.byteenable_width != self.bus.data_width // 8
         ):
             raise ValueError(
-                "Avalon-MM byteenable width must match data width in bytes "
+                f"{self.label}: Avalon-MM byteenable width must match "
+                f"data width in bytes "
                 f"({self.bus.byteenable_width} != {self.bus.data_width // 8})"
             )
         if self.bus.has_read and self.bus.readdata is None:
-            raise ValueError("read-capable Avalon-MM bus must expose readdata")
+            raise ValueError(
+                f"{self.label}: read-capable Avalon-MM bus must expose readdata"
+            )
         if self.bus.has_write and self.bus.writedata is None:
-            raise ValueError("write-capable Avalon-MM bus must expose writedata")
+            raise ValueError(
+                f"{self.label}: write-capable Avalon-MM bus must expose writedata"
+            )
 
         self.word_bytes = self.bus.data_width // 8
         self._read_queue = deque()
@@ -525,11 +594,13 @@ class AvalonMMSlaveBFM:
                 continue
 
             accepted = not self._waitrequest_asserted
-            read = _read_bool(self.bus.read, "read", False)
-            write = _read_bool(self.bus.write, "write", False)
+            read = _read_bool(self.bus.read, "read", False, label=self.label)
+            write = _read_bool(self.bus.write, "write", False, label=self.label)
 
             if read and write:
-                raise RuntimeError("Avalon-MM read and write asserted together")
+                raise RuntimeError(
+                    f"{self.label}: Avalon-MM read and write asserted together"
+                )
 
             if accepted and read:
                 self._accept_read()
@@ -549,7 +620,7 @@ class AvalonMMSlaveBFM:
 
     def _accept_read(self):
         burstcount = self._sample_burstcount()
-        address = _read_int(self.bus.address, "address")
+        address = _read_int(self.bus.address, "address", label=self.label)
         byteenable = self._sample_byteenable()
 
         for beat_index in range(burstcount):
@@ -578,7 +649,11 @@ class AvalonMMSlaveBFM:
 
     def _accept_write(self):
         if self._write_burst_remaining == 0:
-            self._write_burst_address = _read_int(self.bus.address, "address")
+            self._write_burst_address = _read_int(
+                self.bus.address,
+                "address",
+                label=self.label,
+            )
             self._write_burst_count = self._sample_burstcount()
             self._write_burst_index = 0
             self._write_burst_remaining = self._write_burst_count
@@ -586,7 +661,7 @@ class AvalonMMSlaveBFM:
         beat_index = self._write_burst_index
         beat_address = self._write_burst_address + beat_index * self.word_bytes
         byteenable = self._sample_byteenable()
-        data = _read_int(self.bus.writedata, "writedata")
+        data = _read_int(self.bus.writedata, "writedata", label=self.label)
 
         self.write_word(beat_address, data, byteenable)
         if self.record_transactions:
@@ -651,26 +726,41 @@ class AvalonMMSlaveBFM:
         if self.bus.burstcount is None:
             return 1
 
-        burstcount = _read_int(self.bus.burstcount, "burstcount", 1)
+        burstcount = _read_int(
+            self.bus.burstcount,
+            "burstcount",
+            1,
+            label=self.label,
+        )
         if burstcount <= 0:
-            raise RuntimeError(f"Avalon-MM burstcount must be > 0, got {burstcount}")
+            raise RuntimeError(
+                f"{self.label}: Avalon-MM burstcount must be > 0, got {burstcount}"
+            )
         return burstcount
 
     def _sample_byteenable(self):
         if self.bus.byteenable is None:
             return _mask(self.bus.byteenable_width)
 
-        return _check_width(
-            "byteenable",
-            _read_int(self.bus.byteenable, "byteenable"),
-            self.bus.byteenable_width,
-        )
+        try:
+            return _check_width(
+                "byteenable",
+                _read_int(self.bus.byteenable, "byteenable", label=self.label),
+                self.bus.byteenable_width,
+            )
+        except ValueError as exc:
+            raise ValueError(f"{self.label}: Avalon-MM {exc}") from exc
 
     def _reset_active(self):
         if self.reset is None:
             return False
         return (
-            _read_bool(self.reset, "reset", self.reset_active_level)
+            _read_bool(
+                self.reset,
+                "reset",
+                self.reset_active_level,
+                label=self.label,
+            )
             == self.reset_active_level
         )
 
@@ -694,7 +784,9 @@ class AvalonMMMemoryBFM(AvalonMMSlaveBFM):
         **kwargs,
     ):
         if byteorder not in ("little", "big"):
-            raise ValueError("byteorder must be 'little' or 'big'")
+            raise ValueError(
+                f"{_bus_label(bus)}: byteorder must be 'little' or 'big'"
+            )
 
         self.memory = memory
         self.byteorder = byteorder
@@ -710,7 +802,8 @@ class AvalonMMMemoryBFM(AvalonMMSlaveBFM):
 
         if len(raw) != self.word_bytes:
             raise RuntimeError(
-                f"memory.read(0x{address:X}, {self.word_bytes}) returned {len(raw)} bytes"
+                f"{self.label}: memory.read(0x{address:X}, {self.word_bytes}) "
+                f"returned {len(raw)} bytes"
             )
 
         if byteenable != self._full_byteenable:
@@ -731,8 +824,8 @@ class AvalonMMMemoryBFM(AvalonMMSlaveBFM):
         current = bytearray(self.memory.read(address, self.word_bytes))
         if len(current) != self.word_bytes:
             raise RuntimeError(
-                f"memory.read(0x{address:X}, {self.word_bytes}) returned "
-                f"{len(current)} bytes"
+                f"{self.label}: memory.read(0x{address:X}, {self.word_bytes}) "
+                f"returned {len(current)} bytes"
             )
 
         for lane in range(self.word_bytes):
