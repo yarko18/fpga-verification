@@ -3,7 +3,7 @@
 
 [project]
 name = "fpga-verification"
-version = "0.2.3"
+version = "0.2.4"
 description = "Reusable FPGA simulation and hardware-in-the-loop verification tools"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
