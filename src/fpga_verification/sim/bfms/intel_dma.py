@@ -9,6 +9,7 @@ import logging
 import cocotb
 from cocotb.queue import Queue
 from cocotb.triggers import ClockCycles
+from cocotb.utils import get_sim_time
 
 from fpga_verification.sim.buses import (
     AvalonFormat,
@@ -27,6 +28,20 @@ __all__ = [
     "SparseByteMemory",
     "WriteDMADescriptor",
 ]
+
+
+def _avalon_st_label(bus):
+    entity = getattr(bus, "_entity", None)
+    entity_name = getattr(entity, "_name", None)
+    bus_name = getattr(bus, "_name", None)
+
+    if entity_name and bus_name:
+        return f"{entity_name}.{bus_name}"
+    if entity_name:
+        return str(entity_name)
+    if bus_name:
+        return str(bus_name)
+    return "avalon_st"
 
 
 class SparseByteMemory:
@@ -188,7 +203,13 @@ class IntelDMACommandMonitor:
             beat = await self.rdma_cmd_monitor.recv_beat()
             descriptor = ReadDMADescriptor.decode(beat.data)
             self.read_descriptors.append(descriptor)
-            self._check_descriptor("RDMA", descriptor, self.read_address_regions)
+            self._check_descriptor(
+                "RDMA",
+                descriptor,
+                self.read_address_regions,
+                self._monitor_label(self.rdma_cmd_monitor, "rdma_cmd"),
+                beat.sim_time,
+            )
             self.log.debug(
                 "RDMA command address=0x%X length=%d channel=%d",
                 descriptor.address,
@@ -201,14 +222,27 @@ class IntelDMACommandMonitor:
             beat = await self.wdma_cmd_monitor.recv_beat()
             descriptor = WriteDMADescriptor.decode(beat.data)
             self.write_descriptors.append(descriptor)
-            self._check_descriptor("WDMA", descriptor, self.write_address_regions)
+            self._check_descriptor(
+                "WDMA",
+                descriptor,
+                self.write_address_regions,
+                self._monitor_label(self.wdma_cmd_monitor, "wdma_cmd"),
+                beat.sim_time,
+            )
             self.log.debug(
                 "WDMA command address=0x%X length=%d",
                 descriptor.address,
                 descriptor.length,
             )
 
-    def _check_descriptor(self, name, descriptor, regions):
+    def _check_descriptor(
+        self,
+        name,
+        descriptor,
+        regions,
+        interface_label=None,
+        sim_time=None,
+    ):
         if regions is None:
             return
 
@@ -218,11 +252,18 @@ class IntelDMACommandMonitor:
         if any(region.contains(descriptor.address, descriptor.length) for region in regions):
             return
 
+        where = interface_label or name
+        when = "unknown" if sim_time is None else f"{sim_time} ps"
         raise AssertionError(
-            f"{name} descriptor outside allowed regions: "
+            f"{where}: {name} descriptor outside allowed regions at {when}: "
             f"address=0x{descriptor.address:X}, length={descriptor.length}, "
             f"allowed={self._format_regions(regions)}"
         )
+
+    def _monitor_label(self, monitor, fallback):
+        if monitor is not None and hasattr(monitor, "_bus_label"):
+            return monitor._bus_label()
+        return fallback
 
     def _format_regions(self, regions):
         return ", ".join(str(region) for region in regions)
@@ -344,7 +385,9 @@ class IntelDMABFM:
     def _make_byte_stream_format(self, bus):
         data_width = len(bus.data)
         if data_width % 8:
-            raise ValueError("DMA data bus width must be byte-aligned")
+            raise ValueError(
+                f"{_avalon_st_label(bus)}: DMA data bus width must be byte-aligned"
+            )
         return AvalonFormat(
             bits_per_symbol=8,
             symbols_per_beat=data_width // 8,
@@ -436,11 +479,19 @@ class IntelDMABFM:
                 if descriptor.length:
                     if descriptor.length % self.read_data_bytes_per_beat:
                         raise RuntimeError(
-                            "Read DMA BFM requires transfers aligned to the exported "
-                            "din beat because the component does not expose din_empty"
+                            f"{self.din_source._bus_label()}: Read DMA BFM requires "
+                            "transfers aligned to the exported din beat because the "
+                            "component does not expose din_empty; "
+                            f"address=0x{descriptor.address:016X}, "
+                            f"length={descriptor.length}, time={get_sim_time()} ps"
                         )
                     if not descriptor.generate_sop or not descriptor.generate_eop:
-                        raise RuntimeError("Read DMA BFM expects packetized read descriptors")
+                        raise RuntimeError(
+                            f"{self.din_source._bus_label()}: Read DMA BFM expects "
+                            "packetized read descriptors; "
+                            f"address=0x{descriptor.address:016X}, "
+                            f"length={descriptor.length}, time={get_sim_time()} ps"
+                        )
 
                     await self.din_source.send(
                         AvalonSTFrame(

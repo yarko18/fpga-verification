@@ -260,16 +260,10 @@ class AvalonSTBase:
         self.reset = reset
         self.reset_active_level = reset_active_level
 
-        if bus._name:
-            self.log = logging.getLogger(
-                f"cocotb.{bus._entity._name}.{bus._name}.{self._type}"
-            )
-        else:
-            self.log = logging.getLogger(
-                f"cocotb.{bus._entity._name}.{self._type}"
-            )
+        self.bus_label = self._format_bus_label(bus)
+        self.log = logging.getLogger(f"cocotb.{self.bus_label}.{self._type}")
 
-        self.log.info("Avalon-ST %s", self._type)
+        self.log.info("Avalon-ST %s on %s", self._type, self.bus_label)
 
         self.active = False
         self.queue = Queue()
@@ -299,14 +293,17 @@ class AvalonSTBase:
         else:
             self.has_packets = bool(packets)
             if self.has_packets and not self.has_packet_signals:
-                raise ValueError("packets=True requires startofpacket and endofpacket signals")
+                raise ValueError(
+                    f"{self._bus_label()}: packets=True requires "
+                    "startofpacket and endofpacket signals"
+                )
 
         self.width = len(self.bus.data)
 
         if fmt is not None and self.width != fmt.payload_width:
             raise ValueError(
-                f"AvalonFormat payload_width must match Avalon-ST data width "
-                f"({fmt.payload_width} != {self.width})"
+                f"{self._bus_label()}: AvalonFormat payload_width must match "
+                f"Avalon-ST data width ({fmt.payload_width} != {self.width})"
             )
 
         self.bits_per_symbol = fmt.bits_per_symbol
@@ -320,7 +317,8 @@ class AvalonSTBase:
         
         if self.symbols_per_beat * self.bits_per_symbol > self.width:
             raise ValueError(
-                f"symbols_per_beat * bits_per_symbol exceeds data width "
+                f"{self._bus_label()}: symbols_per_beat * bits_per_symbol "
+                f"exceeds Avalon-ST data width "
                 f"({self.symbols_per_beat} * {self.bits_per_symbol} > {self.width})"
             )
 
@@ -362,6 +360,35 @@ class AvalonSTBase:
         self._reset_monitor_cr = None
         self._reset_state = True
         self._init_reset_control()
+
+    @staticmethod
+    def _format_bus_label(bus):
+        entity = getattr(bus, "_entity", None)
+        entity_name = getattr(entity, "_name", None)
+        bus_name = getattr(bus, "_name", None)
+
+        if entity_name and bus_name:
+            return f"{entity_name}.{bus_name}"
+        if entity_name:
+            return str(entity_name)
+        if bus_name:
+            return str(bus_name)
+        return "avalon_st"
+
+    def _bus_label(self):
+        return getattr(self, "bus_label", self.log.name.removeprefix("cocotb."))
+
+    def _protocol_context(self, beat=None):
+        parts = [f"signals=({self._signal_snapshot()})"]
+        if beat is not None:
+            parts.append(f"beat={beat}")
+        return ", ".join(parts)
+
+    def _protocol_error(self, message, beat=None):
+        return RuntimeError(
+            f"{self._bus_label()}: Avalon-ST {self._type} {message}; "
+            f"{self._protocol_context(beat)}"
+        )
 
     def _logic_x(self, width):
         if LogicArray is not None:
@@ -989,7 +1016,10 @@ class AvalonSTMonitor(AvalonSTBase):
             width = 1
 
         if width != 1:
-            raise TypeError(f"Avalon-ST {signal_name} must be scalar or 1-bit wide")
+            raise TypeError(
+                f"{self._bus_label()}: Avalon-ST {signal_name} must be "
+                "scalar or 1-bit wide"
+            )
 
         previous = self._signal_bool(signal)
         event = ValueChange(signal)
@@ -1008,12 +1038,59 @@ class AvalonSTMonitor(AvalonSTBase):
         except ValueError:
             return False
 
+    @staticmethod
+    def _format_bus_label(bus):
+        entity = getattr(bus, "_entity", None)
+        entity_name = getattr(entity, "_name", None)
+        bus_name = getattr(bus, "_name", None)
+
+        if entity_name and bus_name:
+            return f"{entity_name}.{bus_name}"
+        if entity_name:
+            return str(entity_name)
+        if bus_name:
+            return str(bus_name)
+        return "avalon_st"
+
+    def _bus_label(self):
+        return getattr(self, "bus_label", self.log.name.removeprefix("cocotb."))
+
+    def _protocol_context(self, beat=None):
+        parts = [f"signals=({self._signal_snapshot()})"]
+        if beat is not None:
+            parts.append(f"beat={beat}")
+        return ", ".join(parts)
+
+    def _protocol_error(self, message, beat=None):
+        return RuntimeError(
+            f"{self._bus_label()}: Avalon-ST {self._type} {message}; "
+            f"{self._protocol_context(beat)}"
+        )
+
+    def _signal_snapshot(self):
+        names = (
+            "valid",
+            "ready",
+            "startofpacket",
+            "endofpacket",
+            "empty",
+            "channel",
+            "error",
+            "data",
+        )
+        parts = []
+        for name in names:
+            if hasattr(self.bus, name):
+                parts.append(f"{name}={getattr(self.bus, name).value}")
+        return ", ".join(parts)
+
     def _safe_int(self, value, signal_name):
         try:
             return int(value)
         except ValueError as exc:
             raise RuntimeError(
-                f"Avalon-ST {signal_name} is X/Z during valid-ready handshake"
+                f"{self._bus_label()}: Avalon-ST {signal_name} is X/Z "
+                f"during valid-ready handshake ({self._signal_snapshot()})"
             ) from exc
 
     def _safe_optional_int(self, value, default=0):
@@ -1038,13 +1115,13 @@ class AvalonSTMonitor(AvalonSTBase):
 
             if raw_empty:
                 if not eop:
-                    raise RuntimeError(
-                        f"Avalon-ST empty={raw_empty} asserted without endofpacket"
+                    raise self._protocol_error(
+                        f"empty={raw_empty} asserted without endofpacket"
                     )
 
                 if raw_empty >= self.symbols_per_beat:
-                    raise RuntimeError(
-                        f"Avalon-ST empty out of range: {raw_empty}, "
+                    raise self._protocol_error(
+                        f"empty out of range: {raw_empty}, "
                         f"symbols_per_beat={self.symbols_per_beat}"
                     )
 
@@ -1073,14 +1150,22 @@ class AvalonSTMonitor(AvalonSTBase):
         if self.has_packets:
             if beat.sop:
                 if frame is not None:
-                    raise RuntimeError("Avalon-ST duplicate startofpacket before endofpacket")
+                    raise self._protocol_error(
+                        "duplicate startofpacket before endofpacket "
+                        f"(open_frame_start={frame.sim_time_start}, "
+                        f"open_frame_symbols={len(frame)})",
+                        beat,
+                    )
 
                 frame = AvalonSTFrame([])
                 frame.sim_time_start = get_sim_time()
                 self.active = True
 
             elif frame is None:
-                raise RuntimeError("Avalon-ST transfer outside of packet: missing startofpacket")
+                raise self._protocol_error(
+                    "transfer outside of packet: missing startofpacket",
+                    beat,
+                )
 
             frame.data.extend(beat.symbols)
 
@@ -1138,8 +1223,8 @@ class AvalonSTMonitor(AvalonSTBase):
     def _check_timeout(self, idle_cycles):
         if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
             raise TimeoutError(
-                f"Avalon-ST monitor timeout: no transfer for "
-                f"{idle_cycles} cycles"
+                f"{self._bus_label()}: Avalon-ST {self._type} timeout: "
+                f"no transfer for {idle_cycles} cycles; {self._protocol_context()}"
             )
 
 
@@ -1207,8 +1292,8 @@ class AvalonSTMonitor(AvalonSTBase):
 
             if self.strict_ready_latency and self.has_ready and self.has_valid:
                 if not prev_ready_raw and valid_sample:
-                    raise RuntimeError(
-                        "Avalon-ST RL=1 violation: valid is asserted although ready "
+                    raise self._protocol_error(
+                        "RL=1 violation: valid is asserted although ready "
                         "was low in the previous cycle"
                     )
 
@@ -1223,8 +1308,9 @@ class AvalonSTMonitor(AvalonSTBase):
 
                 if self.timeout_cycles and idle_cycles >= self.timeout_cycles:
                     raise TimeoutError(
-                        f"Avalon-ST monitor timeout: no transfer for "
-                        f"{idle_cycles} cycles"
+                        f"{self._bus_label()}: Avalon-ST {self._type} timeout: "
+                        f"no transfer for {idle_cycles} cycles; "
+                        f"{self._protocol_context()}"
                     )
 
                 self.active = frame is not None

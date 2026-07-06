@@ -3,6 +3,7 @@
 
 """Intel Avalon-ST Video pyuvm agent."""
 
+import logging
 from random import random
 
 import cocotb
@@ -19,7 +20,10 @@ from pyuvm import (
 )
 
 from fpga_verification.protocols.avalon_st.intel_video import (
+    VIPControlPacket,
     VIPPacket,
+    VIPUserPacket,
+    VIPVideoPacket,
     VIPProtocolChecker,
     vip_packet_from_symbols,
 )
@@ -37,12 +41,71 @@ def _random_pause_generator():
         yield random() < 0.25
 
 
+def _bus_label(bus):
+    entity = getattr(bus, "_entity", None)
+    entity_name = getattr(entity, "_name", None)
+    bus_name = getattr(bus, "_name", None)
+
+    if entity_name and bus_name:
+        return f"{entity_name}.{bus_name}"
+    if entity_name:
+        return str(entity_name)
+    if bus_name:
+        return str(bus_name)
+    return "VIP bus"
+
+
+def _vip_packet_kind(packet):
+    if isinstance(packet, VIPControlPacket):
+        return "control"
+    if isinstance(packet, VIPVideoPacket):
+        return "video"
+    if isinstance(packet, VIPUserPacket):
+        return f"user{packet.user_type}"
+    packet_type = getattr(packet, "packet_type", None)
+    packet_type_name = getattr(packet_type, "name", None)
+    if packet_type_name:
+        return packet_type_name.lower()
+    return "unknown"
+
+
+def _vip_packet_summary(packet):
+    if isinstance(packet, VIPControlPacket):
+        return (
+            f" ({packet.width}x{packet.height}, "
+            f"{packet.interlacing.description})"
+        )
+    if isinstance(packet, (VIPVideoPacket, VIPUserPacket)):
+        return f" ({len(packet.payload)} symbols)"
+    return ""
+
+
+def _normalize_log_level(level):
+    if isinstance(level, str):
+        normalized = logging.getLevelName(level.upper())
+        if isinstance(normalized, int):
+            return normalized
+        raise ValueError(f"Unknown log level: {level}")
+    return int(level)
+
+
+def _log_vip_packet(logger, level, bus_label, action, packet):
+    logger.log(
+        level,
+        "%s: %s vip %s packet%s",
+        bus_label,
+        action,
+        _vip_packet_kind(packet),
+        _vip_packet_summary(packet),
+    )
+
+
 def _validate_vip_bus(bus, name, fmt):
     data_width = len(bus.data)
     if data_width != fmt.payload_width:
         raise ValueError(
-            f"{name} data width must be {fmt.payload_width} bits, "
-            f"got {data_width}"
+            f"{_bus_label(bus)}: {name} data width must be "
+            f"{fmt.payload_width} bits, got {data_width}"
         )
 
 
@@ -134,10 +197,20 @@ class VIPItem(uvm_sequence_item):
 class VIPDriver(uvm_driver):
     """Drive VIP packet sequence items onto an Avalon-ST source."""
 
-    def __init__(self, name, parent, source, fmt):
+    def __init__(
+        self,
+        name,
+        parent,
+        source,
+        fmt,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
+    ):
         super().__init__(name, parent)
         self.source = source
         self.fmt = fmt
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
 
     async def run_phase(self):
         while True:
@@ -156,6 +229,14 @@ class VIPDriver(uvm_driver):
 
         def log_completed_frame(frame):
             self.source.log.debug("TX VIP packet: %s", frame)
+            if self.packet_logging:
+                _log_vip_packet(
+                    self.source.log,
+                    self.packet_log_level,
+                    self.source._bus_label(),
+                    "sent",
+                    packet,
+                )
             tx_complete.set()
 
         frame = AvalonSTFrame(
@@ -182,6 +263,9 @@ class VIPMonitor(uvm_monitor):
         ready_allowance=None,
         drive_ready=False,
         randomize=False,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
+        packet_log_action="got",
     ):
         super().__init__(name, parent)
         if not isinstance(fmt, VideoFormat):
@@ -195,6 +279,9 @@ class VIPMonitor(uvm_monitor):
         self.fmt = fmt
         self.drive_ready = drive_ready
         self.randomize = randomize
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
+        self.packet_log_action = str(packet_log_action)
         self.monitor = None
         self.protocol_checker = VIPProtocolChecker(fmt)
         self.analysis_port = uvm_analysis_port("analysis_port", self)
@@ -227,12 +314,23 @@ class VIPMonitor(uvm_monitor):
     async def recv_packet(self):
         frame = await self.monitor.recv()
         self.monitor.log.debug("RX VIP packet: %s", frame)
-        packet = vip_packet_from_symbols(
-            frame.data,
-            symbols_per_beat=self.fmt.samples_per_beat,
-        )
-        self.protocol_checker.observe(packet)
-        return packet
+        try:
+            packet = vip_packet_from_symbols(
+                frame.data,
+                symbols_per_beat=self.fmt.samples_per_beat,
+            )
+            self.protocol_checker.observe(packet)
+            if self.packet_logging:
+                _log_vip_packet(
+                    self.monitor.log,
+                    self.packet_log_level,
+                    self.monitor._bus_label(),
+                    self.packet_log_action,
+                    packet,
+                )
+            return packet
+        except ValueError as exc:
+            raise ValueError(f"{self.monitor._bus_label()}: {exc}") from exc
 
     async def _watch_reset(self):
         while True:
@@ -282,6 +380,8 @@ class VIPAgent(uvm_agent):
         idle_value=0,
         randomize=False,
         is_active=uvm_active_passive_enum.UVM_ACTIVE,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
     ):
         super().__init__(name, parent)
         if source_bus is None and sink_bus is None:
@@ -310,6 +410,8 @@ class VIPAgent(uvm_agent):
         self.sink_fmt = sink_fmt
         self.randomize = randomize
         self._requested_is_active = is_active
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
 
         self.sequencer = None
         self.source = None
@@ -332,6 +434,9 @@ class VIPAgent(uvm_agent):
                 self.reset_active_level,
                 self.ready_latency,
                 self.ready_allowance,
+                packet_logging=self.packet_logging and not self.active(),
+                packet_log_level=self.packet_log_level,
+                packet_log_action="observed",
             )
 
         if self.sink_bus is not None:
@@ -347,6 +452,9 @@ class VIPAgent(uvm_agent):
                 self.ready_allowance,
                 drive_ready=self.active(),
                 randomize=self.randomize,
+                packet_logging=self.packet_logging,
+                packet_log_level=self.packet_log_level,
+                packet_log_action="got",
             )
 
         if self.active() and self.source_bus is not None:
@@ -368,6 +476,8 @@ class VIPAgent(uvm_agent):
                 self,
                 self.source,
                 self.source_fmt,
+                packet_logging=self.packet_logging,
+                packet_log_level=self.packet_log_level,
             )
 
     def connect_phase(self):
@@ -375,6 +485,21 @@ class VIPAgent(uvm_agent):
             self.source_driver.seq_item_port.connect(
                 self.sequencer.seq_item_export
             )
+
+    def set_packet_logging(self, enable, level=None):
+        self.packet_logging = bool(enable)
+        if level is not None:
+            self.packet_log_level = _normalize_log_level(level)
+        if self.source_driver is not None:
+            self.source_driver.packet_logging = self.packet_logging
+            self.source_driver.packet_log_level = self.packet_log_level
+        for monitor in (self.source_monitor, self.sink_monitor):
+            if monitor is not None:
+                monitor.packet_log_level = self.packet_log_level
+        if self.source_monitor is not None:
+            self.source_monitor.packet_logging = self.packet_logging and not self.active()
+        if self.sink_monitor is not None:
+            self.sink_monitor.packet_logging = self.packet_logging
 
     def set_randomize(self, enable):
         self.randomize = bool(enable)

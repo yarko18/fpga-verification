@@ -329,7 +329,7 @@ Outputs:
   activity, depending on the helper type.
 
 
-## Avalon-MM Cocotb Bus Helper
+## Avalon-MM Cocotb Bus Helpers
 
 `AvalonMMMasterBFM` is a lightweight Avalon-MM host BFM for register-style
 cocotb tests. It issues one transaction at a time and is intentionally simpler
@@ -366,15 +366,50 @@ async def control_register_test(dut):
     await mm.wait_set(0x04, 0x1, timeout_cycles=256)
 ```
 
+`AvalonMMMemoryBFM` is a slave-side BFM for full-IP tests where the DUT exposes
+Avalon-MM master ports. It can connect read-only, write-only, or read/write
+master ports to any byte-addressed memory object with `read(address, length)`
+and `write(address, data)` methods, including `SparseByteMemory`.
+
+```python
+from fpga_verification.sim.buses import AvalonMMMemoryBFM
+from fpga_verification.sim.bfms.intel_dma import SparseByteMemory
+
+
+memory = SparseByteMemory()
+memory.write(0x1000, b"\x01\x02\x03\x04")
+
+rd_mem = AvalonMMMemoryBFM.from_prefix(
+    dut,
+    "mem_master_rd",
+    dut.mem_clk,
+    reset=dut.mem_reset,
+    memory=memory,
+).start()
+
+wr_mem = AvalonMMMemoryBFM.from_prefix(
+    dut,
+    "mem_master_wr",
+    dut.mem_clk,
+    reset=dut.mem_reset,
+    memory=memory,
+).start()
+```
+
 Inputs:
 
-- `AvalonMMBus.from_prefix(dut, prefix)`: binds required signals named
-  `<prefix>_address`, `<prefix>_writedata`, `<prefix>_write`,
-  `<prefix>_read`, and `<prefix>_readdata`; optional signals are
-  `<prefix>_waitrequest`, `<prefix>_readdatavalid`, and
-  `<prefix>_byteenable`.
+- `AvalonMMBus.from_prefix(dut, prefix)`: binds required `<prefix>_address`
+  plus optional `<prefix>_writedata`, `<prefix>_write`, `<prefix>_read`,
+  `<prefix>_readdata`, `<prefix>_waitrequest`, `<prefix>_readdatavalid`,
+  `<prefix>_byteenable`, `<prefix>_burstcount`,
+  `<prefix>_beginbursttransfer`, `<prefix>_response`,
+  `<prefix>_writeresponsevalid`, `<prefix>_lock`, and
+  `<prefix>_debugaccess`.
 - `AvalonMMMasterBFM(bus, clock, reset=None, read_response_latency=0,
-  default_byteenable=None)`: creates a single-beat Avalon-MM host.
+  default_byteenable=None, packet_logging=False, packet_log_level=logging.INFO)`:
+  creates a single-beat Avalon-MM host.
+- `AvalonMMMemoryBFM(bus, clock, reset=None, memory=..., read_latency=1,
+  byteorder="little")`: creates a slave-side byte-addressed memory BFM.
 - `init_idle()`: drives host outputs to idle values.
 - `write(address, data, byteenable=None, timeout_cycles=None)`: issues one
   write and waits until `waitrequest` is deasserted, when present.
@@ -384,24 +419,30 @@ Inputs:
 - `read_modify_write(address, update, ...)`: convenience read/update/write.
 - `poll(address, predicate, ...)`, `wait_set(address, mask, ...)`, and
   `wait_clear(address, mask, ...)`: register polling helpers.
+- `AvalonMMMemoryBFM.read_transactions` and `write_transactions`: observed
+  memory-side transfer beats.
 
 Supported Avalon-MM features:
 
-- Single-beat read and write transfers.
+- Master BFM: single-beat read and write transfers for register access.
+- Memory BFM: read and write bursts via `burstcount`.
 - Optional `waitrequest` backpressure.
 - Optional `readdatavalid` variable-latency read completion.
 - Optional fixed read response latency when `readdatavalid` is absent.
 - Optional `byteenable`, defaulting to all byte lanes asserted when present.
+- Separate read-only and write-only master ports sharing one backing memory.
+- Intel mSGDMA-style write bursts where `address` and `burstcount` remain
+  constant while each accepted write beat advances the memory address.
 - Width validation for address, data, and byteenable values.
 
 Unsupported features:
 
-- Multiple outstanding or pipelined reads.
-- Burst transfers: `burstcount` and `beginbursttransfer`.
-- Read/write response status: `response` and `writeresponsevalid`.
-- `waitrequestAllowance`, `lock`, `debugaccess`, active-low role variants,
-  reset-interface timing, and address-unit/alignment property modeling.
-- Avalon-MM agent/slave behavior; this helper is host/master-side only.
+- Master BFM burst generation.
+- Out-of-order read responses.
+- Read/write response status behavior beyond idle driving of optional
+  `response` and `writeresponsevalid`.
+- `waitrequestAllowance`, active-low role variants, reset-interface timing, and
+  Platform Designer address-unit/alignment property modeling.
 
 Reference: https://docs.altera.com/r/docs/683091/current
 
