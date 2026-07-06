@@ -406,7 +406,8 @@ Inputs:
   `<prefix>_writeresponsevalid`, `<prefix>_lock`, and
   `<prefix>_debugaccess`.
 - `AvalonMMMasterBFM(bus, clock, reset=None, read_response_latency=0,
-  default_byteenable=None)`: creates a single-beat Avalon-MM host.
+  default_byteenable=None, packet_logging=False, packet_log_level=logging.INFO)`:
+  creates a single-beat Avalon-MM host.
 - `AvalonMMMemoryBFM(bus, clock, reset=None, memory=..., read_latency=1,
   byteorder="little")`: creates a slave-side byte-addressed memory BFM.
 - `init_idle()`: drives host outputs to idle values.

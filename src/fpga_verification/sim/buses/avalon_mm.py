@@ -85,6 +85,37 @@ def _read_bool(signal, name, default=False, label=None):
     return bool(_read_int(signal, name, int(default), label=label))
 
 
+def _normalize_log_level(level):
+    if isinstance(level, str):
+        normalized = logging.getLevelName(level.upper())
+        if isinstance(normalized, int):
+            return normalized
+        raise ValueError(f"Unknown log level: {level}")
+    return int(level)
+
+
+def _log_master_access(logger, level, bus_label, kind, address, data, byteenable):
+    if byteenable is None:
+        byteenable_text = ""
+    else:
+        byteenable_text = f" byteenable=0x{int(byteenable):X}"
+
+    if data is None:
+        data_text = ""
+    else:
+        data_text = f" data=0x{int(data):X}"
+
+    logger.log(
+        level,
+        "%s: completed avalon-mm %s address=0x%X%s%s",
+        bus_label,
+        kind,
+        int(address),
+        data_text,
+        byteenable_text,
+    )
+
+
 @dataclass
 class AvalonMMBus:
     """Signal bundle for Avalon-MM BFMs.
@@ -214,6 +245,8 @@ class AvalonMMMasterBFM:
         *,
         read_response_latency=0,
         default_byteenable=None,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
     ):
         self.bus = bus
         self.clock = clock
@@ -222,6 +255,8 @@ class AvalonMMMasterBFM:
         self.log = logging.getLogger(f"cocotb.{self.label}.master")
         self.read_response_latency = int(read_response_latency)
         self.default_byteenable = default_byteenable
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
 
         if self.read_response_latency < 0:
             raise ValueError(
@@ -265,9 +300,20 @@ class AvalonMMMasterBFM:
         self._validate_write_data(data)
 
         await RisingEdge(self.clock)
+        byteenable_value = self._packet_log_byteenable(byteenable)
         await self._start_access(address, data, byteenable, write=1, read=0)
         await self._wait_accepted(timeout_cycles, "write", address)
         self._end_access()
+        if self.packet_logging:
+            _log_master_access(
+                self.log,
+                self.packet_log_level,
+                self.label,
+                "write",
+                address,
+                data,
+                byteenable_value,
+            )
 
     async def read(self, address, byteenable=None, timeout_cycles=None):
         """Issue one Avalon-MM read and return the sampled readdata value."""
@@ -276,6 +322,7 @@ class AvalonMMMasterBFM:
         self._validate_address(address)
 
         await RisingEdge(self.clock)
+        byteenable_value = self._packet_log_byteenable(byteenable)
         await self._start_access(address, 0, byteenable, write=0, read=1)
         await self._wait_accepted(timeout_cycles, "read", address)
         self._end_access()
@@ -286,7 +333,18 @@ class AvalonMMMasterBFM:
             for _ in range(self.read_response_latency):
                 await RisingEdge(self.clock)
 
-        return int(self.bus.readdata.value)
+        data = int(self.bus.readdata.value)
+        if self.packet_logging:
+            _log_master_access(
+                self.log,
+                self.packet_log_level,
+                self.label,
+                "read",
+                address,
+                data,
+                byteenable_value,
+            )
+        return data
 
     async def read_modify_write(
         self,
@@ -349,6 +407,11 @@ class AvalonMMMasterBFM:
             lambda value: (value & mask) == 0,
             timeout_cycles=timeout_cycles,
         )
+
+    def set_packet_logging(self, enable, level=None):
+        self.packet_logging = bool(enable)
+        if level is not None:
+            self.packet_log_level = _normalize_log_level(level)
 
     async def _start_access(self, address, data, byteenable, *, write, read):
         _drive(self.bus.address, address)
@@ -424,6 +487,11 @@ class AvalonMMMasterBFM:
         if self.default_byteenable is not None:
             return _check_width("default_byteenable", self.default_byteenable, width)
         return _mask(width)
+
+    def _packet_log_byteenable(self, byteenable):
+        if self.bus.byteenable is None:
+            return None
+        return self._resolve_byteenable(byteenable)
 
     def _validate_address(self, address):
         try:
