@@ -2,9 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Stateful protocol checks for an Intel Avalon-ST Video packet stream."""
-
+import logging
 from fpga_verification.video import FrameSize, VideoFormat
-
 from .packets import VIPControlPacket, VIPPacket, VIPVideoPacket
 
 
@@ -24,6 +23,8 @@ class VIPProtocolChecker:
             raise TypeError("fmt must be a VideoFormat")
         self.fmt = fmt
         self._control_size = None
+        self.check_video_packet_size = False
+        self.log = logging.getLogger("cocotb.fpga_verification.vip_protocol_checker")
 
     @property
     def control_size(self):
@@ -57,16 +58,18 @@ class VIPProtocolChecker:
                     "VIP video packet received before any control packet"
                 )
 
+            size = self._control_size
+            msg = "VIP video payload does not match the active control " \
+                    f"resolution {size.width}x{size.height}: " \
+                    f"got {actual} symbols, expected {expected}. " \
+                    "A new control packet is required before a frame-size " \
+                    "change."
+
             actual = len(packet.payload)
             expected = self.expected_video_symbols()
             if actual != expected:
-                size = self._control_size
-                raise VIPProtocolError(
-                    "VIP video payload does not match the active control "
-                    f"resolution {size.width}x{size.height}: "
-                    f"got {actual} symbols, expected {expected}. "
-                    "A new control packet is required before a frame-size "
-                    "change."
-                )
-
+                if self.check_video_packet_size:
+                    raise VIPProtocolError(msg)
+                else:
+                    self.log.warning(msg)
         return packet
