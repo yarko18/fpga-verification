@@ -55,7 +55,8 @@ from fpga_verification.sim.bfms.intel_dma import (
     IntelDMACommandMonitor,
     SparseByteMemory,
 )
-from fpga_verification.sim.agents import VIPAgent, VIPItem, VIPSequence
+from fpga_verification.sim.agents import VIPAgent, VIPItem, VIPMonitor, VIPSequence
+from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
@@ -243,6 +244,135 @@ Outputs:
 - `VIPInterlacing.description`: human-readable interlacing mode.
 
 Ancillary packets are currently reported as unsupported by the decoder.
+
+### VIP Protocol Checker
+
+`VIPProtocolChecker` validates the packet order and active frame size for one
+observed Intel VIP stream. The codec stays stateless; the checker owns the
+stream state:
+
+```python
+from fpga_verification.protocols.avalon_st.intel_video import VIPProtocolChecker
+
+checker = VIPProtocolChecker(fmt)
+
+for packet in observed_packets:
+    checker.observe(packet)
+```
+
+The checker enforces these wire-visible rules:
+
+- a video packet must follow a control packet;
+- a reset clears the active control resolution when used through `VIPMonitor`.
+
+It can also validate video payload length against the most recent control
+packet resolution and `VideoFormat`. In the current default mode a mismatch is
+logged as a warning; set `checker.check_video_packet_size = True` to raise
+`VIPProtocolError` instead.
+
+Equal-area frame-size changes cannot be detected by a passive stream checker,
+because Intel VIP video packets do not carry width or height.
+
+### VIP pyuvm Agent
+
+`VIPAgent` wraps Intel VIP source, monitor, sink, sequencer, and driver pieces
+for pyuvm environments. When a bus is provided, the corresponding monitor is
+created automatically and publishes decoded `VIPPacket` objects through its
+analysis port. Each monitor also runs `VIPProtocolChecker` before publishing.
+
+```python
+from fpga_verification.sim.agents import VIPAgent, VIPSequence
+
+vip_agent = VIPAgent(
+    "vip_agent",
+    parent=self,
+    clock=dut.clk,
+    reset=dut.reset,
+    source_bus=din_bus,
+    sink_bus=dout_bus,
+    source_fmt=fmt,
+    sink_fmt=fmt,
+    packet_logging=True,
+)
+
+packets = codec.frame_to_packets(frame, size)
+sequence = VIPSequence.from_packets(packets, name="input_frame")
+await sequence.start(vip_agent.sequencer)
+```
+
+Inputs:
+
+- `source_bus` and `source_fmt`: stream driven by the active agent and observed
+  by `source_monitor`.
+- `sink_bus` and `sink_fmt`: stream observed by `sink_monitor`; in active mode
+  the sink monitor also drives ready/backpressure.
+- `is_active`: active agents create a sequencer and source driver when
+  `source_bus` is present. Passive agents only monitor provided buses.
+- `packet_logging` and `packet_log_level`: optional packet summaries such as
+  `nuc_component.dout: got vip video packet (2048 symbols)`.
+- `set_packet_logging(enable, level=None)`: updates logging after build.
+- `randomize`: enables randomized source pauses and sink backpressure.
+
+Outputs:
+
+- `source_monitor.analysis_port`: decoded packets observed on `source_bus`.
+- `sink_monitor.analysis_port`: decoded packets observed on `sink_bus`.
+- `sequencer`: accepts `VIPSequence` items in active source mode.
+
+### Base VIP Scoreboard
+
+`BaseVIPScoreboard` is a reusable pyuvm scoreboard base class for Intel VIP
+packet streams. It receives input and output packets through analysis exports,
+tracks the last control packet on each side, converts valid video packets to
+neutral frames, and leaves IP-specific prediction/comparison in overridable
+hooks.
+
+Packet-flow diagrams:
+
+- Input packet processing flow:
+![input packet processing](src/fpga_verification/sim/scoreboards/docs/input.jpg)
+
+- Output packet processing flow:
+![output packet processing](src/fpga_verification/sim/scoreboards/docs/output.jpg)
+
+```python
+from fpga_verification.sim.scoreboards import BaseVIPScoreboard
+
+
+class MyVIPScoreboard(BaseVIPScoreboard):
+    def process_input_packet(self, vip_packet):
+        # Optional: collect sideband/user/control information.
+        return None
+
+    def process_output_packet(self, vip_packet):
+        # Compare output video packets against a model, then mark completion.
+        valid, frame_in, size_in = self._pop_input_frame()
+        if valid:
+            pass
+        self.process_frame_done()
+        return True
+
+
+scoreboard = MyVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
+
+vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
+vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+```
+
+Inputs and hooks:
+
+- `data_in_export`: connect packets observed before the DUT.
+- `data_out_export`: connect packets observed after the DUT.
+- `process_input_packet(vip_packet)`: optional subclass hook after common input
+  packet processing.
+- `process_output_packet(vip_packet)`: subclass hook after common output packet
+  processing.
+- `_peek_input_frame()` and `_pop_input_frame()`: access queued input frames
+  from a subclass.
+- `enable_passthrough`: compare valid output frames directly against input
+  frames with zero tolerance.
+- `wait_frame_checked(timeout=1, timeout_unit="ms")`: wait until one more
+  output frame has been checked or raise the stored failure.
 
 ## Avalon-ST Cocotb Bus Helpers
 

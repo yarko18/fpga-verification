@@ -58,16 +58,15 @@ class VIPProtocolChecker:
                     "VIP video packet received before any control packet"
                 )
 
-            size = self._control_size
-            msg = "VIP video payload does not match the active control " \
-                    f"resolution {size.width}x{size.height}: " \
-                    f"got {actual} symbols, expected {expected}. " \
-                    "A new control packet is required before a frame-size " \
-                    "change."
-
             actual = len(packet.payload)
             expected = self.expected_video_symbols()
             if actual != expected:
+                size = self._control_size
+                msg = "VIP video payload does not match the active control " \
+                        f"resolution {size.width}x{size.height}: " \
+                        f"got {actual} symbols, expected {expected}. " \
+                        "A new control packet is required before a frame-size " \
+                        "change."
                 if self.check_video_packet_size:
                     raise VIPProtocolError(msg)
                 else:

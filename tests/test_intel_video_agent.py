@@ -1,6 +1,8 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from fpga_verification.protocols.avalon_st.intel_video import (
@@ -46,6 +48,7 @@ def test_size_change_requires_new_control_packet():
     first_size = FrameSize(4, 2)
     second_size = FrameSize(5, 2)
     checker = VIPProtocolChecker(fmt)
+    checker.check_video_packet_size = True
 
     checker.observe(VIPControlPacket(first_size.width, first_size.height))
     checker.observe(_video_packet(fmt, first_size))
@@ -56,6 +59,24 @@ def test_size_change_requires_new_control_packet():
     checker.observe(VIPControlPacket(second_size.width, second_size.height))
     checker.observe(_video_packet(fmt, second_size))
     assert checker.control_size == second_size
+
+
+def test_size_change_warns_by_default(caplog):
+    fmt = VideoFormat(8)
+    first_size = FrameSize(4, 2)
+    second_size = FrameSize(5, 2)
+    checker = VIPProtocolChecker(fmt)
+
+    checker.observe(VIPControlPacket(first_size.width, first_size.height))
+    checker.observe(_video_packet(fmt, first_size))
+
+    with caplog.at_level(
+        logging.WARNING,
+        logger="cocotb.fpga_verification.vip_protocol_checker",
+    ):
+        checker.observe(_video_packet(fmt, second_size))
+
+    assert "A new control packet is required" in caplog.text
 
 
 def test_checker_uses_valid_video_payload_symbol_count():

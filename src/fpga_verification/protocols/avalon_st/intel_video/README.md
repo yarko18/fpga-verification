@@ -77,15 +77,29 @@ await sequence.start(vip_agent.sequencer)
 the packet stream, and publishes it through its analysis port. The source and
 sink monitors keep independent protocol-checker state.
 
+`VIPAgent` creates these monitors automatically for the buses provided to the
+constructor:
+
+- `source_bus` creates `source_monitor`; in active mode the same bus is driven
+  by the source driver and sequencer;
+- `sink_bus` creates `sink_monitor`; in active mode it also drives ready and
+  can randomize backpressure;
+- both monitors publish decoded packets through `analysis_port`;
+- `packet_logging=True` enables summaries such as
+  `nuc_component.dout: got vip video packet (2048 symbols)`.
+
 The monitor enforces:
 
 - at least one control packet must be observed before the first video packet;
-- each video payload length must match the resolution in the most recently
-  observed control packet;
-- therefore a frame-size change with a different wire payload length requires
-  a new control packet before the video packet;
 - asserting reset clears the active control resolution, so the first video
   packet after reset requires a new control packet.
+
+`VIPProtocolChecker` can also compare video payload length against the
+resolution in the most recently observed control packet. In the current default
+mode a mismatch is logged as a warning. Set
+`checker.check_video_packet_size = True` to raise `VIPProtocolError` instead;
+in that strict mode a frame-size change with a different wire payload length
+requires a new control packet before the video packet.
 
 The state belongs to `VIPProtocolChecker`, not to `IntelVIPFrameCodec`. It can
 also be used directly:
@@ -106,6 +120,61 @@ symbols cannot be distinguished by a passive monitor. This includes equal-area
 resolutions. Such a change can only be checked where the intended `FrameSize`
 is available, while the passive agent strictly checks all changes observable on
 the wire.
+
+
+## Base VIP scoreboard
+
+The simulation package includes a reusable base scoreboard for packet-level VIP
+tests:
+
+```python
+from fpga_verification.sim.scoreboards import BaseVIPScoreboard
+
+
+class MyVIPScoreboard(BaseVIPScoreboard):
+    def process_input_packet(self, vip_packet):
+        return None
+
+    def process_output_packet(self, vip_packet):
+        valid, frame_in, size_in = self._pop_input_frame()
+        if valid:
+            # Run the DUT-specific reference model and compare here.
+            pass
+        self.process_frame_done()
+        return True
+```
+
+The scoreboard exposes two analysis exports:
+
+- `data_in_export`: connect to packets observed before the DUT, usually
+  `vip_agent.source_monitor.analysis_port`;
+- `data_out_export`: connect to packets observed after the DUT, usually
+  `vip_agent.sink_monitor.analysis_port`.
+
+```python
+scoreboard = MyVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
+
+vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
+vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+```
+
+Common input packet processing tracks the last input control packet. A valid
+input video packet is converted to a neutral frame and queued together with its
+`FrameSize`. If the video payload does not match the active input control size,
+an invalid entry is queued so the matching output packet can be skipped instead
+of compared against a bad frame.
+
+Common output packet processing tracks the last output control packet, peeks at
+the next queued input frame, validates output payload length, converts valid
+video packets to neutral frames, and then calls `process_output_packet()` for
+subclass-specific model comparison. A subclass should call
+`process_frame_done()` once an output frame has been checked; test code can
+wait for that with `wait_frame_checked()`.
+
+Packet-flow diagrams:
+
+- [input packet processing](../../../sim/scoreboards/docs/input.pdf)
+- [output packet processing](../../../sim/scoreboards/docs/output.pdf)
 
 
 ### Packet Type Identifiers
