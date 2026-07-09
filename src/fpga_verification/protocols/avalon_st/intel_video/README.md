@@ -122,26 +122,33 @@ is available, while the passive agent strictly checks all changes observable on
 the wire.
 
 
-## Base VIP scoreboard
+## Base VIP predictor and scoreboard
 
-The simulation package includes a reusable base scoreboard for packet-level VIP
-tests:
+The simulation package includes a predictor/scoreboard pair for packet-level
+VIP tests. `BaseVIPPredictor` consumes input packets and creates expected
+output packet descriptions. `BaseVIPScoreboard` receives input and output
+analysis streams, queues those expectations, and compares DUT output packets
+against them.
 
 ```python
+from fpga_verification.sim.models import BaseVIPPredictor
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 
 
-class MyVIPScoreboard(BaseVIPScoreboard):
-    def process_input_packet(self, vip_packet):
-        return None
+class MyVIPPredictor(BaseVIPPredictor):
+    def get_tolerance(self):
+        return 1
 
-    def process_output_packet(self, vip_packet):
-        valid, frame_in, size_in = self._pop_input_frame()
-        if valid:
-            # Run the DUT-specific reference model and compare here.
-            pass
-        self.process_frame_done()
-        return True
+
+scoreboard = BaseVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
+scoreboard.predictor = MyVIPPredictor(
+    core=model,
+    input_codec=scoreboard.vip_input_codec,
+    output_codec=scoreboard.vip_output_codec,
+)
+
+vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
+vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
 ```
 
 The scoreboard exposes two analysis exports:
@@ -151,30 +158,33 @@ The scoreboard exposes two analysis exports:
 - `data_out_export`: connect to packets observed after the DUT, usually
   `vip_agent.sink_monitor.analysis_port`.
 
-```python
-scoreboard = MyVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
+Predictor behavior:
 
-vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
-vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
-```
+- control packets update the active input `FrameSize` and emit an expected
+  output control packet using `expected_output_size(input_size)`;
+- video packets are decoded to neutral frames, passed through
+  `process_frame(frame, size)`, and encoded back to expected output video
+  packets;
+- unsupported or corrupt input frames can return expectations with
+  `compare=False`, causing the scoreboard to skip frame content comparison;
+- `support_passthrough=True` allows passthrough mode, where input frames are
+  expected unchanged;
+- override `_process_user_packet()` if the IP forwards or transforms user
+  packets.
 
-Common input packet processing tracks the last input control packet. A valid
-input video packet is converted to a neutral frame and queued together with its
-`FrameSize`. If the video payload does not match the active input control size,
-an invalid entry is queued so the matching output packet can be skipped instead
-of compared against a bad frame.
+Scoreboard behavior:
 
-Common output packet processing tracks the last output control packet, peeks at
-the next queued input frame, validates output payload length, converts valid
-video packets to neutral frames, and then calls `process_output_packet()` for
-subclass-specific model comparison. A subclass should call
-`process_frame_done()` once an output frame has been checked; test code can
-wait for that with `wait_frame_checked()`.
+- `predictor` must be assigned before packets arrive;
+- output control packets compare width, height, and interlacing;
+- output video packets compare decoded frames with `compare_frames()` using the
+  predictor expectation tolerance;
+- `enable_compare=False` keeps ordering checks but disables frame content
+  comparison;
+- `wait_frame_checked()` waits until one more output frame has been checked.
 
-Packet-flow diagrams:
+Packet-flow diagram:
 
-- [input packet processing](../../../sim/scoreboards/docs/input.pdf)
-- [output packet processing](../../../sim/scoreboards/docs/output.pdf)
+![packet processing](../../../sim/scoreboards/docs/scoreboard.jpg)
 
 
 ### Packet Type Identifiers

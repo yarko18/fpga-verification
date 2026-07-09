@@ -56,6 +56,7 @@ from fpga_verification.sim.bfms.intel_dma import (
     SparseByteMemory,
 )
 from fpga_verification.sim.agents import VIPAgent, VIPItem, VIPMonitor, VIPSequence
+from fpga_verification.sim.models import BaseVIPPredictor
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
@@ -319,54 +320,69 @@ Outputs:
 - `sink_monitor.analysis_port`: decoded packets observed on `sink_bus`.
 - `sequencer`: accepts `VIPSequence` items in active source mode.
 
-### Base VIP Scoreboard
+### Base VIP Predictor And Scoreboard
 
-`BaseVIPScoreboard` is a reusable pyuvm scoreboard base class for Intel VIP
-packet streams. It receives input and output packets through analysis exports,
-tracks the last control packet on each side, converts valid video packets to
-neutral frames, and leaves IP-specific prediction/comparison in overridable
-hooks.
+`BaseVIPPredictor` and `BaseVIPScoreboard` split Intel VIP checking into two
+parts. The predictor consumes input packets and produces expected output packet
+descriptions. The scoreboard receives both DUT input and output packet streams,
+queues predictor expectations, and compares observed output packets against
+those expectations.
 
-Packet-flow diagrams:
+Packet-flow diagram:
 
 ![packet processing](src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg)
 
 ```python
+from fpga_verification.sim.models import BaseVIPPredictor
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 
 
-class MyVIPScoreboard(BaseVIPScoreboard):
-    def process_input_packet(self, vip_packet):
-        # Optional: collect sideband/user/control information.
-        return None
-
-    def process_output_packet(self, vip_packet):
-        # Compare output video packets against a model, then mark completion.
-        valid, frame_in, size_in = self._pop_input_frame()
-        if valid:
-            pass
-        self.process_frame_done()
-        return True
+class MyVIPPredictor(BaseVIPPredictor):
+    def get_tolerance(self):
+        return 1
 
 
-scoreboard = MyVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
+scoreboard = BaseVIPScoreboard(
+    "vip_scoreboard",
+    self,
+    source_fmt=source_fmt,
+    sink_fmt=sink_fmt,
+)
+scoreboard.predictor = MyVIPPredictor(
+    core=model,
+    input_codec=scoreboard.vip_input_codec,
+    output_codec=scoreboard.vip_output_codec,
+)
 
 vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
 vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
 ```
 
-Inputs and hooks:
+Predictor behavior:
 
+- `process_packet(packet)`: dispatches input control, video, and user packets.
+- Control packets update the active input `FrameSize` and emit an expected
+  output control packet using `expected_output_size(input_size)`.
+- Video packets are decoded to neutral frames, passed to `process_frame(frame,
+  size)`, and encoded back to expected output video packets.
+- `support_passthrough=True` allows `set_mode(BaseVIPPredictor.IpMode.PASSTHROUGH)`,
+  where input frames are expected unchanged.
+- Override `expected_output_size(input_size)`, `is_supported_frame_size(size)`,
+  `get_tolerance()`, `process_frame(frame, size)`, or `_process_user_packet()`
+  for IP-specific behavior.
+
+Scoreboard behavior:
+
+- `predictor` must be assigned before packets arrive.
 - `data_in_export`: connect packets observed before the DUT.
 - `data_out_export`: connect packets observed after the DUT.
-- `process_input_packet(vip_packet)`: optional subclass hook after common input
-  packet processing.
-- `process_output_packet(vip_packet)`: subclass hook after common output packet
-  processing.
-- `_peek_input_frame()` and `_pop_input_frame()`: access queued input frames
-  from a subclass.
-- `enable_passthrough`: compare valid output frames directly against input
-  frames with zero tolerance.
+- `expected_queue`: stores predictor expectations until matching output
+  packets arrive.
+- Control packets compare width, height, and interlacing.
+- Video packets compare decoded frames with `compare_frames()` using the
+  expectation tolerance.
+- `enable_compare=False` keeps packet ordering checks but disables frame
+  content comparison.
 - `wait_frame_checked(timeout=1, timeout_unit="ms")`: wait until one more
   output frame has been checked or raise the stored failure.
 
