@@ -20,8 +20,7 @@ Recommended reading order:
 6. `src/fpga_verification/sim/scoreboards/intel_video.py`: base pyuvm
    scoreboard for Intel VIP input/output packet streams. The input and output
    packet processing diagrams live in
-   `src/fpga_verification/sim/scoreboards/docs/input.jpg` and
-   `src/fpga_verification/sim/scoreboards/docs/output.jpg`.
+   `src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg`.
 7. `tests/test_video.py`, `tests/test_intel_video.py`, and
    `tests/test_intel_video_agent.py`: fast regression tests that do not require
    Questa.

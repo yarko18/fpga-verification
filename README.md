@@ -329,11 +329,7 @@ hooks.
 
 Packet-flow diagrams:
 
-- Input packet processing flow:
-![input packet processing](src/fpga_verification/sim/scoreboards/docs/input.jpg)
-
-- Output packet processing flow:
-![output packet processing](src/fpga_verification/sim/scoreboards/docs/output.jpg)
+![packet processing](src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg)
 
 ```python
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
