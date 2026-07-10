@@ -19,20 +19,14 @@ from fpga_verification.protocols.avalon_st.intel_video import (
 from fpga_verification.sim.models.intel_video import PacketExpectation
 from fpga_verification.video import FrameSize
 
-class _AnalysisImp(uvm_analysis_export):
-    def __init__(self, name, parent, write_fn):
-        super().__init__(name, parent)
-        self.write_fn = write_fn
-
-    def write(self, item):
-        self.write_fn(item)
+from fpga_verification.sim.scoreboards.analysis import AnalysisImp
 
 class BaseVIPScoreboard(uvm_scoreboard):
     def __init__(self, name, parent, source_fmt, sink_fmt):
         super().__init__(name, parent)
 
-        self.data_in_export = _AnalysisImp("data_in_export", self, self.__process_input_packet)
-        self.data_out_export = _AnalysisImp("data_out_export", self, self.__process_output_packet)
+        self.data_in_export = AnalysisImp("data_in_export", self, self.__process_input_packet)
+        self.data_out_export = AnalysisImp("data_out_export", self, self.__process_output_packet)
         self.log = logging.getLogger(f"cocotb.base_vip_scoreboard.{name}")
 
         self.vip_input_codec = IntelVIPFrameCodec(source_fmt)
