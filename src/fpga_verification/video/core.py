@@ -541,13 +541,15 @@ def compare_frames(actual, expected, tolerance=0):
     if not np.any(mismatch):
         return True
 
+    mismatch_count = int(np.count_nonzero(mismatch))
     index = tuple(np.argwhere(mismatch)[0])
     coordinate = ", ".join(
         f"{axis}={value}"
         for axis, value in zip(("y", "x", "plane"), index)
     )
     raise AssertionError(
-        f"frame mismatch at {coordinate}: got {actual[index]}, "
+        f"frame mismatch: {mismatch_count} mismatches, "
+        f"first at {coordinate}: got {actual[index]}, "
         f"expected {expected[index]}, diff={diff[index]}, "
         f"tolerance={tolerance}"
     )

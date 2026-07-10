@@ -19,11 +19,13 @@ Recommended reading order:
    sink, sequence, and item classes for VIP packet streams.
 6. `src/fpga_verification/sim/models/intel_video.py`: base predictor for
    turning input VIP packets into expected output packet descriptions.
-7. `src/fpga_verification/sim/scoreboards/intel_video.py`: base pyuvm
+7. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
+   helper that forwards pyuvm analysis writes to a Python callable.
+8. `src/fpga_verification/sim/scoreboards/intel_video.py`: base pyuvm
    scoreboard for comparing Intel VIP output packets against predictor
    expectations. The packet processing diagram lives in
    `src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg`.
-8. `tests/test_video.py`, `tests/test_intel_video.py`, and
+9. `tests/test_video.py`, `tests/test_intel_video.py`, and
    `tests/test_intel_video_agent.py`: fast regression tests that do not require
    Questa.
 

@@ -116,6 +116,35 @@ def _log_master_access(logger, level, bus_label, kind, address, data, byteenable
     )
 
 
+def _log_slave_access(
+    logger,
+    level,
+    bus_label,
+    kind,
+    address,
+    data,
+    byteenable,
+    burstcount,
+    beat_index,
+):
+    if data is None:
+        data_text = ""
+    else:
+        data_text = f" data=0x{int(data):X}"
+
+    logger.log(
+        level,
+        "%s: accepted avalon-mm %s address=0x%X%s byteenable=0x%X burstcount=%d beat=%d",
+        bus_label,
+        kind,
+        int(address),
+        data_text,
+        int(byteenable),
+        int(burstcount),
+        int(beat_index),
+    )
+
+
 @dataclass
 class AvalonMMBus:
     """Signal bundle for Avalon-MM BFMs.
@@ -540,6 +569,8 @@ class AvalonMMSlaveBFM:
         idle_readdata=0,
         logger=None,
         record_transactions=False,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
     ):
         self.bus = bus
         self.clock = clock
@@ -551,6 +582,8 @@ class AvalonMMSlaveBFM:
         self.idle_readdata = int(idle_readdata)
         self.log = logger or logging.getLogger(f"cocotb.{self.label}.slave")
         self.record_transactions = bool(record_transactions)
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
 
         if self.read_latency < 0:
             raise ValueError(
@@ -619,6 +652,11 @@ class AvalonMMSlaveBFM:
 
     def clear_pause_generator(self):
         self._pause_generator = None
+
+    def set_packet_logging(self, enable, level=None):
+        self.packet_logging = bool(enable)
+        if level is not None:
+            self.packet_log_level = _normalize_log_level(level)
 
     def init_idle(self):
         reset_active = self._reset_active()
@@ -707,6 +745,18 @@ class AvalonMMSlaveBFM:
                         beat_index,
                     )
                 )
+            if self.packet_logging:
+                _log_slave_access(
+                    self.log,
+                    self.packet_log_level,
+                    self.label,
+                    "read",
+                    beat_address,
+                    data,
+                    byteenable,
+                    burstcount,
+                    beat_index,
+                )
 
         self.log.debug(
             "READ address=0x%X burstcount=%d byteenable=0x%X",
@@ -742,6 +792,18 @@ class AvalonMMSlaveBFM:
                     self._write_burst_count,
                     beat_index,
                 )
+            )
+        if self.packet_logging:
+            _log_slave_access(
+                self.log,
+                self.packet_log_level,
+                self.label,
+                "write",
+                beat_address,
+                data,
+                byteenable,
+                self._write_burst_count,
+                beat_index,
             )
 
         self.log.debug(

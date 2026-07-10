@@ -3,10 +3,13 @@
 
 """Reusable pyuvm scoreboards."""
 
+from .analysis import AnalysisImp
+
 from .intel_video import (
     BaseVIPScoreboard,
 )
 
 __all__ = [
+    "AnalysisImp",
     "BaseVIPScoreboard",
 ]
