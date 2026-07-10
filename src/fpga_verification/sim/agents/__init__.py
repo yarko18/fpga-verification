@@ -11,10 +11,17 @@ from .intel_video import (
     VIPSequence,
 )
 
+from .avalon_mm import (
+    AvalonMMMonitor,
+    AvalonMMAgent,
+)
+
 __all__ = [
     "VIPAgent",
     "VIPDriver",
     "VIPItem",
     "VIPMonitor",
     "VIPSequence",
+    "AvalonMMMonitor",
+    "AvalonMMAgent",
 ]
