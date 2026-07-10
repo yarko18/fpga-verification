@@ -42,6 +42,9 @@ from fpga_verification.sim.buses import (
     AvalonFormat,
     AvalonMMBus,
     AvalonMMMasterBFM,
+    AvalonMMMemoryBFM,
+    AvalonMMSlaveBFM,
+    AvalonMMTransaction,
     AvalonSTBeat,
     AvalonSTBus,
     AvalonSTFrame,
@@ -55,9 +58,16 @@ from fpga_verification.sim.bfms.intel_dma import (
     IntelDMACommandMonitor,
     SparseByteMemory,
 )
-from fpga_verification.sim.agents import VIPAgent, VIPItem, VIPMonitor, VIPSequence
+from fpga_verification.sim.agents import (
+    AvalonMMAgent,
+    AvalonMMMonitor,
+    VIPAgent,
+    VIPItem,
+    VIPMonitor,
+    VIPSequence,
+)
 from fpga_verification.sim.models import BaseVIPPredictor
-from fpga_verification.sim.scoreboards import BaseVIPScoreboard
+from fpga_verification.sim.scoreboards import AnalysisImp, BaseVIPScoreboard
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
@@ -386,6 +396,15 @@ Scoreboard behavior:
 - `wait_frame_checked(timeout=1, timeout_unit="ms")`: wait until one more
   output frame has been checked or raise the stored failure.
 
+`AnalysisImp` is a small reusable pyuvm helper used by scoreboards when an
+analysis export should forward every `write(item)` call to a Python callable:
+
+```python
+from fpga_verification.sim.scoreboards import AnalysisImp
+
+self.input_export = AnalysisImp("input_export", self, self.process_input)
+```
+
 ## Avalon-ST Cocotb Bus Helpers
 
 The cocotb bus helpers drive and observe Avalon-ST interfaces through cocotb
@@ -496,7 +515,7 @@ async def control_register_test(dut):
         reset=dut.reset,
         default_byteenable=0xF,
     )
-    mm.init_idle()
+    mm.start()
 
     dut.reset.value = 1
     await RisingEdge(dut.clk)
@@ -506,6 +525,42 @@ async def control_register_test(dut):
     await mm.write(0x00, 0x00000001, timeout_cycles=32)
     status = await mm.read(0x04, timeout_cycles=32)
     await mm.wait_set(0x04, 0x1, timeout_cycles=256)
+```
+
+For pyuvm environments, `AvalonMMMonitor` passively observes accepted read and
+write requests and publishes `AvalonMMTransaction` objects. `AvalonMMAgent`
+always creates this monitor and can also create an active `AvalonMMMasterBFM`.
+
+```python
+from pyuvm import uvm_active_passive_enum, uvm_env
+
+from fpga_verification.sim.agents import AvalonMMAgent
+from fpga_verification.sim.buses import AvalonMMBus
+
+
+class MyEnv(uvm_env):
+    def build_phase(self):
+        self.control_agent = AvalonMMAgent(
+            "control_agent",
+            self,
+            bus=AvalonMMBus.from_prefix(dut, "control"),
+            clock=dut.clk,
+            reset=dut.reset,
+            is_active=uvm_active_passive_enum.UVM_ACTIVE,
+            default_byteenable=0xF,
+            packet_logging=True,
+            master_packet_logging=True,
+        )
+
+    def connect_phase(self):
+        self.control_agent.analysis_port.connect(self.scoreboard.mm_export)
+```
+
+An active agent exposes its host BFM as `agent.master`:
+
+```python
+await env.control_agent.master.write(0x00, 0x1, timeout_cycles=32)
+status = await env.control_agent.master.read(0x04, timeout_cycles=32)
 ```
 
 `AvalonMMMemoryBFM` is a slave-side BFM for full-IP tests where the DUT exposes
@@ -550,9 +605,19 @@ Inputs:
 - `AvalonMMMasterBFM(bus, clock, reset=None, read_response_latency=0,
   default_byteenable=None, packet_logging=False, packet_log_level=logging.INFO)`:
   creates a single-beat Avalon-MM host.
+- `AvalonMMMonitor(name, parent, bus, clock, reset=None,
+  reset_active_level=True, packet_logging=False,
+  packet_log_level=logging.INFO)`: observes accepted read/write requests and
+  publishes `AvalonMMTransaction` objects through `analysis_port`.
+- `AvalonMMAgent(name, parent, bus, clock, reset=None,
+  reset_active_level=True, is_active=UVM_PASSIVE, packet_logging=False,
+  packet_log_level=logging.INFO, read_response_latency=0,
+  default_byteenable=None, master_packet_logging=False,
+  master_packet_log_level=logging.INFO)`: creates an always-on monitor and, in
+  active mode, a `master` BFM for register access.
 - `AvalonMMMemoryBFM(bus, clock, reset=None, memory=..., read_latency=1,
   byteorder="little")`: creates a slave-side byte-addressed memory BFM.
-- `init_idle()`: drives host outputs to idle values.
+- `start()`: drives master outputs to idle values.
 - `write(address, data, byteenable=None, timeout_cycles=None)`: issues one
   write and waits until `waitrequest` is deasserted, when present.
 - `read(address, byteenable=None, timeout_cycles=None)`: issues one read and
@@ -561,12 +626,18 @@ Inputs:
 - `read_modify_write(address, update, ...)`: convenience read/update/write.
 - `poll(address, predicate, ...)`, `wait_set(address, mask, ...)`, and
   `wait_clear(address, mask, ...)`: register polling helpers.
+- `AvalonMMTransaction(kind, address, data, byteenable, burstcount,
+  beat_index)`: transaction object emitted by the monitor and memory-side
+  recorder.
 - `AvalonMMMemoryBFM.read_transactions` and `write_transactions`: observed
   memory-side transfer beats.
 
 Supported Avalon-MM features:
 
 - Master BFM: single-beat read and write transfers for register access.
+- Monitor/agent: passive observation of accepted single-beat Avalon-MM
+  read/write requests, including `address`, optional write `data`,
+  `byteenable`, and `burstcount`.
 - Memory BFM: read and write bursts via `burstcount`.
 - Optional `waitrequest` backpressure.
 - Optional `readdatavalid` variable-latency read completion.
