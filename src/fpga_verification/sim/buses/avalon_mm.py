@@ -6,6 +6,7 @@
 from collections import deque
 from dataclasses import dataclass
 import logging
+from random import random
 from typing import Callable
 
 import cocotb
@@ -83,6 +84,11 @@ def _read_int(signal, name, default=None, label=None):
 
 def _read_bool(signal, name, default=False, label=None):
     return bool(_read_int(signal, name, int(default), label=label))
+
+
+def _random_pause_generator(probability=0.25):
+    while True:
+        yield random() < probability
 
 
 def _normalize_log_level(level):
@@ -571,6 +577,7 @@ class AvalonMMSlaveBFM:
         record_transactions=False,
         packet_logging=False,
         packet_log_level=logging.INFO,
+        randomize=False,
     ):
         self.bus = bus
         self.clock = clock
@@ -584,6 +591,7 @@ class AvalonMMSlaveBFM:
         self.record_transactions = bool(record_transactions)
         self.packet_logging = bool(packet_logging)
         self.packet_log_level = _normalize_log_level(packet_log_level)
+        self.randomize = bool(randomize)
 
         if self.read_latency < 0:
             raise ValueError(
@@ -627,7 +635,7 @@ class AvalonMMSlaveBFM:
         self._write_burst_index = 0
         self._write_burst_remaining = 0
         self._pause = False
-        self._pause_generator = None
+        self._pause_generator = _random_pause_generator() if self.randomize else None
         self._task = None
         self._waitrequest_asserted = False
         self._drive_cache = {}
@@ -652,6 +660,10 @@ class AvalonMMSlaveBFM:
 
     def clear_pause_generator(self):
         self._pause_generator = None
+
+    def set_randomize(self, enable):
+        self.randomize = bool(enable)
+        self.set_pause_generator(_random_pause_generator() if self.randomize else None)
 
     def set_packet_logging(self, enable, level=None):
         self.packet_logging = bool(enable)
