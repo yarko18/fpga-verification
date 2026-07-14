@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import hashlib
+import argparse
+import os
+import sys
 import shutil
 import subprocess
 import tempfile
@@ -305,3 +308,117 @@ def intel_component_test_cocotb(
             debug=debug,
             compile_log=compile_log,
         )
+
+
+def _prepend_python_paths(paths):
+    path_strings = [str(Path(path)) for path in paths]
+
+    for path in reversed(path_strings):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    os.environ["PYTHONPATH"] = os.pathsep.join(
+        path_strings + ([pythonpath] if pythonpath else [])
+    )
+
+
+def _clean_sim_build(project_root, sim):
+    build_dir = Path(project_root) / f"sim_build_{sim}"
+    preserved_files = {}
+    for relative_path in ("wave.do",):
+        file_path = build_dir / relative_path
+        if file_path.is_file():
+            preserved_files[relative_path] = file_path.read_bytes()
+
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+
+    for relative_path, content in preserved_files.items():
+        file_path = build_dir / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(content)
+
+
+def _parse_run_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Run an Intel component cocotb simulation.",
+        add_help=False,
+    )
+    parser.add_argument(
+        "-g",
+        dest="debug",
+        action="store_true",
+        help="run simulator in GUI/debug mode",
+    )
+    return parser.parse_args(sys.argv[1:] if argv is None else list(argv))
+
+
+def run_intel_component_test(
+    *,
+    project_root,
+    component_file,
+    hdl_toplevel,
+    test_module,
+    config=None,
+    component_parameters=None,
+    source_dirs=("../../src", "../../../common"),
+    project_directory="../../..",
+    test_module_env=None,
+    python_paths=("..", "../../../common"),
+    debug=None,
+    generate_only=False,
+    retain_generated=False,
+    clean_build=True,
+    enable_questa_acc=False,
+    **kwargs,
+):
+    """Run a standard Intel component cocotb simulation from a small script."""
+    project_root = Path(project_root)
+
+    os.environ.setdefault("COCOTB_ANSI_OUTPUT", "1")
+    os.environ.pop("NO_COLOR", None)
+    if enable_questa_acc:
+        os.environ.setdefault("QUESTA_ACC", "1")
+
+    args = _parse_run_args()
+    if debug is None:
+        debug = args.debug
+
+    if component_parameters is None:
+        if config is None:
+            component_parameters = {}
+        elif hasattr(config, "to_parameters"):
+            component_parameters = config.to_parameters()
+        else:
+            component_parameters = dict(config)
+
+    _prepend_python_paths(
+        _resolve_path(project_root, path)
+        for path in python_paths
+    )
+
+    sim = os.getenv("SIM", "questa")
+    log_dir = project_root / "logs"
+
+    if clean_build:
+        _clean_sim_build(project_root, sim)
+
+    if test_module_env is not None:
+        test_module = os.getenv(test_module_env, test_module)
+
+    intel_component_test_cocotb(
+        project_root=project_root,
+        component_file=component_file,
+        hdl_toplevel=hdl_toplevel,
+        test_module=test_module,
+        source_dirs=source_dirs,
+        component_parameters=component_parameters,
+        project_directory=project_directory,
+        debug=debug,
+        generate_only=generate_only,
+        ip_generate_log=log_dir / "ip_generate.log",
+        compile_log=log_dir / f"{sim}_compile.log",
+        retain_generated=retain_generated,
+        **kwargs,
+    )
