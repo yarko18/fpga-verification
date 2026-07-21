@@ -4,7 +4,9 @@
 import logging
 
 import pytest
+from pyuvm import uvm_active_passive_enum
 
+from fpga_verification.sim.agents import AvalonMMAgent
 from fpga_verification.sim.buses import AvalonMMBus, AvalonMMMasterBFM
 
 
@@ -53,3 +55,38 @@ def test_master_set_packet_logging_updates_level():
 def test_master_packet_log_level_rejects_unknown_string():
     with pytest.raises(ValueError, match="Unknown log level"):
         AvalonMMMasterBFM(_bus(), clock=object(), packet_log_level="verbose")
+
+
+def test_passive_agent_routes_packet_logging_to_monitor():
+    agent = AvalonMMAgent(
+        "passive_agent",
+        None,
+        _bus(),
+        clock=object(),
+        packet_logging=True,
+        packet_log_level="warning",
+    )
+
+    agent.build_phase()
+
+    assert agent.monitor.packet_logging is True
+    assert agent.monitor.packet_log_level == logging.WARNING
+    assert agent.master is None
+
+
+def test_active_agent_routes_packet_logging_to_master():
+    agent = AvalonMMAgent(
+        "active_agent",
+        None,
+        _bus(),
+        clock=object(),
+        is_active=uvm_active_passive_enum.UVM_ACTIVE,
+        packet_logging=True,
+        packet_log_level="warning",
+    )
+
+    agent.build_phase()
+
+    assert agent.monitor.packet_logging is False
+    assert agent.master.packet_logging is True
+    assert agent.master.packet_log_level == logging.WARNING

@@ -549,7 +549,6 @@ class MyEnv(uvm_env):
             is_active=uvm_active_passive_enum.UVM_ACTIVE,
             default_byteenable=0xF,
             packet_logging=True,
-            master_packet_logging=True,
         )
 
     def connect_phase(self):
@@ -612,9 +611,9 @@ Inputs:
 - `AvalonMMAgent(name, parent, bus, clock, reset=None,
   reset_active_level=True, is_active=UVM_PASSIVE, packet_logging=False,
   packet_log_level=logging.INFO, read_response_latency=0,
-  default_byteenable=None, master_packet_logging=False,
-  master_packet_log_level=logging.INFO)`: creates an always-on monitor and, in
-  active mode, a `master` BFM for register access.
+  default_byteenable=None)`: creates an always-on monitor and, in active mode,
+  a `master` BFM for register access. Packet logging is routed to the monitor
+  in passive mode and to the master in active mode.
 - `AvalonMMMemoryBFM(bus, clock, reset=None, memory=..., read_latency=1,
   byteorder="little")`: creates a slave-side byte-addressed memory BFM.
 - `start()`: drives master outputs to idle values.
