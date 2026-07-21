@@ -28,13 +28,13 @@ class BaseVIPPredictor:
 
     def __init__(
             self, 
-            core, 
+            model, 
             input_codec, 
             output_codec, 
             support_passthrough=False, 
             default_ip_mode=None
         ):
-        self.core = core
+        self.model = model
         self.input_codec = input_codec
         self.output_codec = output_codec
         self.last_input_size = None
@@ -84,7 +84,7 @@ class BaseVIPPredictor:
         expected_frame = self.process_frame(frame, self.last_input_size)
 
         if expected_frame is None:
-            return PacketExpectation(compare=False, reason="core output is not ready")
+            return PacketExpectation(compare=False, reason="model output is not ready")
         
         expected_size = self.expected_output_size(self.last_input_size)
 
@@ -109,7 +109,7 @@ class BaseVIPPredictor:
         return actual_size == expected_symbols
     
     def get_tolerance(self):
-        return 0
+        return NotImplementedError
 
     def is_supported_frame_size(self, size):
         return True
@@ -123,4 +123,4 @@ class BaseVIPPredictor:
     def process_frame(self, frame, size):
         if self.ip_mode == self.IpMode.PASSTHROUGH:
             return frame
-        return self.core.process(frame)
+        return self.model.process(frame)
