@@ -179,10 +179,10 @@ class AvalonMMAgent(uvm_agent):
         reset=None,
         reset_active_level=True,
         is_active=uvm_active_passive_enum.UVM_PASSIVE,
-        packet_logging=False,
-        packet_log_level=logging.INFO,
         read_response_latency=0,
         default_byteenable=None,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
     ):
         super().__init__(name, parent)
         self.bus = bus
@@ -190,11 +190,11 @@ class AvalonMMAgent(uvm_agent):
         self.reset = reset
         self.reset_active_level = bool(reset_active_level)
         self._requested_is_active = is_active
-        self.packet_logging = bool(packet_logging)
-        self.packet_log_level = _normalize_log_level(packet_log_level)
         self.read_response_latency = int(read_response_latency)
         self.default_byteenable = default_byteenable
-
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
+        
         self.monitor = None
         self.master = None
 
