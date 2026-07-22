@@ -164,15 +164,16 @@ class BaseVIPScoreboard(uvm_scoreboard):
             self.process_frame_done()
             return
 
-        packet_ref = expectation.packet
         frame_ref = self.vip_output_codec.video_packet_to_frame(
-            packet_ref,
+            expectation.packet,
             self.last_output_size,
         )
         frame_out = self.vip_output_codec.video_packet_to_frame(
             packet,
             self.last_output_size,
         )
+
+        self.log.info(f"Compare output frame with reference")
 
         compare_frames(
             frame_out,
