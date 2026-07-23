@@ -5,8 +5,10 @@
 
 from .intel_video import (
     BaseVIPPredictor,
+    PacketExpectation,
 )
 
 __all__ = [
     "BaseVIPPredictor",
+    "PacketExpectation",
 ]

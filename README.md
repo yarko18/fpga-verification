@@ -66,7 +66,7 @@ from fpga_verification.sim.agents import (
     VIPMonitor,
     VIPSequence,
 )
-from fpga_verification.sim.models import BaseVIPPredictor
+from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
 from fpga_verification.sim.scoreboards import AnalysisImp, BaseVIPScoreboard
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
@@ -336,14 +336,15 @@ Outputs:
 parts. The predictor consumes input packets and produces expected output packet
 descriptions. The scoreboard receives both DUT input and output packet streams,
 queues predictor expectations, and compares observed output packets against
-those expectations.
+those expectations. The input stream and predictor are optional, so the same
+scoreboard also supports output-only IP paths with explicit expectations.
 
 Packet-flow diagram:
 
 ![packet processing](src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg)
 
 ```python
-from fpga_verification.sim.models import BaseVIPPredictor
+from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 
 
@@ -359,13 +360,28 @@ scoreboard = BaseVIPScoreboard(
     sink_fmt=sink_fmt,
 )
 scoreboard.predictor = MyVIPPredictor(
-    core=model,
+    model=model,
     input_codec=scoreboard.vip_input_codec,
     output_codec=scoreboard.vip_output_codec,
 )
 
 vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
 vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+```
+
+An output-only IP can queue expectations explicitly instead of using a
+predictor:
+
+```python
+scoreboard = BaseVIPScoreboard(
+    "output_scoreboard",
+    self,
+    sink_fmt=output_fmt,
+)
+vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+
+scoreboard.add_expectation(PacketExpectation(packet=expected_control))
+scoreboard.add_expectation(PacketExpectation(packet=expected_video))
 ```
 
 Predictor behavior:
@@ -383,18 +399,36 @@ Predictor behavior:
 
 Scoreboard behavior:
 
-- `predictor` must be assigned before packets arrive.
-- `data_in_export`: connect packets observed before the DUT.
+- `sink_fmt` is required; `source_fmt` is optional.
+- `data_in_export`: connect packets observed before the DUT; it is `None` when
+  `source_fmt` is omitted.
 - `data_out_export`: connect packets observed after the DUT.
-- `expected_queue`: stores predictor expectations until matching output
-  packets arrive.
+- When a predictor is assigned, its output expectations are queued and compared
+  with DUT output packets as before.
+- `add_expectation(PacketExpectation(...))` lets a test-specific scoreboard
+  queue expectations without a predictor. Output packets are compared with
+  queued expectations in order.
+- Every output packet must match the next queued expectation. An unexpected
+  packet or a malformed comparable video packet fails the scoreboard.
+- `PacketExpectation(compare=False)` accepts exactly one intentionally
+  unchecked video packet. The packet still completes `wait_frame_checked()`,
+  so tests do not need to know predictor details such as model warm-up.
+- `expected_queue`: stores predictor-generated or explicit expectations until
+  matching output packets arrive.
 - Control packets compare width, height, and interlacing.
 - Video packets compare decoded frames with `compare_frames()` using the
   expectation tolerance.
-- `enable_compare=False` keeps packet ordering checks but disables frame
-  content comparison.
-- `wait_frame_checked(timeout=1, timeout_unit="ms")`: wait until one more
-  output frame has been checked or raise the stored failure.
+- `output_frames_cnt` counts compared and explicitly skipped output frames.
+- `get_frame_count()` returns the counter used by `wait_frame_checked()`.
+- `wait_frame_checked()` waits for one more processed output frame. Its optional
+  `after=` value should come from `get_frame_count()` when a test needs an
+  explicit checkpoint.
+
+One `BaseVIPScoreboard` instance represents one independent VIP path. For IPs
+with multiple inputs or outputs, create one instance per independently checked
+path so that active control sizes, expectation queues, failures, and frame
+counters remain isolated. An IP-specific parent scoreboard can own those path
+scoreboards and route additional inputs to its predictors.
 
 `AnalysisImp` is a small reusable pyuvm helper used by scoreboards when an
 analysis export should forward every `write(item)` call to a Python callable:
@@ -549,7 +583,6 @@ class MyEnv(uvm_env):
             is_active=uvm_active_passive_enum.UVM_ACTIVE,
             default_byteenable=0xF,
             packet_logging=True,
-            master_packet_logging=True,
         )
 
     def connect_phase(self):
@@ -612,9 +645,9 @@ Inputs:
 - `AvalonMMAgent(name, parent, bus, clock, reset=None,
   reset_active_level=True, is_active=UVM_PASSIVE, packet_logging=False,
   packet_log_level=logging.INFO, read_response_latency=0,
-  default_byteenable=None, master_packet_logging=False,
-  master_packet_log_level=logging.INFO)`: creates an always-on monitor and, in
-  active mode, a `master` BFM for register access.
+  default_byteenable=None)`: creates an always-on monitor and, in active mode,
+  a `master` BFM for register access. Packet logging is routed to the monitor
+  in passive mode and to the master in active mode.
 - `AvalonMMMemoryBFM(bus, clock, reset=None, memory=..., read_latency=1,
   byteorder="little")`: creates a slave-side byte-addressed memory BFM.
 - `start()`: drives master outputs to idle values.

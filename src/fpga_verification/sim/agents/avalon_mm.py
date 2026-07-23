@@ -179,12 +179,10 @@ class AvalonMMAgent(uvm_agent):
         reset=None,
         reset_active_level=True,
         is_active=uvm_active_passive_enum.UVM_PASSIVE,
-        packet_logging=False,
-        packet_log_level=logging.INFO,
         read_response_latency=0,
         default_byteenable=None,
-        master_packet_logging=False,
-        master_packet_log_level=logging.INFO,
+        packet_logging=False,
+        packet_log_level=logging.INFO,
     ):
         super().__init__(name, parent)
         self.bus = bus
@@ -192,13 +190,11 @@ class AvalonMMAgent(uvm_agent):
         self.reset = reset
         self.reset_active_level = bool(reset_active_level)
         self._requested_is_active = is_active
-        self.packet_logging = bool(packet_logging)
-        self.packet_log_level = _normalize_log_level(packet_log_level)
         self.read_response_latency = int(read_response_latency)
         self.default_byteenable = default_byteenable
-        self._master_packet_logging = bool(master_packet_logging)
-        self._master_packet_log_level = _normalize_log_level(master_packet_log_level)
-
+        self.packet_logging = bool(packet_logging)
+        self.packet_log_level = _normalize_log_level(packet_log_level)
+        
         self.monitor = None
         self.master = None
 
@@ -213,7 +209,7 @@ class AvalonMMAgent(uvm_agent):
             clock=self.clock,
             reset=self.reset,
             reset_active_level=self.reset_active_level,
-            packet_logging=self.packet_logging,
+            packet_logging=self.packet_logging and not self.active(),
             packet_log_level=self.packet_log_level,
         )
 
@@ -224,8 +220,8 @@ class AvalonMMAgent(uvm_agent):
                 self.reset,
                 read_response_latency=self.read_response_latency,
                 default_byteenable=self.default_byteenable,
-                packet_logging=self._master_packet_logging,
-                packet_log_level=self._master_packet_log_level,
+                packet_logging=self.packet_logging,
+                packet_log_level=self.packet_log_level,
             )
 
     async def run_phase(self):

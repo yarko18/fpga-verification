@@ -128,10 +128,11 @@ The simulation package includes a predictor/scoreboard pair for packet-level
 VIP tests. `BaseVIPPredictor` consumes input packets and creates expected
 output packet descriptions. `BaseVIPScoreboard` receives input and output
 analysis streams, queues those expectations, and compares DUT output packets
-against them.
+against them. The input stream and predictor are optional; the output stream is
+required.
 
 ```python
-from fpga_verification.sim.models import BaseVIPPredictor
+from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 
 
@@ -142,7 +143,7 @@ class MyVIPPredictor(BaseVIPPredictor):
 
 scoreboard = BaseVIPScoreboard("vip_scoreboard", self, source_fmt=fmt, sink_fmt=fmt)
 scoreboard.predictor = MyVIPPredictor(
-    core=model,
+    model=model,
     input_codec=scoreboard.vip_input_codec,
     output_codec=scoreboard.vip_output_codec,
 )
@@ -151,10 +152,24 @@ vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
 vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
 ```
 
-The scoreboard exposes two analysis exports:
+For an output-only IP, omit `source_fmt` and queue expectations explicitly:
+
+```python
+scoreboard = BaseVIPScoreboard(
+    "output_scoreboard",
+    self,
+    sink_fmt=fmt,
+)
+vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+
+scoreboard.add_expectation(PacketExpectation(packet=expected_control))
+scoreboard.add_expectation(PacketExpectation(packet=expected_video))
+```
+
+The scoreboard exposes two analysis exports, with an optional input export:
 
 - `data_in_export`: connect to packets observed before the DUT, usually
-  `vip_agent.source_monitor.analysis_port`;
+  `vip_agent.source_monitor.analysis_port`; it is `None` without `source_fmt`;
 - `data_out_export`: connect to packets observed after the DUT, usually
   `vip_agent.sink_monitor.analysis_port`.
 
@@ -174,13 +189,24 @@ Predictor behavior:
 
 Scoreboard behavior:
 
-- `predictor` must be assigned before packets arrive;
+- with a predictor, input packets produce queued output expectations;
+- `add_expectation(PacketExpectation(...))` queues explicit expectations from
+  a test-specific scoreboard; output packets are compared with them in order;
+- every output packet must match the next queued expectation;
+- an unexpected packet or malformed comparable video fails the scoreboard;
+- `PacketExpectation(compare=False)` accepts exactly one intentionally
+  unchecked video and still completes `wait_frame_checked()`;
 - output control packets compare width, height, and interlacing;
 - output video packets compare decoded frames with `compare_frames()` using the
   predictor expectation tolerance;
-- `enable_compare=False` keeps ordering checks but disables frame content
-  comparison;
-- `wait_frame_checked()` waits until one more output frame has been checked.
+- `output_frames_cnt` counts compared and explicitly skipped output frames;
+- `get_frame_count()` returns the processed output frame counter;
+- `wait_frame_checked()` waits for one processed output frame. Its optional
+  `after=` checkpoint should be obtained from `get_frame_count()`.
+
+Use one scoreboard instance per independent VIP path for multi-input or
+multi-output IPs. This keeps each stream's control state, expectation queue,
+failure, and frame counter independent.
 
 Packet-flow diagram:
 
