@@ -16,7 +16,7 @@ def _frame(start, end):
 
 class StreamPerformanceAnalyzerTests(unittest.TestCase):
     def setUp(self):
-        self.analyzer = StreamPerformanceAnalyzer(clock_period_steps=10)
+        self.analyzer = StreamPerformanceAnalyzer._from_clock_period_steps(10)
         self.observations = [
             PacketObservation("packet[0]", 3, _frame(100, 120), _frame(150, 170)),
             PacketObservation("packet[1]", 3, _frame(130, 150), _frame(200, 220)),
@@ -34,7 +34,7 @@ class StreamPerformanceAnalyzerTests(unittest.TestCase):
         self.assertEqual(metrics.input_efficiency, 1)
         self.assertEqual(metrics.output_efficiency, 1)
 
-    def test_sequence_metrics_and_clock_scaling(self):
+    def test_sequence_metrics_and_clock_multiplier(self):
         metrics = self.analyzer.sequence("burst", self.observations)
 
         self.assertEqual(metrics.total_beats, 9)
@@ -48,8 +48,6 @@ class StreamPerformanceAnalyzerTests(unittest.TestCase):
         self.assertEqual(metrics.max_packets_in_flight, 3)
         self.assertAlmostEqual(metrics.sustainable_efficiency, 9 / 13)
         self.assertAlmostEqual(metrics.required_clock_multiplier, 13 / 9)
-        self.assertAlmostEqual(metrics.effective_ideal_clock(100), 900 / 13)
-        self.assertAlmostEqual(metrics.required_clock_for_ideal(100), 1300 / 9)
 
         metrics.assert_input_packet_gap_at_most(0)
         metrics.assert_all_boundaries_overlap()
@@ -82,6 +80,12 @@ class StreamPerformanceAnalyzerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "not aligned"):
             self.analyzer.packet(observation)
+
+    def test_requires_clock_calibration(self):
+        analyzer = StreamPerformanceAnalyzer()
+
+        with self.assertRaisesRegex(RuntimeError, "from_clock"):
+            analyzer.packet(self.observations[0])
 
 
 if __name__ == "__main__":

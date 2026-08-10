@@ -94,16 +94,6 @@ class PacketSequenceMetrics:
 
         return 1 / self.sustainable_efficiency
 
-    def effective_ideal_clock(self, actual_clock):
-        """Return the equivalent ideal-stream clock for an actual DUT clock."""
-
-        return actual_clock * self.sustainable_efficiency
-
-    def required_clock_for_ideal(self, ideal_clock):
-        """Return the DUT clock needed to match an ideal-stream clock."""
-
-        return ideal_clock * self.required_clock_multiplier
-
     def assert_input_packet_gap_at_most(self, maximum_cycles):
         """Require every next input SoP to be accepted within the limit."""
 
@@ -181,19 +171,37 @@ class StreamPerformanceAnalyzer:
     contents and can therefore measure a single IP or a complete pipeline.
     """
 
-    def __init__(self, clock_period_steps):
+    def __init__(self):
+        self._clock_period_steps = None
+
+    @classmethod
+    async def from_clock(cls, clock):
+        """Measure the simulation clock period without requiring its frequency."""
+
+        from cocotb.triggers import RisingEdge
+        from cocotb.utils import get_sim_time
+
+        analyzer = cls()
+        await RisingEdge(clock)
+        start = get_sim_time(unit="step")
+        await RisingEdge(clock)
+        end = get_sim_time(unit="step")
+        analyzer._set_clock_period_steps(end - start)
+        return analyzer
+
+    @classmethod
+    def _from_clock_period_steps(cls, clock_period_steps):
+        """Construct an analyzer with a known period for unit testing."""
+
+        analyzer = cls()
+        analyzer._set_clock_period_steps(clock_period_steps)
+        return analyzer
+
+    def _set_clock_period_steps(self, clock_period_steps):
         clock_period_steps = int(clock_period_steps)
         if clock_period_steps <= 0:
             raise ValueError("clock_period_steps must be greater than zero")
-        self.clock_period_steps = clock_period_steps
-
-    @classmethod
-    def from_clock_period(cls, period, unit="ns"):
-        """Construct an analyzer using cocotb time units."""
-
-        from cocotb.utils import get_sim_steps
-
-        return cls(get_sim_steps(period, unit))
+        self._clock_period_steps = clock_period_steps
 
     def packet(self, observation):
         self._validate_observation(observation)
@@ -304,12 +312,17 @@ class StreamPerformanceAnalyzer:
         return self._cycle_delta(frame.sim_time_start, frame.sim_time_end) + 1
 
     def _cycle_delta(self, start, end):
+        if self._clock_period_steps is None:
+            raise RuntimeError(
+                "StreamPerformanceAnalyzer is not calibrated; create it with "
+                "'await StreamPerformanceAnalyzer.from_clock(clock)'"
+            )
         delta_steps = int(end - start)
-        cycles, remainder = divmod(delta_steps, self.clock_period_steps)
+        cycles, remainder = divmod(delta_steps, self._clock_period_steps)
         if remainder:
             raise ValueError(
                 f"timestamp difference {delta_steps} is not aligned to the "
-                f"{self.clock_period_steps}-step clock period"
+                f"{self._clock_period_steps}-step clock period"
             )
         return cycles
 
