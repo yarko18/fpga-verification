@@ -68,6 +68,12 @@ from fpga_verification.sim.agents import (
 )
 from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
 from fpga_verification.sim.scoreboards import AnalysisImp, BaseVIPScoreboard
+from fpga_verification.sim import (
+    PacketMetrics,
+    PacketObservation,
+    PacketSequenceMetrics,
+    StreamPerformanceAnalyzer,
+)
 from fpga_verification.sim.platform_designer import platform_test_cocotb
 from fpga_verification.sim.runners import intel_component_test_cocotb, rtl_test_cocotb
 from fpga_verification.hil.intel import IntelSystemConsoleSession
@@ -522,6 +528,95 @@ Outputs:
   `eop`, `empty`, `error`, `channel`, and `sim_time`.
 - `wait()`: waits for a source to become idle or a monitor/sink to see
   activity, depending on the helper type.
+
+### Stream Performance Metrics
+
+`StreamPerformanceAnalyzer` calculates packet latency, stream efficiency,
+packet-boundary gaps, and the clock multiplier required to match an ideal
+one-beat-per-cycle stream. It operates on frames captured by Avalon-ST monitors
+and is independent of Intel VIP packet type, payload contents, and stream data
+width.
+
+The analyzer measures the simulation clock period once from two adjacent
+rising edges. Start that calibration concurrently with reset so it adds no
+cycles to the useful test scenario:
+
+```python
+import cocotb
+from cocotb.triggers import ClockCycles
+
+from fpga_verification.sim import (
+    PacketObservation,
+    StreamPerformanceAnalyzer,
+)
+
+
+analyzer_task = cocotb.start_soon(
+    StreamPerformanceAnalyzer.from_clock(dut.clk)
+)
+await ClockCycles(dut.clk, 4)
+analyzer = await analyzer_task
+
+observations = [
+    PacketObservation(
+        name="video[0]",
+        beats=video_0_beats,
+        input_frame=observed_input_0,
+        output_frame=observed_output_0,
+    ),
+    PacketObservation(
+        name="video[1]",
+        beats=video_1_beats,
+        input_frame=observed_input_1,
+        output_frame=observed_output_1,
+    ),
+]
+
+sequence = analyzer.sequence("back-to-back video", observations)
+sequence.log(dut._log)
+
+sequence.assert_input_packet_gap_at_most(0)
+sequence.assert_all_boundaries_overlap()
+
+clock_multiplier = sequence.required_clock_multiplier
+```
+
+For one packet, `analyzer.packet(observation)` returns:
+
+- input and output packet spans in cycles;
+- input efficiency and stall cycles;
+- output efficiency and bubble cycles;
+- SoP latency, EoP latency, and complete end-to-end latency.
+
+For an ordered packet sequence, `analyzer.sequence(...)` additionally returns:
+
+- `input_packet_gaps` and `output_packet_gaps`: idle cycles between accepted
+  EoP and the next accepted SoP;
+- input and output SoP-to-SoP intervals;
+- `boundary_overlaps`: whether the next packet entered before the previous
+  packet completed at the output;
+- `max_packets_in_flight`;
+- sequence input/output efficiency;
+- `sustainable_efficiency`, the lower of input and output efficiency;
+- `required_clock_multiplier`, calculated as
+  `1 / sustainable_efficiency`.
+
+For example, an efficiency of `0.83` produces a clock multiplier of
+approximately `1.205`. The library intentionally reports only this
+dimensionless coefficient; conversion to a target clock frequency belongs to
+the test or system-level calculation.
+
+To measure DUT throughput rather than testbench behavior:
+
+- queue the complete packet sequence before transmission starts;
+- keep the output sink continuously ready;
+- use a sufficiently long and representative packet sequence;
+- measure input and output streams in one stable clock domain.
+
+`from_clock()` only samples two edges during initialization. It does not start
+a permanent clock-counting coroutine and does not change the Avalon-ST monitor
+hot path. A clock whose period changes during the measured sequence requires a
+different cycle-counting strategy.
 
 
 ## Avalon-MM Cocotb Bus Helpers
