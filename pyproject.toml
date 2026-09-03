@@ -9,7 +9,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
-version = "0.2.9"
+version = "0.2.10"
 description = "Reusable FPGA simulation and hardware-in-the-loop verification tools"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -35,7 +35,8 @@ where = ["src"]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
 environment = { FPGA_VERIFICATION_BINARY = "1" }
-test-command = "python -c \"from fpga_verification.formats import QFormat, UIntFormat; print(QFormat(3, 2).float_to_qraw([1.25, -1.0]).tolist()); print(UIntFormat(8).array([257, 258]).tolist())\""
+test-requires = ["pytest"]
+test-command = "python -m pytest -q {project}/tests"
 
 [build-system]
 requires = ["setuptools>=61", "wheel", "Cython>=3.0"]

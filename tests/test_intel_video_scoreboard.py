@@ -1,18 +1,31 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from fpga_verification.protocols.avalon_st.intel_video import (
     IntelVIPFrameCodec,
     VIPControlPacket,
     VIPVideoPacket,
 )
-from fpga_verification.sim.models import PacketExpectation
+from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
 from fpga_verification.sim.scoreboards import BaseVIPScoreboard
 from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
 
 
 def _video_packet(fmt, size, value=0):
     return VIPVideoPacket([value] * fmt.frame_symbol_count(size))
+
+
+def test_base_predictor_requires_tolerance_override():
+    predictor = BaseVIPPredictor(
+        model=object(),
+        input_codec=object(),
+        output_codec=object(),
+    )
+
+    with pytest.raises(NotImplementedError):
+        predictor.get_tolerance()
 
 
 def test_sink_format_is_required():
