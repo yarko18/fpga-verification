@@ -22,6 +22,42 @@ python -m pip install fpga-verification
 This installs the numeric format helpers, protocol codecs, cocotb simulation
 utilities, pyuvm agents, and Intel System Console HIL helpers together.
 
+## Roadmap
+
+```text
+fpga_verification
+├── formats                         integer and fixed-point raw words
+├── video                           numpy frames and payload packing
+├── protocols.avalon_st.intel_video Intel VIP packets and codecs
+├── sim
+│   ├── buses                       Avalon-ST and Avalon-MM BFMs
+│   ├── agents                      pyuvm agents and monitors
+│   ├── bfms                        Intel DMA model
+│   ├── models / scoreboards        prediction and output checking
+│   ├── stream_metrics              latency and throughput analysis
+│   └── runners / platform_designer simulation launch helpers
+└── hil.intel                       Quartus System Console access
+```
+
+Start with the [library overview](examples/00_library_overview.ipynb), then
+follow the path that matches the verification task:
+
+- Numeric and video data: [numeric formats](examples/01_numeric_formats.ipynb)
+  → [video frames](examples/02_video_frames.ipynb).
+- Streaming simulation: [Avalon-ST](examples/03_avalon_st_bus.ipynb) →
+  [Intel VIP packets](examples/05_intel_vip_packets_and_agent.ipynb) →
+  [VIP verification components](examples/09_vip_verification_components.ipynb)
+  → [performance metrics](examples/10_stream_performance_metrics.ipynb).
+- Register and memory interfaces:
+  [Avalon-MM](examples/04_avalon_mm_bus.ipynb) and
+  [Intel DMA](examples/06_intel_dma_bfm.ipynb).
+- Tools and hardware:
+  [System Console HIL](examples/07_hil_system_console.ipynb) and
+  [simulation runners](examples/08_simulation_runners.ipynb).
+
+The notebooks state whether they run in plain Python or require cocotb,
+Quartus, a supported simulator, or connected hardware.
+
 ## Public API
 
 ```python
