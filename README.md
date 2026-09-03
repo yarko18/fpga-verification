@@ -3,13 +3,15 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: Apache-2.0
 -->
 
-### Warning: 
-- The project is currently under development
-- I try to release stable versions, but there may be bugs until the code has been fully tested and completed.
+## About
 
 Reusable FPGA verification helpers. The package provides shared data formats,
 wire-protocol codecs, cocotb simulation utilities, and an Intel System Console
 HIL transport.
+
+### Warning: 
+- The project is currently under development
+- I try to release stable versions, but there may be bugs :)
 
 ## Install
 
