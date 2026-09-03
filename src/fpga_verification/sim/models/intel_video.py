@@ -109,7 +109,7 @@ class BaseVIPPredictor:
         return actual_size == expected_symbols
     
     def get_tolerance(self):
-        return NotImplementedError
+        raise NotImplementedError
 
     def is_supported_frame_size(self, size):
         return True
