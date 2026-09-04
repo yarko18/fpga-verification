@@ -11,7 +11,7 @@ from cocotb.queue import Queue
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 
-from fpga_verification.sim.buses import (
+from cocotbext.avalon import (
     AvalonFormat,
     AvalonSTBus,
     AvalonSTFrame,

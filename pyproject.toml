@@ -15,9 +15,9 @@ readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "numpy",
-    "cocotb",
-    "cocotb-bus",
-    "pyuvm",
+    "cocotb>=2.0,<3",
+    "cocotbext-avalon>=0.1,<1",
+    "pyuvm>=4.0,<5",
     "tqdm",
 ]
 

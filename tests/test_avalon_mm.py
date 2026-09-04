@@ -6,8 +6,8 @@ import logging
 import pytest
 from pyuvm import uvm_active_passive_enum
 
+from cocotbext.avalon import AvalonMMBus, AvalonMMMasterBFM
 from fpga_verification.sim.agents import AvalonMMAgent
-from fpga_verification.sim.buses import AvalonMMBus, AvalonMMMasterBFM
 
 
 class _Signal:

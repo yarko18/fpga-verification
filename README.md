@@ -32,13 +32,14 @@ fpga_verification
 ├── video                           numpy frames and payload packing
 ├── protocols.avalon_st.intel_video Intel VIP packets and codecs
 ├── sim
-│   ├── buses                       Avalon-ST and Avalon-MM BFMs
-│   ├── agents                      pyuvm agents and monitors
+│   ├── agents                      pyuvm agents built on cocotbext.avalon
 │   ├── bfms                        Intel DMA model
 │   ├── models / scoreboards        prediction and output checking
 │   ├── stream_metrics              latency and throughput analysis
 │   └── runners / platform_designer simulation launch helpers
 └── hil.intel                       Quartus System Console access
+
+cocotbext.avalon                    external Avalon-ST and Avalon-MM BFMs
 ```
 
 Start with the [library overview](examples/00_library_overview.ipynb), then
@@ -76,7 +77,7 @@ from fpga_verification.protocols.avalon_st.intel_video import (
     VIPVideoPacket,
     vip_packet_from_symbols,
 )
-from fpga_verification.sim.buses import (
+from cocotbext.avalon import (
     AvalonFormat,
     AvalonMMBus,
     AvalonMMMasterBFM,
@@ -497,7 +498,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 
-from fpga_verification.sim.buses import (
+from cocotbext.avalon import (
     AvalonFormat,
     AvalonSTBus,
     AvalonSTFrame,
@@ -668,7 +669,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 
-from fpga_verification.sim.buses import AvalonMMMasterBFM
+from cocotbext.avalon import AvalonMMMasterBFM
 
 
 @cocotb.test()
@@ -702,7 +703,7 @@ always creates this monitor and can also create an active `AvalonMMMasterBFM`.
 from pyuvm import uvm_active_passive_enum, uvm_env
 
 from fpga_verification.sim.agents import AvalonMMAgent
-from fpga_verification.sim.buses import AvalonMMBus
+from cocotbext.avalon import AvalonMMBus
 
 
 class MyEnv(uvm_env):
@@ -735,7 +736,7 @@ master ports to any byte-addressed memory object with `read(address, length)`
 and `write(address, data)` methods, including `SparseByteMemory`.
 
 ```python
-from fpga_verification.sim.buses import AvalonMMMemoryBFM
+from cocotbext.avalon import AvalonMMMemoryBFM
 from fpga_verification.sim.bfms.intel_dma import SparseByteMemory
 
 
@@ -836,7 +837,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 
-from fpga_verification.sim.buses import AvalonSTBus
+from cocotbext.avalon import AvalonSTBus
 from fpga_verification.sim.bfms.intel_dma import (
     DMAAddressRegion,
     IntelDMABFM,

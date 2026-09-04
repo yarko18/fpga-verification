@@ -11,7 +11,7 @@ from pyuvm import (
     uvm_monitor,
 )
 
-from fpga_verification.sim.buses.avalon_mm import (
+from cocotbext.avalon import (
     AvalonMMMasterBFM,
     AvalonMMTransaction,
 )

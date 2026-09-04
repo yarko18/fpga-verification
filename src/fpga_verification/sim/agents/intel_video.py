@@ -27,7 +27,7 @@ from fpga_verification.protocols.avalon_st.intel_video import (
     VIPProtocolChecker,
     vip_packet_from_symbols,
 )
-from fpga_verification.sim.buses import (
+from cocotbext.avalon import (
     AvalonSTFrame,
     AvalonSTMonitor,
     AvalonSTSink,

@@ -8,8 +8,9 @@ from numbers import Integral
 
 import numpy as np
 
+from cocotbext.avalon import AvalonFormat
+
 from fpga_verification.formats import UIntFormat
-from fpga_verification.sim.buses.avalon_st import AvalonFormat
 
 
 @dataclass(frozen=True)
