@@ -1,6 +1,9 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: Apache-2.0
 
+from .runners.rtl import DEFAULT_SIMULATOR
+
+
 def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
@@ -333,7 +336,7 @@ def platform_test_cocotb(
         debug=False):
     import os
 
-    sim = os.getenv("SIM", "questa")
+    sim = os.getenv("SIM", DEFAULT_SIMULATOR)
 
     if sim == "verilator":
         run_verilator(project_root, hdl_toplevel, test_module, debug)

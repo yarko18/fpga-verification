@@ -975,6 +975,9 @@ platform_runner
   already generated Platform Designer sim dir/msim_setup.tcl -> simulator flow
 ```
 
+All runners use Verilator by default. Set the `SIM` environment variable to
+`questa` to select Questa explicitly.
+
 `rtl_test_cocotb` is the direct RTL path. Pass it explicit HDL sources or source
 directories, and it delegates build/test to the selected cocotb simulator runner.
 
@@ -982,6 +985,29 @@ directories, and it delegates build/test to the selected cocotb simulator runner
 It generates only the HDL needed for simulation, keeps composition HDL that has
 no source equivalent, replaces generated copies of project RTL with exact
 matches from `source_dirs`, and then calls `rtl_test_cocotb`.
+
+Pass additional simulator compilation options through `build_args`; the runner
+appends them to its simulator-specific defaults. Runtime options can similarly
+be passed through `test_args`. For example:
+
+```python
+run_intel_component_test(
+    # ...
+    build_args=["-Wno-PARAMNODEFAULT"],
+)
+```
+
+For Questa, select the simulator and pass its compile and runtime options in the
+same way:
+
+```python
+os.environ["SIM"] = "questa"
+run_intel_component_test(
+    # ...
+    build_args=["+define+SIMULATION"],
+    test_args=["-suppress", "12110"],
+)
+```
 
 Its generated-catalog flow is:
 

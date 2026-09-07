@@ -5,6 +5,9 @@ import os
 from pathlib import Path
 
 
+DEFAULT_SIMULATOR = "verilator"
+
+
 def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
@@ -22,11 +25,13 @@ def rtl_test_cocotb(
     parameters=None,
     debug=False,
     compile_log=None,
+    build_args=None,
+    test_args=None,
 ):
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
-    sim = os.getenv("SIM", "questa")
+    sim = os.getenv("SIM", DEFAULT_SIMULATOR)
 
     build_dir = project_root / f"sim_build_{sim}"
 
@@ -43,19 +48,21 @@ def rtl_test_cocotb(
 
     runner = get_runner(sim)
 
-    build_args = []
+    default_build_args = []
 
     if sim == "verilator":
-        build_args += [
+        default_build_args += [
             "-Wno-fatal",
             "--timescale", "1ns/1ps",
             "-CFLAGS", "-std=c++20",
         ]
 
     if sim == "questa":
-        build_args += [
+        default_build_args += [
             "-timescale", "1ns/1ps",
         ]
+
+    build_args = default_build_args + list(build_args or ())
 
     if parameters is None:
         parameters = {}
@@ -81,7 +88,7 @@ def rtl_test_cocotb(
         **build_kwargs,
     )
 
-    test_args = []
+    default_test_args = []
 
     if sim == "questa":
         enable_acc = debug or os.getenv("QUESTA_ACC", "0").lower() in {
@@ -91,12 +98,14 @@ def rtl_test_cocotb(
             "on",
         }
         if enable_acc:
-            test_args += ["-voptargs=+acc"]
+            default_test_args += ["-voptargs=+acc"]
         else:
-            test_args += ["-no_autoacc"]
+            default_test_args += ["-no_autoacc"]
 
     if debug and sim == "questa":
-        test_args += ["-do", "wave.do"]
+        default_test_args += ["-do", "wave.do"]
+
+    test_args = default_test_args + list(test_args or ())
 
     results_xml = runner.test(
         hdl_toplevel=hdl_toplevel,

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from contextlib import nullcontext
 from pathlib import Path
 
-from .rtl import rtl_test_cocotb
+from .rtl import DEFAULT_SIMULATOR, rtl_test_cocotb
 
 
 def _resolve_path(project_root, path):
@@ -176,6 +176,8 @@ def intel_component_test_cocotb(
     make_ipx=True,
     ipx_source_dirs=None,
     ip_search_paths=(),
+    build_args=None,
+    test_args=None,
 ):
     """Generate an Intel component composition and simulate against original RTL.
 
@@ -307,6 +309,8 @@ def intel_component_test_cocotb(
             sources=sources,
             debug=debug,
             compile_log=compile_log,
+            build_args=build_args,
+            test_args=test_args,
         )
 
 
@@ -398,7 +402,7 @@ def run_intel_component_test(
         for path in python_paths
     )
 
-    sim = os.getenv("SIM", "questa")
+    sim = os.getenv("SIM", DEFAULT_SIMULATOR)
     log_dir = project_root / "logs"
 
     if clean_build:
