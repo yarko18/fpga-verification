@@ -9,7 +9,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
-version = "0.2.12"
+version = "0.2.13"
 description = "Reusable FPGA simulation and hardware-in-the-loop verification tools"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
