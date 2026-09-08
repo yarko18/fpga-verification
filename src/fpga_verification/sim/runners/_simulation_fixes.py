@@ -16,7 +16,12 @@ def _patch1(model):
             raise ValueError(f"Expected one {module} module in altera_mf.v")
         match = matches[0]
         body = match.group()
-        for kind, port in (("tri0", "wren_a"), ("tri1", "rden_b"), ("tri1", "clock0")):
+        for kind, port in (
+            ("tri0", "wren_a"),
+            ("tri0", "wren_b"),
+            ("tri1", "rden_b"),
+            ("tri1", "clock0"),
+        ):
             body, count = re.subn(
                 rf"(?m)^[ \t]*{kind}[ \t]+{port}[ \t]*;[ \t]*$",
                 f"    // RAM model workaround: use the connected input {port}.",
@@ -29,10 +34,35 @@ def _patch1(model):
     return model
 
 
+def _patch2(model):
+    """Work around nested dcfifo clear input pulls in Verilator."""
+    for module in (
+        "dcfifo_async",
+        "dcfifo_low_latency",
+        "dcfifo_mixed_widths",
+        "dcfifo",
+    ):
+        pattern = rf"(?ms)^module\s+{module}\s*\(.*?^endmodule\b"
+        matches = list(re.finditer(pattern, model))
+        if len(matches) != 1:
+            raise ValueError(f"Expected one {module} module in altera_mf.v")
+        match = matches[0]
+        body, count = re.subn(
+            r"(?m)^[ \t]*tri0[ \t]+aclr[ \t]*;[ \t]*$",
+            "    // FIFO model workaround: use the connected aclr input.",
+            match.group(),
+        )
+        if count != 1:
+            raise ValueError(f"Expected one tri0 aclr declaration in {module}")
+        model = model[:match.start()] + body + model[match.end():]
+
+    return model
+
+
 # Add independent compatibility fixes here in application order.
 _MODEL_FIXES = {
     "verilator": {
-        "altera_mf.v": (("patch1", _patch1),),
+        "altera_mf.v": (("patch1", _patch1), ("patch2", _patch2)),
     },
 }
 

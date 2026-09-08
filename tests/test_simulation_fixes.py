@@ -8,16 +8,28 @@ import unittest
 from fpga_verification.sim.runners._simulation_fixes import prepare_simulation_models
 
 
-MODEL = '\n'.join(
-    f'''module {name}(clock0, wren_a, rden_b);
-input clock0, wren_a, rden_b;
+RAM_MODEL = '\n'.join(
+    f'''module {name}(clock0, clock1, wren_a, wren_b, rden_b);
+input clock0, clock1, wren_a, wren_b, rden_b;
 tri1 clock0;
 tri0 wren_a;
+tri0 wren_b;
 tri1 rden_b;
 tri1 clocken0;
 endmodule'''
     for name in ('altsyncram', 'altsyncram_body')
 )
+
+FIFO_MODEL = '\n'.join(
+    f'''module {name}(aclr);
+input aclr;
+tri0 aclr;
+tri0 unused_input;
+endmodule'''
+    for name in ('dcfifo_async', 'dcfifo_low_latency', 'dcfifo_mixed_widths', 'dcfifo')
+)
+
+MODEL = RAM_MODEL + '\n' + FIFO_MODEL
 
 
 class SimulationFixTests(unittest.TestCase):
@@ -31,9 +43,13 @@ class SimulationFixTests(unittest.TestCase):
             fixed = result[0].read_text()
             self.assertNotIn('tri1 clock0;', fixed)
             self.assertNotIn('tri0 wren_a;', fixed)
+            self.assertNotIn('tri0 wren_b;', fixed)
             self.assertNotIn('tri1 rden_b;', fixed)
             self.assertEqual(fixed.count('tri1 clocken0;'), 2)
-            self.assertEqual(fixed.count('input clock0, wren_a, rden_b;'), 2)
+            self.assertEqual(fixed.count('input clock0, clock1, wren_a, wren_b, rden_b;'), 2)
+            self.assertNotIn('tri0 aclr;', fixed)
+            self.assertEqual(fixed.count('tri0 unused_input;'), 4)
+            self.assertEqual(fixed.count('input aclr;'), 4)
             self.assertEqual(prepare_simulation_models([source], simulator='verilator', output_dir=output)[0].read_text(), fixed)
 
     def test_opt_out_and_other_simulators_do_not_touch_sources(self):
@@ -48,6 +64,15 @@ class SimulationFixTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             source = Path(directory) / 'altera_mf.v'
             source.write_text(MODEL.replace('tri0 wren_a;', 'wire wren_a;', 1))
+            output = Path(directory) / 'fixed'
+            with self.assertRaises(ValueError):
+                prepare_simulation_models([source], simulator='verilator', output_dir=output)
+            self.assertFalse(output.exists())
+
+    def test_unexpected_fifo_model_fails_without_writing_copy(self):
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / 'altera_mf.v'
+            source.write_text(MODEL.replace('tri0 aclr;', 'wire aclr;', 1))
             output = Path(directory) / 'fixed'
             with self.assertRaises(ValueError):
                 prepare_simulation_models([source], simulator='verilator', output_dir=output)
