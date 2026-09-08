@@ -4,8 +4,7 @@
 import os
 from pathlib import Path
 
-
-DEFAULT_SIMULATOR = "verilator"
+from ._common import DEFAULT_SIMULATOR, prepare_test_run
 
 
 def _check_results(results_xml):
@@ -83,6 +82,7 @@ def rtl_test_cocotb(
         hdl_toplevel=hdl_toplevel,
         build_dir=build_dir,
         always=True,
+        waves=debug,
         build_args=build_args,
         parameters=parameters,
         **build_kwargs,
@@ -117,3 +117,42 @@ def rtl_test_cocotb(
         test_args=test_args,
     )
     _check_results(results_xml)
+
+
+def run_rtl_test(
+    *,
+    project_root,
+    hdl_toplevel,
+    test_module,
+    source_dirs=("src",),
+    python_paths=(".",),
+    debug=None,
+    argv=None,
+    clean_build=True,
+    enable_questa_acc=False,
+    test_module_env=None,
+    **kwargs,
+):
+    """Run a standard RTL cocotb simulation from a script or pytest."""
+    project_root = Path(project_root)
+    debug, sim = prepare_test_run(
+        project_root=project_root,
+        python_paths=python_paths,
+        debug=debug,
+        argv=argv,
+        clean_build=clean_build,
+        enable_questa_acc=enable_questa_acc,
+    )
+
+    if test_module_env is not None:
+        test_module = os.getenv(test_module_env, test_module)
+
+    return rtl_test_cocotb(
+        project_root=project_root,
+        hdl_toplevel=hdl_toplevel,
+        test_module=test_module,
+        source_dirs=source_dirs,
+        debug=debug,
+        compile_log=project_root / "logs" / f"{sim}_compile.log",
+        **kwargs,
+    )

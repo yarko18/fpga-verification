@@ -3,12 +3,11 @@
 
 import os
 from pathlib import Path
-from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
 from fpga_verification.sim import platform_designer
-from fpga_verification.sim.runners import intel_component, rtl
+from fpga_verification.sim.runners import _common, intel_component, rtl
 
 
 class SimulationRunnerDefaultTests(unittest.TestCase):
@@ -39,16 +38,32 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             runner.build.call_args.kwargs["build_args"],
         )
 
+    def test_rtl_runner_debug_enables_verilator_waves(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("cocotb_tools.runner.get_runner", return_value=runner),
+            patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+        ):
+            rtl.rtl_test_cocotb(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                sources=[],
+                debug=True,
+            )
+
+        self.assertTrue(runner.build.call_args.kwargs["waves"])
+        self.assertTrue(runner.test.call_args.kwargs["waves"])
+        self.assertFalse(runner.test.call_args.kwargs["gui"])
+
     def test_intel_component_wrapper_defaults_to_verilator(self):
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch.object(
-                intel_component,
-                "_parse_run_args",
-                return_value=SimpleNamespace(debug=False),
-            ),
-            patch.object(intel_component, "_prepend_python_paths"),
-            patch.object(intel_component, "_clean_sim_build") as clean_sim_build,
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build") as clean_sim_build,
             patch.object(
                 intel_component,
                 "intel_component_test_cocotb",
@@ -61,6 +76,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 test_module="test_dut",
                 source_dirs=(),
                 python_paths=(),
+                argv=(),
                 build_args=["-Wno-PARAMNODEFAULT"],
                 test_args=["--trace-depth", "8"],
             )
@@ -78,6 +94,66 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             component_runner.call_args.kwargs["test_args"],
             ["--trace-depth", "8"],
         )
+
+    def test_intel_component_wrapper_g_flag_enables_debug(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("builtins.print") as print_mock,
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(
+                intel_component,
+                "intel_component_test_cocotb",
+            ) as component_runner,
+        ):
+            intel_component.run_intel_component_test(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                source_dirs=(),
+                python_paths=(),
+                argv=["-g"],
+            )
+
+        self.assertTrue(component_runner.call_args.kwargs["debug"])
+        print_mock.assert_any_call("Enable DEBUG mode", flush=True)
+
+    def test_rtl_wrapper_g_flag_enables_debug(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                source_dirs=(),
+                python_paths=(),
+                argv=["-g"],
+            )
+
+        self.assertTrue(rtl_runner.call_args.kwargs["debug"])
+
+    def test_rtl_wrapper_ignores_pytest_arguments(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                source_dirs=(),
+                python_paths=(),
+                argv=["-q", "tests/test_dut.py"],
+            )
+
+        self.assertFalse(rtl_runner.call_args.kwargs["debug"])
 
     def test_rtl_runner_appends_questa_build_and_test_args(self):
         runner = Mock()
