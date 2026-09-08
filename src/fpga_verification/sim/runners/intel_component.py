@@ -10,7 +10,8 @@ import xml.etree.ElementTree as ET
 from contextlib import nullcontext
 from pathlib import Path
 
-from ._common import prepare_test_run, resolve_path
+from ._common import DEFAULT_SIMULATOR, prepare_test_run, resolve_path
+from ._simulation_fixes import prepare_simulation_models
 from .rtl import rtl_test_cocotb
 
 
@@ -176,6 +177,7 @@ def intel_component_test_cocotb(
     ip_search_paths=(),
     build_args=None,
     test_args=None,
+    apply_simulation_fixes=True,
 ):
     """Generate an Intel component composition and simulate against original RTL.
 
@@ -186,6 +188,8 @@ def intel_component_test_cocotb(
     directory is retained and returned for inspection. By default a temporary
     Platform Designer IP index is generated from ``source_dirs`` and passed to
     ``ip-generate`` as a search path.
+    Simulator-specific model fixes are enabled by default; disable them with
+    ``apply_simulation_fixes=False``. Installed Quartus files remain unchanged.
     """
     project_root = Path(project_root)
     component_file = _resolve_path(project_root, component_file)
@@ -277,7 +281,13 @@ def intel_component_test_cocotb(
             generated_sources,
         )
         _remove_empty_directories(output_dir)
-        sources = _quartus_sim_sources(ip_generate, quartus_model_files) + sources
+        model_sources = prepare_simulation_models(
+            _quartus_sim_sources(ip_generate, quartus_model_files),
+            simulator=os.getenv("SIM", DEFAULT_SIMULATOR),
+            output_dir=project_root / "logs" / "simulation_models",
+            enabled=apply_simulation_fixes,
+        )
+        sources = model_sources + sources
 
         lifecycle = "Retained" if keep_generated else "Temporary"
         generated_hdl_lines = [f"{lifecycle} generated composition HDL:"]
