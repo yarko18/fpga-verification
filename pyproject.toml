@@ -37,7 +37,7 @@ where = ["src"]
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
-skip = "pp* *-win32 *-manylinux_i686 *-musllinux_*"
+skip = "*-win32 *-manylinux_i686 *-musllinux_*"
 environment = { FPGA_VERIFICATION_BINARY = "1" }
 test-requires = ["pytest"]
 test-command = "python -m pytest -q {project}/tests"

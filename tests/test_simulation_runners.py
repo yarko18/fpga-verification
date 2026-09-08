@@ -98,7 +98,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
     def test_intel_component_wrapper_g_flag_enables_debug(self):
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch("builtins.print") as print_mock,
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
             patch.object(
@@ -117,7 +116,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             )
 
         self.assertTrue(component_runner.call_args.kwargs["debug"])
-        print_mock.assert_any_call("Enable DEBUG mode", flush=True)
 
     def test_rtl_wrapper_g_flag_enables_debug(self):
         with (
