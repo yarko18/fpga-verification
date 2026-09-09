@@ -39,3 +39,6 @@ class FrameSource(Protocol):
 
     async def send_frame(self, frame) -> None:
         """Publish ``FrameTransaction`` then physically drive ``frame``."""
+
+    def stop_tasks(self) -> None:
+        """Stop source-owned clocks and background drive tasks."""

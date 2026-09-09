@@ -368,13 +368,22 @@ def run_intel_component_test(
         enable_questa_acc=enable_questa_acc,
     )
 
-    if component_parameters is None:
-        if config is None:
-            component_parameters = {}
-        elif hasattr(config, "to_parameters"):
-            component_parameters = config.to_parameters()
-        else:
-            component_parameters = dict(config)
+    if config is None:
+        component_parameters = (
+            {} if component_parameters is None else component_parameters
+        )
+    else:
+        if not hasattr(config, "to_parameters"):
+            raise TypeError("config must inherit ComponentConfig")
+        resolved_parameters = config.to_parameters()
+        if (
+            component_parameters is not None
+            and dict(component_parameters) != resolved_parameters
+        ):
+            raise ValueError(
+                "component_parameters must match the resolved ComponentConfig"
+            )
+        component_parameters = resolved_parameters
 
     if config is not None:
         from ..config import runtime_config_environment

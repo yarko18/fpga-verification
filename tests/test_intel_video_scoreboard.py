@@ -14,7 +14,11 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
+import asyncio
+from itertools import count
+
 import pytest
+from cocotb.types import Logic
 
 from fpga_verification.protocols.avalon_st.intel_video import (
     VIPControlPacket,
@@ -25,7 +29,9 @@ from fpga_verification.sim.scoreboards import (
     BaseVIPScoreboard,
     CheckMode,
     PacketExpectation,
+    UserPacketPolicy,
 )
+from fpga_verification.sim.scoreboards import intel_video as scoreboard_module
 from fpga_verification.video import FrameSize, VideoFormat
 
 
@@ -33,13 +39,25 @@ def _video_packet(fmt, size, value=0):
     return VIPVideoPacket([value] * fmt.frame_symbol_count(size))
 
 
-def _scoreboard(fmt=None):
-    return BaseVIPScoreboard("scoreboard", None, sink_fmt=fmt or VideoFormat(8))
+_scoreboard_ids = count()
+
+
+def _scoreboard(fmt=None, **kwargs):
+    return BaseVIPScoreboard(
+        f"scoreboard_{next(_scoreboard_ids)}",
+        None,
+        sink_fmt=fmt or VideoFormat(8),
+        **kwargs,
+    )
 
 
 def test_sink_format_is_required():
     with pytest.raises(ValueError, match="sink_fmt must be provided"):
         BaseVIPScoreboard("no_sink_scoreboard", None, source_fmt=VideoFormat(8))
+
+
+def test_default_user_packet_policy_is_drop():
+    assert _scoreboard().user_packet_policy is UserPacketPolicy.DROP
 
 
 def test_exact_control_comparison_rejects_wrong_geometry():
@@ -73,6 +91,20 @@ def test_exact_video_comparison_checks_decoded_frame_content():
 
     assert isinstance(scoreboard._failure, AssertionError)
     assert "frame mismatch" in str(scoreboard._failure)
+
+
+def test_exact_video_comparison_supports_parallel_pixels():
+    fmt = VideoFormat(10, pixels_in_parallel=2)
+    size = FrameSize(3, 2)
+    scoreboard = _scoreboard(fmt)
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(3, 2)))
+    scoreboard.add_expectation(PacketExpectation(_video_packet(fmt, size, value=7)))
+
+    scoreboard.data_out_export.write(VIPControlPacket(3, 2))
+    scoreboard.data_out_export.write(_video_packet(fmt, size, value=7))
+
+    assert scoreboard._failure is None
+    assert scoreboard.output_frames_cnt == 1
 
 
 def test_shape_video_comparison_checks_payload_length_only():
@@ -154,9 +186,66 @@ def test_reset_does_not_mask_an_already_recorded_mismatch():
         scoreboard.check_phase()
 
 
+def test_unresolved_reset_is_inactive_until_the_testbench_drives_it():
+    class UnresolvedReset:
+        value = Logic("Z")
+
+    scoreboard = _scoreboard(reset=UnresolvedReset())
+
+    assert scoreboard._reset_active() is False
+
+
 def test_missing_expectation_fails_in_check_phase():
     scoreboard = _scoreboard()
     scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
 
     with pytest.raises(AssertionError, match="Missing output packets"):
         scoreboard.check_phase()
+
+
+def test_drain_times_out_when_an_expectation_never_arrives(monkeypatch):
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
+
+    async def timeout(*args, **kwargs):
+        raise scoreboard_module.SimTimeoutError()
+
+    monkeypatch.setattr(scoreboard_module, "with_timeout", timeout)
+
+    with pytest.raises(AssertionError, match="1 expectation.*remain"):
+        asyncio.run(scoreboard.drain(1, "us"))
+
+
+def test_drain_observes_the_configured_quiet_window(monkeypatch):
+    scoreboard = _scoreboard(clock=object(), quiet_cycles=3)
+    edges = 0
+
+    async def rising_edge(clock):
+        nonlocal edges
+        edges += 1
+
+    async def next_timestep():
+        return None
+
+    monkeypatch.setattr(scoreboard_module, "RisingEdge", rising_edge)
+    monkeypatch.setattr(scoreboard_module, "NextTimeStep", next_timestep)
+
+    asyncio.run(scoreboard.drain(1, "us"))
+
+    assert edges == 3
+
+
+def test_drain_rejects_extra_output_during_quiet_window(monkeypatch):
+    scoreboard = _scoreboard(clock=object(), quiet_cycles=2)
+
+    async def rising_edge(clock):
+        scoreboard.data_out_export.write(VIPControlPacket(4, 2))
+
+    async def next_timestep():
+        return None
+
+    monkeypatch.setattr(scoreboard_module, "RisingEdge", rising_edge)
+    monkeypatch.setattr(scoreboard_module, "NextTimeStep", next_timestep)
+
+    with pytest.raises(AssertionError, match="Unexpected output CONTROL packet"):
+        asyncio.run(scoreboard.drain(1, "us"))

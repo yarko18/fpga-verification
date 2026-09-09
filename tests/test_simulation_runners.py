@@ -158,6 +158,26 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
         )
 
+    def test_intel_component_runner_rejects_parameters_different_from_config(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(intel_component, "intel_component_test_cocotb"),
+            self.assertRaisesRegex(ValueError, "must match"),
+        ):
+            intel_component.run_intel_component_test(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                config=self._Config(width=80),
+                component_parameters={"WIDTH": 64},
+                source_dirs=(),
+                python_paths=(),
+                argv=(),
+            )
+
     def test_intel_component_wrapper_g_flag_enables_debug(self):
         with (
             patch.dict(os.environ, {}, clear=True),

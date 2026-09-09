@@ -21,7 +21,8 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import MISSING, asdict, fields
-from typing import Any, Mapping
+from types import UnionType
+from typing import Any, Literal, Mapping, Union, get_args, get_origin, get_type_hints
 
 
 RUNTIME_CONFIG_ENV = "FPGA_VERIFICATION_TEST_CONFIG_JSON"
@@ -62,6 +63,7 @@ class ComponentConfig:
 
     def to_runtime_dict(self) -> dict[str, Any]:
         value = asdict(self)
+        _validate_runtime_mapping(type(self), value)
         try:
             json.dumps(value)
         except (TypeError, ValueError) as error:
@@ -85,10 +87,57 @@ class ComponentConfig:
                 messages.append(f"unknown fields: {', '.join(sorted(extra))}")
             raise ValueError(f"Invalid {cls.__name__} runtime configuration ({'; '.join(messages)})")
 
+        _validate_runtime_mapping(cls, value)
+
         try:
             return cls(**dict(value))
         except (TypeError, ValueError) as error:
             raise ValueError(f"Invalid {cls.__name__} runtime configuration values") from error
+
+
+def _validate_runtime_mapping(config_type, value: Mapping[str, Any]) -> None:
+    type_hints = get_type_hints(config_type)
+    for item in fields(config_type):
+        annotation = type_hints.get(item.name, Any)
+        if not _matches_runtime_type(value[item.name], annotation):
+            raise ValueError(
+                f"Invalid {config_type.__name__} runtime configuration value for "
+                f"{item.name!r}: expected {annotation!r}"
+            )
+
+
+def _matches_runtime_type(value: Any, annotation: Any) -> bool:
+    """Validate the JSON types used by a resolved component configuration."""
+    if annotation is Any:
+        return True
+
+    origin = get_origin(annotation)
+    arguments = get_args(annotation)
+    if origin in (Union, UnionType):
+        return any(_matches_runtime_type(value, item) for item in arguments)
+    if origin is Literal:
+        return value in arguments and any(type(value) is type(item) for item in arguments)
+    if origin is list:
+        return isinstance(value, list) and (
+            not arguments
+            or all(_matches_runtime_type(item, arguments[0]) for item in value)
+        )
+    if origin is dict:
+        key_type, value_type = arguments or (Any, Any)
+        return isinstance(value, dict) and all(
+            _matches_runtime_type(key, key_type)
+            and _matches_runtime_type(item, value_type)
+            for key, item in value.items()
+        )
+
+    if annotation in (bool, int, float, str):
+        return type(value) is annotation
+    if annotation is type(None):
+        return value is None
+    try:
+        return isinstance(value, annotation)
+    except TypeError:
+        return True
 
 
 def runtime_config_environment(config: ComponentConfig) -> dict[str, str]:

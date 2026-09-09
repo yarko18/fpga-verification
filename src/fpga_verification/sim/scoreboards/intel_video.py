@@ -24,7 +24,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 import cocotb
-from cocotb.triggers import Edge, Event, First, RisingEdge, SimTimeoutError, with_timeout
+from cocotb.triggers import (
+    Edge,
+    Event,
+    NextTimeStep,
+    RisingEdge,
+    SimTimeoutError,
+    with_timeout,
+)
 from pyuvm import uvm_scoreboard
 
 from fpga_verification.protocols.avalon_st.intel_video import (
@@ -78,6 +85,8 @@ class BaseVIPScoreboard(uvm_scoreboard):
     enforces packet order and the selected protocol-level comparison mode.
     """
 
+    user_packet_policy = UserPacketPolicy.DROP
+
     def __init__(
         self,
         name,
@@ -129,7 +138,6 @@ class BaseVIPScoreboard(uvm_scoreboard):
         self._failure = None
         self._frame_checked = Event()
         self._queue_changed = Event()
-        self._output_seen = Event()
         self._reset_task = None
 
     def add_expectation(self, expectation: PacketExpectation):
@@ -162,7 +170,6 @@ class BaseVIPScoreboard(uvm_scoreboard):
             self._failure = exc
         self._frame_checked.set()
         self._queue_changed.set()
-        self._output_seen.set()
 
     def _raise_failure(self):
         if self._failure is not None:
@@ -188,7 +195,6 @@ class BaseVIPScoreboard(uvm_scoreboard):
 
     def _process_output_packet(self, packet):
         """Match one observed output packet against the next expectation."""
-        self._output_seen.set()
         if self._in_reset or self._failure is not None:
             return
         try:
@@ -284,7 +290,14 @@ class BaseVIPScoreboard(uvm_scoreboard):
         compare_frames(frame_out, frame_ref, tolerance=int(tolerance))
 
     def _reset_active(self):
-        return bool(int(self.reset_signal.value)) == self.reset_active_level
+        try:
+            value = bool(int(self.reset_signal.value))
+        except ValueError:
+            # Top-level inputs can be unresolved before the testbench performs
+            # its first drive (notably under Questa).  Defer classification
+            # until the first signal change instead of killing the watcher.
+            return False
+        return value == self.reset_active_level
 
     def reset(self):
         """Abort pending protocol work while preserving an already-found error."""
@@ -362,8 +375,8 @@ class BaseVIPScoreboard(uvm_scoreboard):
             raise RuntimeError("drain quiet window requires scoreboard clock")
 
         for _ in range(cycles):
-            self._output_seen.clear()
-            await First(RisingEdge(self.clock), self._output_seen.wait())
+            await RisingEdge(self.clock)
+            # Let monitors triggered by the same clock edge publish before the
+            # sticky-failure check. This is legal even when they use ReadOnly.
+            await NextTimeStep()
             self._raise_failure()
-            if self._output_seen.is_set():
-                raise AssertionError("Unexpected output packet during drain quiet window")
