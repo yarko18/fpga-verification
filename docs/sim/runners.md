@@ -73,6 +73,34 @@ source_dirs
 Pass `generate_only=True` to retain and return the generated composition
 directory without running simulation.
 
+### Resolved component configuration
+
+Define generated-component configuration as a dataclass inheriting
+`ComponentConfig`, and mark Platform Designer values with `hdl_parameter()`.
+`run_intel_component_test()` uses `to_parameters()` to generate the DUT and
+passes the same resolved object as JSON to cocotb through
+`Runner.test(extra_env=...)`.
+Providing a conflicting `component_parameters` mapping together with `config`
+is rejected before generation.
+
+```python
+@dataclass(frozen=True)
+class TestConfig(ComponentConfig):
+    width: int = hdl_parameter(32, name="MAX_WIDTH")
+    case_note: str = "smoke"
+
+
+config = get_test_config(os.getenv("FPGA_VERIFICATION_CONFIG_CASE", "smoke"))
+run_intel_component_test(..., config=config)
+```
+
+The cocotb module must restore it with `load_runtime_config(TestConfig)`.
+Missing JSON, malformed JSON, missing/extra fields, and wrong JSON field types
+are errors; constructing `TestConfig()` inside cocotb is intentionally not a
+fallback. Named cases therefore select host-side configurations only, while
+`FPGA_VERIFICATION_TEST_CONFIG_JSON` remains the sole configuration seen by the
+running testbench.
+
 ## Simulator setup
 
 All runners use Verilator by default. Set the `SIM` environment variable to select simulator explicitly.

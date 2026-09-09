@@ -30,14 +30,12 @@ Recommended reading order:
    control-before-video checks and active frame-size validation.
 5. `src/fpga_verification/sim/agents/intel_video.py`: pyuvm source, monitor,
    sink, sequence, and item classes for VIP packet streams.
-6. `src/fpga_verification/sim/models/intel_video.py`: base predictor for
-   turning input VIP packets into expected output packet descriptions.
-7. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
+6. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
    helper that forwards pyuvm analysis writes to a Python callable.
-8. `src/fpga_verification/sim/scoreboards/intel_video.py`: base pyuvm
-   scoreboard for comparing Intel VIP output packets against predictor
-   expectations. The packet processing diagram lives in
-   `src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg`.
+7. `src/fpga_verification/sim/scoreboards/intel_video.py`: strict ordered
+   protocol scoreboard used underneath IP-specific behavior models.
+8. `src/fpga_verification/sim/agents/frame_source.py`: output-only conduit
+   source contract and pre-drive `FrameTransaction` publication.
 9. `tests/test_video.py`, `tests/test_intel_video.py`, and
    `tests/test_intel_video_agent.py`: fast regression tests that do not require
    Questa.

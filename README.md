@@ -118,8 +118,13 @@ from fpga_verification.sim.agents import (
     VIPMonitor,
     VIPSequence,
 )
-from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
-from fpga_verification.sim.scoreboards import AnalysisImp, BaseVIPScoreboard
+from fpga_verification.sim.scoreboards import (
+    AnalysisImp,
+    BaseVIPScoreboard,
+    CheckMode,
+    PacketExpectation,
+    UserPacketPolicy,
+)
 from fpga_verification.sim import (
     PacketMetrics,
     PacketObservation,
@@ -393,47 +398,63 @@ Outputs:
 - `sink_monitor.analysis_port`: decoded packets observed on `sink_bus`.
 - `sequencer`: accepts `VIPSequence` items in active source mode.
 
-### Base VIP Predictor And Scoreboard
+### Strict VIP Scoreboard And IP Behavior Model
 
-`BaseVIPPredictor` and `BaseVIPScoreboard` split Intel VIP checking into two
-parts. The predictor consumes input packets and produces expected output packet
-descriptions. The scoreboard receives both DUT input and output packet streams,
-queues predictor expectations, and compares observed output packets against
-those expectations. The input stream and predictor are optional, so the same
-scoreboard also supports output-only IP paths with explicit expectations.
-
-Packet-flow diagram:
-
-![packet processing](src/fpga_verification/sim/scoreboards/docs/scoreboard.jpg)
+`BaseVIPScoreboard` is a protocol-level ordered comparison engine. It does not
+predict IP behavior. A custom scoreboard owns the IP-specific functional and
+stateful behavior models, consumes input/control transactions through hooks,
+and queues explicit output expectations. This keeps register semantics, reset
+state, warm-up behavior, and packet transformations beside the IP that defines
+them.
 
 ```python
-from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
-from fpga_verification.sim.scoreboards import BaseVIPScoreboard
+from fpga_verification.protocols.avalon_st.intel_video import VIPUserPacket
+from fpga_verification.sim.scoreboards import (
+    BaseVIPScoreboard,
+    PacketExpectation,
+    UserPacketPolicy,
+)
 
 
-class MyVIPPredictor(BaseVIPPredictor):
-    def get_tolerance(self):
-        return 1
+class MyIPScoreboard(BaseVIPScoreboard):
+    user_packet_policy = UserPacketPolicy.DROP
+
+    def __init__(self, name, parent, source_fmt, sink_fmt, model, **kwargs):
+        super().__init__(
+            name, parent, source_fmt, sink_fmt, quiet_cycles=2, **kwargs
+        )
+        self.model = model
+
+    def process_input_packet(self, packet):
+        if isinstance(packet, VIPUserPacket):
+            if self.user_packet_policy is UserPacketPolicy.PASSTHROUGH:
+                self.add_expectation(PacketExpectation(packet))
+            return
+        for expected in self.model.process_packet(packet):
+            self.add_expectation(PacketExpectation(expected))
+
+    def process_control_transaction(self, transaction):
+        self.model.process_control_transaction(transaction)
+
+    def on_reset(self):
+        self.model.reset()
 
 
-scoreboard = BaseVIPScoreboard(
+scoreboard = MyIPScoreboard(
     "vip_scoreboard",
     self,
-    source_fmt=source_fmt,
-    sink_fmt=sink_fmt,
+    source_fmt,
+    sink_fmt,
+    model,
+    clock=dut.clk,
+    reset=dut.reset,
 )
-scoreboard.predictor = MyVIPPredictor(
-    model=model,
-    input_codec=scoreboard.vip_input_codec,
-    output_codec=scoreboard.vip_output_codec,
-)
-
 vip_agent.source_monitor.analysis_port.connect(scoreboard.data_in_export)
 vip_agent.sink_monitor.analysis_port.connect(scoreboard.data_out_export)
+control_agent.analysis_port.connect(scoreboard.control_export)
 ```
 
-An output-only IP can queue expectations explicitly instead of using a
-predictor:
+An output-only IP queues expectations from its non-VIP source transaction:
 
 ```python
 scoreboard = BaseVIPScoreboard(
@@ -447,51 +468,47 @@ scoreboard.add_expectation(PacketExpectation(packet=expected_control))
 scoreboard.add_expectation(PacketExpectation(packet=expected_video))
 ```
 
-Predictor behavior:
-
-- `process_packet(packet)`: dispatches input control, video, and user packets.
-- Control packets update the active input `FrameSize` and emit an expected
-  output control packet using `expected_output_size(input_size)`.
-- Video packets are decoded to neutral frames, passed to `process_frame(frame,
-  size)`, and encoded back to expected output video packets.
-- `support_passthrough=True` allows `set_mode(BaseVIPPredictor.IpMode.PASSTHROUGH)`,
-  where input frames are expected unchanged.
-- Override `expected_output_size(input_size)`, `is_supported_frame_size(size)`,
-  `get_tolerance()`, `process_frame(frame, size)`, or `_process_user_packet()`
-  for IP-specific behavior.
-
 Scoreboard behavior:
 
 - `sink_fmt` is required; `source_fmt` is optional.
 - `data_in_export`: connect packets observed before the DUT; it is `None` when
   `source_fmt` is omitted.
 - `data_out_export`: connect packets observed after the DUT.
-- When a predictor is assigned, its output expectations are queued and compared
-  with DUT output packets as before.
+- `control_export`: connect control-bus transactions for IP register/state
+  modeling.
+- Subclasses implement `process_input_packet()`,
+  `process_control_transaction()`, and `on_reset()`.
 - `add_expectation(PacketExpectation(...))` lets a test-specific scoreboard
-  queue expectations without a predictor. Output packets are compared with
-  queued expectations in order.
+  queue packets in exact output order.
 - Every output packet must match the next queued expectation. An unexpected
   packet or a malformed comparable video packet fails the scoreboard.
-- `PacketExpectation(compare=False)` accepts exactly one intentionally
-  unchecked video packet. The packet still completes `wait_frame_checked()`,
-  so tests do not need to know predictor details such as model warm-up.
-- `expected_queue`: stores predictor-generated or explicit expectations until
+- `CheckMode.EXACT` compares complete decoded packet/frame content.
+- `CheckMode.SHAPE` checks packet type and geometry: video/user payload length,
+  or control width, height, and interlacing. It is an explicit contract for an
+  output whose contents are undefined; it is not a skipped comparison.
+- User input defaults to `UserPacketPolicy.DROP`; passthrough IPs explicitly
+  queue an exact expectation, while transforming IPs queue the transformed
+  packet.
+- `expected_queue`: stores custom-scoreboard expectations until
   matching output packets arrive.
 - Control packets compare width, height, and interlacing.
 - Video packets compare decoded frames with `compare_frames()` using the
   expectation tolerance.
-- `output_frames_cnt` counts compared and explicitly skipped output frames.
+- `output_frames_cnt` counts successfully compared output frames.
 - `get_frame_count()` returns the counter used by `wait_frame_checked()`.
 - `wait_frame_checked()` waits for one more processed output frame. Its optional
   `after=` value should come from `get_frame_count()` when a test needs an
   explicit checkpoint.
+- `drain(timeout, quiet_cycles=None)` waits for the expectation queue to empty,
+  raises sticky failures, and then observes an optional quiet clock window.
+- Reset assertion aborts only pending expectations and the current protocol
+  epoch, then calls `on_reset()`. A mismatch already observed remains sticky.
 
 One `BaseVIPScoreboard` instance represents one independent VIP path. For IPs
 with multiple inputs or outputs, create one instance per independently checked
 path so that active control sizes, expectation queues, failures, and frame
 counters remain isolated. An IP-specific parent scoreboard can own those path
-scoreboards and route additional inputs to its predictors.
+scoreboards and route additional input/control transactions to their models.
 
 `AnalysisImp` is a small reusable pyuvm helper used by scoreboards when an
 analysis export should forward every `write(item)` call to a Python callable:
