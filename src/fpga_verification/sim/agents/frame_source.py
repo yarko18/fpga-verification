@@ -14,9 +14,28 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Reusable, IP-independent behavioural-model utilities.
+"""Contract for non-VIP frame conduits used as verification sources."""
 
-IP behaviour belongs beside its custom scoreboard.  This package deliberately
-does not provide a generic VIP predictor: a protocol scoreboard cannot know an
-IP's register and temporal semantics.
-"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Protocol
+
+from fpga_verification.video import FrameSize
+
+
+@dataclass(frozen=True)
+class FrameTransaction:
+    """A frame published before its source drives physical conduit signals."""
+
+    frame: object
+    size: FrameSize
+
+
+class FrameSource(Protocol):
+    """A source with lifecycle and analysis publication compatible with VIP tests."""
+
+    analysis_port: object
+
+    async def send_frame(self, frame) -> None:
+        """Publish ``FrameTransaction`` then physically drive ``frame``."""

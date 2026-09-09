@@ -20,9 +20,15 @@ from .analysis import AnalysisImp
 
 from .intel_video import (
     BaseVIPScoreboard,
+    CheckMode,
+    PacketExpectation,
+    UserPacketPolicy,
 )
 
 __all__ = [
     "AnalysisImp",
     "BaseVIPScoreboard",
+    "CheckMode",
+    "PacketExpectation",
+    "UserPacketPolicy",
 ]

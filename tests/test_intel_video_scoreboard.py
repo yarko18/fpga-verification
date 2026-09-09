@@ -17,206 +17,146 @@
 import pytest
 
 from fpga_verification.protocols.avalon_st.intel_video import (
-    IntelVIPFrameCodec,
     VIPControlPacket,
+    VIPUserPacket,
     VIPVideoPacket,
 )
-from fpga_verification.sim.models import BaseVIPPredictor, PacketExpectation
-from fpga_verification.sim.scoreboards import BaseVIPScoreboard
-from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
+from fpga_verification.sim.scoreboards import (
+    BaseVIPScoreboard,
+    CheckMode,
+    PacketExpectation,
+)
+from fpga_verification.video import FrameSize, VideoFormat
 
 
 def _video_packet(fmt, size, value=0):
     return VIPVideoPacket([value] * fmt.frame_symbol_count(size))
 
 
-def test_base_predictor_requires_tolerance_override():
-    predictor = BaseVIPPredictor(
-        model=object(),
-        input_codec=object(),
-        output_codec=object(),
-    )
-
-    with pytest.raises(NotImplementedError):
-        predictor.get_tolerance()
+def _scoreboard(fmt=None):
+    return BaseVIPScoreboard("scoreboard", None, sink_fmt=fmt or VideoFormat(8))
 
 
 def test_sink_format_is_required():
-    try:
+    with pytest.raises(ValueError, match="sink_fmt must be provided"):
         BaseVIPScoreboard("no_sink_scoreboard", None, source_fmt=VideoFormat(8))
-    except ValueError as exc:
-        assert str(exc) == "sink_fmt must be provided"
-    else:
-        raise AssertionError("BaseVIPScoreboard accepted a missing sink_fmt")
 
 
-def test_unexpected_control_is_fatal():
-    fmt = VideoFormat(8)
-    scoreboard = BaseVIPScoreboard(
-        "unexpected_control_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
+def test_exact_control_comparison_rejects_wrong_geometry():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
 
-    scoreboard.data_out_export.write(VIPControlPacket(4, 2))
+    scoreboard.data_out_export.write(VIPControlPacket(3, 2))
 
     assert isinstance(scoreboard._failure, AssertionError)
-    assert str(scoreboard._failure) == "Unexpected output CONTROL packet"
-    assert scoreboard.last_output_size is None
+    assert "expected width 4" in str(scoreboard._failure)
 
 
-def test_unexpected_video_is_fatal():
-    fmt = VideoFormat(8)
-    scoreboard = BaseVIPScoreboard(
-        "unexpected_video_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
-
-    scoreboard.data_out_export.write(_video_packet(fmt, FrameSize(2, 2)))
-
-    assert isinstance(scoreboard._failure, AssertionError)
-    assert str(scoreboard._failure) == "Unexpected output VIDEO packet"
-    assert scoreboard.output_frames_cnt == 0
-
-
-def test_output_only_scoreboard_accepts_explicit_expectations():
-    fmt = VideoFormat(8)
-    size = FrameSize(2, 2)
-    control = VIPControlPacket(size.width, size.height)
-    video = _video_packet(fmt, size)
-    scoreboard = BaseVIPScoreboard(
-        "explicit_expectation_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
-
-    scoreboard.add_expectation(PacketExpectation(packet=control))
-    scoreboard.add_expectation(PacketExpectation(packet=video))
+def test_shape_control_comparison_still_checks_geometry():
+    scoreboard = _scoreboard()
+    control = VIPControlPacket(4, 2)
+    scoreboard.add_expectation(PacketExpectation(control, check=CheckMode.SHAPE))
     scoreboard.data_out_export.write(control)
-    scoreboard.data_out_export.write(video)
 
     assert not scoreboard.expected_queue
-    assert scoreboard.last_output_size == size
-    assert scoreboard.output_frames_cnt == 1
     assert scoreboard._failure is None
 
 
-def test_noncomparable_expectation_consumes_exactly_one_video():
+def test_exact_video_comparison_checks_decoded_frame_content():
     fmt = VideoFormat(8)
     size = FrameSize(2, 2)
-    control = VIPControlPacket(size.width, size.height)
-    scoreboard = BaseVIPScoreboard(
-        "noncomparable_video_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
+    scoreboard = _scoreboard(fmt)
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(2, 2)))
+    scoreboard.add_expectation(PacketExpectation(_video_packet(fmt, size, value=0)))
+    scoreboard.data_out_export.write(VIPControlPacket(2, 2))
+    scoreboard.data_out_export.write(_video_packet(fmt, size, value=1))
 
-    scoreboard.add_expectation(PacketExpectation(packet=control))
-    scoreboard.add_expectation(
-        PacketExpectation(compare=False, reason="corrupted frame")
-    )
-    scoreboard.data_out_export.write(control)
-    scoreboard.data_out_export.write(_video_packet(fmt, FrameSize(1, 2)))
-
-    assert not scoreboard.expected_queue
-    assert scoreboard.output_frames_cnt == 1
-    assert scoreboard._failure is None
-
-    scoreboard.data_out_export.write(_video_packet(fmt, FrameSize(1, 2)))
-
-    assert scoreboard.output_frames_cnt == 1
-    assert isinstance(scoreboard._failure, AssertionError)
-    assert str(scoreboard._failure) == "Unexpected output VIDEO packet"
-
-
-def test_malformed_comparable_video_is_fatal():
-    fmt = VideoFormat(8)
-    size = FrameSize(2, 2)
-    control = VIPControlPacket(size.width, size.height)
-    video = _video_packet(fmt, size)
-    scoreboard = BaseVIPScoreboard(
-        "malformed_video_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
-
-    scoreboard.add_expectation(PacketExpectation(packet=control))
-    scoreboard.add_expectation(PacketExpectation(packet=video))
-    scoreboard.data_out_export.write(control)
-    scoreboard.data_out_export.write(_video_packet(fmt, FrameSize(1, 2)))
-
-    assert not scoreboard.expected_queue
-    assert scoreboard.output_frames_cnt == 0
-    assert isinstance(scoreboard._failure, ValueError)
-
-
-def test_wrong_packet_type_does_not_consume_expectation():
-    fmt = VideoFormat(8)
-    size = FrameSize(2, 2)
-    control = VIPControlPacket(size.width, size.height)
-    video = _video_packet(fmt, size)
-    scoreboard = BaseVIPScoreboard(
-        "wrong_packet_type_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
-
-    scoreboard.add_expectation(PacketExpectation(packet=control))
-    scoreboard.add_expectation(PacketExpectation(packet=video))
-    scoreboard.data_out_export.write(video)
-
-    assert len(scoreboard.expected_queue) == 2
-    assert scoreboard.output_frames_cnt == 0
-    assert isinstance(scoreboard._failure, AssertionError)
-    assert str(scoreboard._failure) == "Unexpected output VIDEO packet"
-
-
-def test_valid_video_content_mismatch_is_fatal():
-    fmt = VideoFormat(8)
-    size = FrameSize(2, 2)
-    control = VIPControlPacket(size.width, size.height)
-    expected_video = _video_packet(fmt, size, value=0)
-    actual_video = _video_packet(fmt, size, value=1)
-    scoreboard = BaseVIPScoreboard(
-        "content_mismatch_scoreboard",
-        None,
-        sink_fmt=fmt,
-    )
-
-    scoreboard.add_expectation(PacketExpectation(packet=control))
-    scoreboard.add_expectation(PacketExpectation(packet=expected_video))
-    scoreboard.data_out_export.write(control)
-    scoreboard.data_out_export.write(actual_video)
-
-    assert scoreboard.output_frames_cnt == 0
     assert isinstance(scoreboard._failure, AssertionError)
     assert "frame mismatch" in str(scoreboard._failure)
 
 
-def test_existing_predictor_flow_still_compares_input_and_output():
+def test_shape_video_comparison_checks_payload_length_only():
     fmt = VideoFormat(8)
-    size = FrameSize(3, 2)
-    codec = IntelVIPFrameCodec(fmt)
-    frame = ImageGenerator(fmt).horizontal_ramp(size, start=1, stop=3)
-    packets = codec.frame_to_packets(frame, size)
-    scoreboard = BaseVIPScoreboard(
-        "predictor_scoreboard",
-        None,
-        source_fmt=fmt,
-        sink_fmt=fmt,
+    size = FrameSize(2, 2)
+    scoreboard = _scoreboard(fmt)
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(2, 2)))
+    scoreboard.add_expectation(
+        PacketExpectation(_video_packet(fmt, size), check=CheckMode.SHAPE)
     )
+    scoreboard.data_out_export.write(VIPControlPacket(2, 2))
+    scoreboard.data_out_export.write(_video_packet(fmt, size, value=7))
 
-    class PassthroughPredictor:
-        def process_packet(self, packet):
-            return PacketExpectation(packet=packet)
-
-    scoreboard.predictor = PassthroughPredictor()
-    for packet in packets:
-        scoreboard.data_in_export.write(packet)
-        scoreboard.data_out_export.write(packet)
-
-    assert scoreboard.input_frames_cnt == 1
-    assert scoreboard.output_frames_cnt == 1
     assert not scoreboard.expected_queue
+    assert scoreboard.output_frames_cnt == 1
     assert scoreboard._failure is None
+
+
+def test_exact_and_shape_user_comparisons_have_explicit_contracts():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPUserPacket(1, [1, 2])))
+    scoreboard.data_out_export.write(VIPUserPacket(1, [1, 2]))
+    assert scoreboard._failure is None
+
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(
+        PacketExpectation(VIPUserPacket(1, [1, 2]), check=CheckMode.SHAPE)
+    )
+    scoreboard.data_out_export.write(VIPUserPacket(1, [7, 8]))
+    assert scoreboard._failure is None
+
+
+def test_default_drop_contract_rejects_any_unexpected_user_output():
+    scoreboard = _scoreboard()
+
+    scoreboard.data_out_export.write(VIPUserPacket(1, [1]))
+
+    assert isinstance(scoreboard._failure, AssertionError)
+    assert str(scoreboard._failure) == "Unexpected output USER1 packet"
+
+
+def test_wrong_packet_type_is_fatal_without_consuming_expectation():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
+
+    scoreboard.data_out_export.write(VIPVideoPacket([0]))
+
+    assert len(scoreboard.expected_queue) == 1
+    assert isinstance(scoreboard._failure, AssertionError)
+
+
+def test_reset_aborts_pending_expectations_and_calls_custom_hook():
+    class ResetAwareScoreboard(BaseVIPScoreboard):
+        def __init__(self):
+            super().__init__("reset_aware", None, sink_fmt=VideoFormat(8))
+            self.reset_count = 0
+
+        def on_reset(self):
+            self.reset_count += 1
+
+    scoreboard = ResetAwareScoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
+
+    scoreboard.reset()
+
+    assert not scoreboard.expected_queue
+    assert scoreboard.reset_count == 1
+    assert scoreboard._failure is None
+
+
+def test_reset_does_not_mask_an_already_recorded_mismatch():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
+    scoreboard.data_out_export.write(VIPControlPacket(3, 2))
+
+    scoreboard.reset()
+
+    with pytest.raises(AssertionError, match="expected width 4"):
+        scoreboard.check_phase()
+
+
+def test_missing_expectation_fails_in_check_phase():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPControlPacket(4, 2)))
+
+    with pytest.raises(AssertionError, match="Missing output packets"):
+        scoreboard.check_phase()

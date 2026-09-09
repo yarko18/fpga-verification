@@ -28,6 +28,7 @@ from .avalon_mm import (
     AvalonMMMonitor,
     AvalonMMAgent,
 )
+from .frame_source import FrameSource, FrameTransaction
 
 __all__ = [
     "VIPAgent",
@@ -37,4 +38,6 @@ __all__ = [
     "VIPSequence",
     "AvalonMMMonitor",
     "AvalonMMAgent",
+    "FrameSource",
+    "FrameTransaction",
 ]
