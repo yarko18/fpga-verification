@@ -96,12 +96,12 @@ def prepare_simulation_models(sources, *, simulator, output_dir, enabled=True):
         if not steps:
             prepared.append(source)
             continue
-        model = source.read_text()
+        model = source.read_text(encoding="utf-8", errors="surrogateescape")
         for name, transform in steps:
             model = transform(model)
         target = Path(output_dir).resolve() / simulator / source.name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(model)
+        target.write_text(model, encoding="utf-8", errors="surrogateescape")
         print(
             f"Simulation fixes ({simulator}, {', '.join(name for name, _ in steps)}): "
             f"{source} -> {target}",
