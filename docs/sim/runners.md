@@ -18,8 +18,6 @@ rights and limitations under the RPL.
 
 # Simulation Runners
 
-## About
-
 You can run Cocotb test using Makefile or with python runner. Python runner method is used in this project.
 
 
@@ -51,6 +49,39 @@ designs:
 `rtl_test_cocotb` is the direct RTL path. Pass it explicit HDL sources or source
 directories, and it delegates build/test to the selected cocotb simulator runner.
 
+#### Example for run_rtl_test:
+
+```verilog
+  from pathlib import Path
+
+  from fpga_verification.sim.runners import run_rtl_test
+
+
+  if __name__ == "__main__":
+      project_root = Path(__file__).resolve().parent
+
+      run_rtl_test(
+          project_root=project_root,
+          hdl_toplevel="MyIP",
+          test_module="vip.test_pyuvm",
+          test_module_env="MYIP_VIP_TEST_MODULE",
+          source_dirs=("src",),
+          enable_questa_acc=True,
+      )
+```
+
+where project stucture looks like:
+```
+project/
+  ├── run_test.py
+  ├── src/
+  │   ├── MyIP.sv
+  │   └── other_module.sv
+  └── vip/
+      └── test_pyuvm.py
+```
+
+
 ### Intel component runner
 
 `intel_component_test_cocotb` is for Platform Designer component `_hw.tcl` files.
@@ -72,6 +103,42 @@ source_dirs
 
 Pass `generate_only=True` to retain and return the generated composition
 directory without running simulation.
+
+
+#### Example for run_intel_component_test:
+
+```verilog
+from pathlib import Path
+
+from fpga_verification.sim.runners import run_intel_component_test
+
+from test_config import get_test_config
+
+if __name__ == "__main__":
+    project_root = Path(__file__).resolve().parent
+
+    run_intel_component_test(
+        project_root=project_root,
+        component_file="./src/MyIP_hw.tcl",
+        hdl_toplevel="MyIP_component",
+        test_module="vip.test_pyuvm",
+        test_module_env="MYIP_VIP_TEST_MODULE",
+        config=get_test_config(),
+        enable_questa_acc=True,
+        build_args=build_args,
+    )
+```
+
+where project stucture looks like:
+```
+project/
+  ├── run_test.py
+  ├── src/
+  │   ├── MyIP.sv
+  │   └── MyIP_hw.tcl
+  └── vip/
+      └── test_pyuvm.py
+```
 
 ### Resolved component configuration
 
