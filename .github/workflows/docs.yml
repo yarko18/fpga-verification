@@ -9,46 +9,51 @@ on:
       - main
     paths:
       - "docs/**"
-      - "src/**/*.py"
       - "mkdocs.yml"
-      - "pyproject.toml"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
-      - "src/**/*.py"
       - "mkdocs.yml"
-      - "pyproject.toml"
       - ".github/workflows/docs.yml"
-  workflow_dispatch:
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-documentation:
+    name: Build documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -e ".[docs]"
-      - run: python -m mkdocs build --strict
-      - if: github.event_name != 'pull_request'
+      - name: Install documentation dependencies
+        run: python -m pip install -e ".[docs]"
+      - name: Build documentation site
+        run: python -m mkdocs build --strict
+      - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
-  deploy:
-    if: github.event_name != 'pull_request'
-    needs: build
+  publish-documentation:
+    name: Publish documentation
+    if: github.event_name == 'push'
+    needs: build-documentation
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
