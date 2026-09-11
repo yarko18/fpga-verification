@@ -38,6 +38,12 @@ authors = [
     { name = "Yaroslav Mariukha"  }
 ]
 
+[project.optional-dependencies]
+docs = [
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
 [project.urls]
 Source = "https://github.com/yarko18/fpga-verification"
 Issues = "https://github.com/yarko18/fpga-verification/issues"
