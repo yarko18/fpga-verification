@@ -64,8 +64,11 @@ directories, and it delegates build/test to the selected cocotb simulator runner
           project_root=project_root,
           hdl_toplevel="MyIP",
           test_module="vip.test_pyuvm",
-          test_module_env="MYIP_VIP_TEST_MODULE",
-          source_dirs=("src",),
+          source_dirs=(
+            "src",
+            "rtl/common",
+            "../../common/hdl",
+          ),
           enable_questa_acc=True,
       )
 ```
@@ -76,9 +79,10 @@ project/
   ├── run_test.py
   ├── src/
   │   ├── MyIP.sv
-  │   └── other_module.sv
-  └── vip/
-      └── test_pyuvm.py
+  │   └── other_module1.sv
+  └── rtl/
+      └── common/
+          └── other_module2.sv
 ```
 
 
