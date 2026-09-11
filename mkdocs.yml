@@ -31,11 +31,18 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Video: video.md
+  - Architecture: guide/architecture.md
   - Simulation:
       - Runners: sim/runners.md
-  - Releases:
-      - 1.0.0: releases/1.0.0.md
+      - Avalon-ST: guide/avalon-st.md
+      - Intel video: guide/intel-video.md
+      - VIP verification: guide/vip-verification.md
+      - Performance: guide/performance.md
+  - Control and memory: guide/control-and-memory.md
+  - Hardware-in-the-loop: guide/hil.md
+  - Data representation:
+      - Video frames: guide/video-frames.md
+      - Numeric formats: guide/numeric-formats.md
 
 watch:
   - src
