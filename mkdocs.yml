@@ -1,0 +1,41 @@
+site_name: FPGA Verification
+site_description: Reusable FPGA simulation and hardware-in-the-loop verification tools
+site_url: https://yarko18.github.io/fpga-verification/
+repo_url: https://github.com/yarko18/fpga-verification
+repo_name: yarko18/fpga-verification
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Video: video.md
+  - Simulation:
+      - Runners: sim/runners.md
+  - Releases:
+      - 1.0.0: releases/1.0.0.md
+
+watch:
+  - src
