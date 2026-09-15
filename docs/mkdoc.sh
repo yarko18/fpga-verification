@@ -32,7 +32,7 @@ case "${1:-help}" in
         ;;
     *)
         printf 'Unknown command: %s\n' "$1" >&2
-        printf 'Run scripts/docs.sh help for usage.\n' >&2
+        printf 'Run scripts/mkdoc.sh help for usage.\n' >&2
         exit 2
         ;;
 esac

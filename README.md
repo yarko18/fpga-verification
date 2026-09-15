@@ -63,9 +63,9 @@ contain executable walkthroughs.
 ## Build the documentation locally
 
 ```bash
-./scripts/docs.sh setup
-./scripts/docs.sh serve
-./scripts/docs.sh build
+./scripts/mkdoc.sh setup
+./scripts/mkdoc.sh serve
+./scripts/mkdoc.sh build
 ```
 
 GitHub Pages is rebuilt automatically when documentation changes reach
