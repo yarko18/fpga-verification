@@ -110,3 +110,40 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: wheelhouse
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Extract release notes from changelog
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          section = re.search(
+              rf"^## {re.escape(version)}(?:[ \t]+-[^\n]*)?$\n(.*?)(?=^## |\Z)",
+              changelog,
+              flags=re.MULTILINE | re.DOTALL,
+          )
+          if section is None or not section.group(1).strip():
+              raise SystemExit(f"no changelog entries found for {version}")
+
+          Path("release-notes.md").write_text(
+              section.group(1).strip() + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes-file release-notes.md
