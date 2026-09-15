@@ -36,6 +36,7 @@ nav:
       - Runners: sim/runners.md
       - Avalon-ST: guide/avalon-st.md
       - Intel video: guide/intel-video.md
+      - Modeling DUT behavior: guide/modeling.md
       - VIP verification: guide/vip-verification.md
       - Performance: guide/performance.md
   - Control and memory: guide/control-and-memory.md
