@@ -185,6 +185,24 @@ def test_generators_are_seeded_and_use_inclusive_bounds():
         ImageGenerator(fmt).linspace(size, 0, 256)
 
 
+def test_generator_uses_default_size_and_allows_override():
+    fmt = VideoFormat(8, pixels_in_parallel=2)
+    default_size = FrameSize(4, 3)
+    override_size = FrameSize(5, 2)
+    generator = ImageGenerator(fmt, rng=7, default_size=default_size)
+
+    assert generator.constant(value=3).shape == (3, 4)
+    assert generator.linspace(start=1, stop=4).shape == (3, 4)
+    assert generator.random(min_value=2, max_value=2).shape == (3, 4)
+    assert generator.horizontal_ramp(start=1, stop=4).shape == (3, 4)
+    assert generator.constant(override_size, value=3).shape == (2, 5)
+
+
+def test_generator_requires_explicit_or_default_size():
+    with pytest.raises(ValueError, match="frame size is required"):
+        ImageGenerator(VideoFormat(8)).random()
+
+
 def test_horizontal_ramp_repeats_rows_and_planes():
     fmt = VideoFormat(8, 3)
     size = FrameSize(4, 2)

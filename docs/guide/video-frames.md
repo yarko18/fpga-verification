@@ -36,6 +36,21 @@ stimulus. `VideoPayloadCodec` converts frames, rows, symbols, and packed beats
 while validating shape, range, payload length, and padding. `compare_frames()`
 reports the first mismatch and supports an explicit tolerance.
 
+Tests that normally use one geometry can set a default without putting frame
+generation methods on their test environment:
+
+```python
+frames = ImageGenerator(fmt, rng=1, default_size=FrameSize(32, 32))
+
+normal = frames.random()
+constant = frames.constant(value=7)
+malformed = frames.random(size=FrameSize(64, 32))
+```
+
+The size remains explicit when no default is configured. A per-call size always
+overrides the default. `pixels_in_parallel` changes physical beat packing, not
+the canonical logical numpy frame shape.
+
 The
 [video frames notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/02_video_frames.ipynb)
 explains parallel and serial plane layouts in detail.

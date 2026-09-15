@@ -155,27 +155,30 @@ class VideoFormat(AvalonFormat):
 
 
 class ImageGenerator:
-    """Generate numpy frames for an explicit format and frame size."""
+    """Generate numpy frames for a format and optional default frame size."""
 
-    def __init__(self, fmt, rng=None):
+    def __init__(self, fmt, rng=None, *, default_size=None):
         if not isinstance(fmt, VideoFormat):
             raise TypeError("fmt must be a VideoFormat")
         self.fmt = fmt
+        self.default_size = (
+            None if default_size is None else _require_frame_size(default_size)
+        )
         self.rng = (
             rng
             if isinstance(rng, np.random.Generator)
             else np.random.default_rng(rng)
         )
 
-    def constant(self, size, value=0, dtype=None):
-        size = _require_frame_size(size)
+    def constant(self, size=None, value=0, dtype=None):
+        size = self._resolve_size(size)
         dtype = self._dtype(dtype)
         self._validate_range(value, value)
         frame = np.full(self.fmt.frame_shape(size), value, dtype=dtype)
         return self._validate_generated(frame, size)
 
-    def linspace(self, size, start=0, stop=None, dtype=None):
-        size = _require_frame_size(size)
+    def linspace(self, size=None, start=0, stop=None, dtype=None):
+        size = self._resolve_size(size)
         dtype = self._dtype(dtype)
         stop = self._default_max(dtype) if stop is None else stop
         self._validate_range(start, stop)
@@ -187,8 +190,8 @@ class ImageGenerator:
         ).reshape(self.fmt.frame_shape(size))
         return self._validate_generated(frame, size)
 
-    def random(self, size, min_value=0, max_value=None, dtype=None):
-        size = _require_frame_size(size)
+    def random(self, size=None, min_value=0, max_value=None, dtype=None):
+        size = self._resolve_size(size)
         dtype = self._dtype(dtype)
         max_value = self._default_max(dtype) if max_value is None else max_value
         min_value = int(min_value)
@@ -206,8 +209,8 @@ class ImageGenerator:
         )
         return self._validate_generated(frame, size)
 
-    def horizontal_ramp(self, size, start=0, stop=None, dtype=None):
-        size = _require_frame_size(size)
+    def horizontal_ramp(self, size=None, start=0, stop=None, dtype=None):
+        size = self._resolve_size(size)
         dtype = self._dtype(dtype)
         stop = self._default_max(dtype) if stop is None else stop
         self._validate_range(start, stop)
@@ -222,6 +225,15 @@ class ImageGenerator:
             )
             frame = np.tile(pixels[None, :, :], (size.height, 1, 1))
         return self._validate_generated(frame, size)
+
+    def _resolve_size(self, size):
+        if size is None:
+            if self.default_size is None:
+                raise ValueError(
+                    "frame size is required when ImageGenerator has no default_size"
+                )
+            return self.default_size
+        return _require_frame_size(size)
 
     def _dtype(self, dtype):
         dtype = self.fmt.dtype if dtype is None else np.dtype(dtype)

@@ -25,7 +25,8 @@ and Quartus System Console access.
 
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
 [PyPI](https://pypi.org/project/fpga-verification/) ·
-[Examples](https://github.com/yarko18/fpga-verification/tree/main/examples)
+[Examples](https://github.com/yarko18/fpga-verification/tree/main/examples) ·
+[Changelog](CHANGELOG.md)
 
 ## Install
 
