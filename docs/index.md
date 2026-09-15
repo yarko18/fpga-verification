@@ -55,14 +55,16 @@ The chapters deliberately follow the way a verification environment grows:
 3. [Avalon-ST](guide/avalon-st.md) introduces transfers, frames, sources,
    sinks, and monitors.
 4. [Intel video](guide/intel-video.md) adds packet meaning above the stream.
-5. [VIP verification](guide/vip-verification.md) connects agents, models, and
-   output expectations into a complete testbench.
-6. [Performance](guide/performance.md) measures latency, bubbles, and sustained
+5. [Modeling DUT behavior](guide/modeling.md) separates pure calculations,
+   stateful behavior, and protocol adaptation.
+6. [VIP verification](guide/vip-verification.md) turns model results and packet
+   policies into ordered output expectations.
+7. [Performance](guide/performance.md) measures latency, bubbles, and sustained
    throughput after functional checking is in place.
-7. [Control and memory](guide/control-and-memory.md) covers Avalon-MM and DMA
+8. [Control and memory](guide/control-and-memory.md) covers Avalon-MM and DMA
    traffic alongside the main stream.
-8. [Hardware-in-the-loop](guide/hil.md) reuses Python-side data on a real FPGA.
-9. [Video frames](guide/video-frames.md) and
+9. [Hardware-in-the-loop](guide/hil.md) reuses Python-side data on a real FPGA.
+10. [Video frames](guide/video-frames.md) and
    [numeric formats](guide/numeric-formats.md) document the lower-level data
    representations when a test needs them.
 
