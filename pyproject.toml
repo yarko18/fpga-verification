@@ -45,6 +45,8 @@ docs = [
 ]
 
 [project.urls]
+Documentation = "https://yarko18.github.io/fpga-verification/"
+Changelog = "https://github.com/yarko18/fpga-verification/blob/main/CHANGELOG.md"
 Source = "https://github.com/yarko18/fpga-verification"
 Issues = "https://github.com/yarko18/fpga-verification/issues"
 
