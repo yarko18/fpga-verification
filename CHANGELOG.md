@@ -18,6 +18,13 @@ rights and limitations under the RPL.
 
 # Changelog
 
+## 1.0.4 - 2026-09-15
+
+- Create standard `VideoPacketPolicy` for intel video packets:
+  - Use `EXACT` to compare frame shape and data,.
+  - Use `SHAPE` to compare only output frame shape.
+  - Use `DROP` if frame shouldn't exists on the output.
+
 ## 1.0.3 - 2026-09-15
 
 - Added an optional default frame size to `ImageGenerator`.

@@ -30,6 +30,8 @@ from fpga_verification.sim.scoreboards import (
     CheckMode,
     PacketExpectation,
     UserPacketPolicy,
+    VideoPacketPolicy,
+    VideoPacketResult,
 )
 from fpga_verification.sim.scoreboards import intel_video as scoreboard_module
 from fpga_verification.video import FrameSize, VideoFormat
@@ -58,6 +60,32 @@ def test_sink_format_is_required():
 
 def test_default_user_packet_policy_is_drop():
     assert _scoreboard().user_packet_policy is UserPacketPolicy.DROP
+
+
+def test_standard_video_packet_results_cover_exact_shape_and_drop():
+    expected = object()
+
+    exact = VideoPacketResult.exact(expected, tolerance=2, reason="model")
+    assert exact.policy is VideoPacketPolicy.EXACT
+    assert exact.expected is expected
+    assert exact.tolerance == 2
+
+    shape = VideoPacketResult.shape(reason="undefined warm-up data")
+    assert shape.policy is VideoPacketPolicy.SHAPE
+    assert shape.expected is None
+
+    drop = VideoPacketResult.drop(reason="accumulating")
+    assert drop.policy is VideoPacketPolicy.DROP
+    assert drop.expected is None
+
+
+def test_standard_video_packet_result_rejects_invalid_contracts():
+    with pytest.raises(ValueError, match="requires an expected value"):
+        VideoPacketResult(VideoPacketPolicy.EXACT)
+    with pytest.raises(ValueError, match="cannot have an expected value"):
+        VideoPacketResult(VideoPacketPolicy.DROP, expected=object())
+    with pytest.raises(ValueError, match="must be >= 0"):
+        VideoPacketResult.exact(object(), tolerance=-1)
 
 
 def test_exact_control_comparison_rejects_wrong_geometry():
@@ -232,6 +260,34 @@ def test_drain_observes_the_configured_quiet_window(monkeypatch):
 
     asyncio.run(scoreboard.drain(1, "us"))
 
+    assert edges == 3
+
+
+def test_drain_restarts_for_an_expectation_created_during_quiet_window(monkeypatch):
+    scoreboard = _scoreboard(clock=object(), quiet_cycles=2)
+    expected = VIPControlPacket(4, 2)
+    edges = 0
+
+    async def rising_edge(clock):
+        nonlocal edges
+        edges += 1
+        if edges == 1:
+            scoreboard.add_expectation(PacketExpectation(expected))
+
+    async def next_timestep():
+        return None
+
+    async def complete_late_expectation(awaitable, *args, **kwargs):
+        scoreboard.data_out_export.write(expected)
+
+    monkeypatch.setattr(scoreboard_module, "RisingEdge", rising_edge)
+    monkeypatch.setattr(scoreboard_module, "NextTimeStep", next_timestep)
+    monkeypatch.setattr(scoreboard_module, "with_timeout", complete_late_expectation)
+
+    asyncio.run(scoreboard.drain(1, "us"))
+
+    assert not scoreboard.expected_queue
+    assert scoreboard._failure is None
     assert edges == 3
 
 

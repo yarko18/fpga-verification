@@ -59,6 +59,58 @@ class UserPacketPolicy(str, Enum):
     PASSTHROUGH = "passthrough"
 
 
+class VideoPacketPolicy(str, Enum):
+    """How one input video packet maps to the output stream."""
+
+    EXACT = "exact"
+    SHAPE = "shape"
+    DROP = "drop"
+
+
+@dataclass(frozen=True)
+class VideoPacketResult:
+    """Standard behaviour-model result for one input video packet."""
+
+    policy: VideoPacketPolicy
+    expected: object = None
+    reason: str = ""
+    tolerance: int = 0
+
+    def __post_init__(self):
+        object.__setattr__(self, "policy", VideoPacketPolicy(self.policy))
+        object.__setattr__(self, "tolerance", int(self.tolerance))
+        if self.tolerance < 0:
+            raise ValueError("VideoPacketResult.tolerance must be >= 0")
+        if self.policy is VideoPacketPolicy.EXACT and self.expected is None:
+            raise ValueError("EXACT video result requires an expected value")
+        if self.policy is VideoPacketPolicy.DROP:
+            if self.expected is not None:
+                raise ValueError("DROP video result cannot have an expected value")
+            if self.tolerance:
+                raise ValueError("DROP video result cannot have a tolerance")
+
+    @classmethod
+    def exact(cls, expected, *, tolerance=0, reason=""):
+        return cls(
+            VideoPacketPolicy.EXACT,
+            expected=expected,
+            reason=reason,
+            tolerance=tolerance,
+        )
+
+    @classmethod
+    def shape(cls, expected=None, *, reason=""):
+        return cls(
+            VideoPacketPolicy.SHAPE,
+            expected=expected,
+            reason=reason,
+        )
+
+    @classmethod
+    def drop(cls, *, reason=""):
+        return cls(VideoPacketPolicy.DROP, reason=reason)
+
+
 @dataclass(frozen=True)
 class PacketExpectation:
     """One expected output packet and its explicit comparison contract."""
@@ -355,28 +407,39 @@ class BaseVIPScoreboard(uvm_scoreboard):
         there is no matching expectation left.  ``quiet_cycles=0`` disables the
         additional observation window.
         """
-        while self.expected_queue and self._failure is None:
-            self._queue_changed.clear()
-            try:
-                await with_timeout(self._queue_changed.wait(), timeout, timeout_unit)
-            except SimTimeoutError as exc:
-                raise AssertionError(
-                    f"Drain timeout after {timeout} {timeout_unit}: "
-                    f"{len(self.expected_queue)} expectation(s) remain"
-                ) from exc
-
-        self._raise_failure()
         cycles = self.quiet_cycles if quiet_cycles is None else int(quiet_cycles)
         if cycles < 0:
             raise ValueError("quiet_cycles must be >= 0")
-        if cycles == 0:
-            return
-        if self.clock is None:
+        if cycles and self.clock is None:
             raise RuntimeError("drain quiet window requires scoreboard clock")
 
-        for _ in range(cycles):
-            await RisingEdge(self.clock)
-            # Let monitors triggered by the same clock edge publish before the
-            # sticky-failure check. This is legal even when they use ReadOnly.
-            await NextTimeStep()
+        while True:
+            while self.expected_queue and self._failure is None:
+                self._queue_changed.clear()
+                try:
+                    await with_timeout(
+                        self._queue_changed.wait(),
+                        timeout,
+                        timeout_unit,
+                    )
+                except SimTimeoutError as exc:
+                    raise AssertionError(
+                        f"Drain timeout after {timeout} {timeout_unit}: "
+                        f"{len(self.expected_queue)} expectation(s) remain"
+                    ) from exc
+
             self._raise_failure()
+
+            if cycles == 0:
+                return
+
+            for _ in range(cycles):
+                await RisingEdge(self.clock)
+                # Let monitors triggered by the same clock edge publish before
+                # deciding whether the output stream remained quiet.
+                await NextTimeStep()
+                self._raise_failure()
+                if self.expected_queue:
+                    break
+            else:
+                return

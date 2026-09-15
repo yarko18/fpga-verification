@@ -23,6 +23,8 @@ from .intel_video import (
     CheckMode,
     PacketExpectation,
     UserPacketPolicy,
+    VideoPacketPolicy,
+    VideoPacketResult,
 )
 
 __all__ = [
@@ -31,4 +33,6 @@ __all__ = [
     "CheckMode",
     "PacketExpectation",
     "UserPacketPolicy",
+    "VideoPacketPolicy",
+    "VideoPacketResult",
 ]
