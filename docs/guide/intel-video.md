@@ -51,4 +51,4 @@ The
 [Intel video notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/05_intel_vip_packets_and_agent.ipynb)
 contains packet, codec, checker, and agent examples.
 
-Next: [build a complete VIP verification path](vip-verification.md).
+Next: [model DUT behavior](modeling.md).

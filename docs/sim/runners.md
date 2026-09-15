@@ -262,3 +262,5 @@ def test_rtl():
         debug=True,
     )
 ```
+
+Next: [connect an Avalon-ST stream](../guide/avalon-st.md).
