@@ -5,17 +5,25 @@ SPDX-License-Identifier: RPL-1.5
 
 # FPGA Verification
 
-`fpga-verification` is a Python library for repeatable FPGA verification. It
-keeps test data, protocol conversion, reference behaviour and simulation
-plumbing in separate layers, so the same prediction code can be used in a fast
-unit test, cocotb and hardware-in-the-loop.
+`fpga-verification` is a Python library of reusable verification components,
+developed primarily for Intel/Altera FPGA video-processing systems. It also
+provides cocotb BFMs for Altera-specific protocols such as Avalon-ST and
+Avalon-MM, along with models for components such as DMA controllers.
 
-```text
-test data -> protocol codec -> driver -> DUT -> monitor -> scoreboard
-                                                        -> performance metrics
+The library supports verification workflows for components from:
 
-test data <---------------- Intel System Console ----------------> FPGA board
-```
+It's also fully compatible with:
+
+- [Video and Vision Processing Suite (VVP)](https://www.altera.com/products/ip/po-3150/video-and-vision-processing-suite)
+
+- [Video and Image Processing Suite (VIP)](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
+
+The library provides a UVM-like testbench structure built on cocotb and pyuvm.
+It keeps test data, protocol conversion, reference behaviour, and simulation
+plumbing in separate layers. This allows the same prediction code to be reused
+in fast unit tests, cocotb simulations, and hardware-in-the-loop tests.
+
+![](./guide/media/img1.svg)
 
 It includes:
 
@@ -26,6 +34,9 @@ It includes:
 - stream latency and throughput measurements;
 - simulator-independent video and numeric data helpers;
 - persistent Intel System Console access for hardware-in-the-loop tests.
+
+!!! note 
+    Hardware-in-the-loop functionality is under development.
 
 ## Start here
 
