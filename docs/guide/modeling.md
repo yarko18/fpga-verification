@@ -179,8 +179,8 @@ Errors found in the first three steps are faster to reproduce and easier to
 understand. The full simulation can then focus on handshake, timing, and RTL
 integration.
 
-The
-[VIP verification notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/09_vip_verification_components.ipynb)
-shows the reusable library components used around these project models.
+The custom scoreboard is the protocol boundary around these models. Its
+expectation queue turns one behavior-model result into an observable output
+contract without putting algorithm logic into a driver or monitor.
 
 Next: [turn model results into ordered VIP checks](vip-verification.md).

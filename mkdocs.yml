@@ -64,6 +64,8 @@ nav:
       - Video frames: guide/video-frames.md
       - Numeric formats: guide/numeric-formats.md
   - Hardware-in-the-loop: guide/hil.md
+  - Reference:
+      - Video implementation: video.md
   - Release notes:
       - 1.0.0: releases/1.0.0.md
 

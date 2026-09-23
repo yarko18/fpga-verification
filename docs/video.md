@@ -16,7 +16,7 @@ ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 rights and limitations under the RPL.
 -->
 
-# Video Helpers Developer Notes
+# Video implementation reference
 
 Recommended reading order:
 
@@ -49,5 +49,7 @@ python -m pip install -e .
 ```
 
 For early experiments, change `width`, `height`, color planes, and
-`pixels_in_parallel` in small unit tests or notebooks first. Run the fast Python
-tests before moving the same scenario into a cocotb or Questa regression.
+`pixels_in_parallel` in small unit tests first. Run the fast Python tests
+before moving the same scenario into a cocotb or Questa regression. See
+[Video frames](guide/video-frames.md) for the public data API and
+[Intel Avalon-ST Video](guide/intel-video.md) for packet conversion.

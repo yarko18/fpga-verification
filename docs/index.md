@@ -63,8 +63,8 @@ Read the interface chapters as they become relevant: [Avalon-ST](guide/avalon-st
 [Intel Avalon-ST Video](guide/intel-video.md). The data chapters describe
 [video frames](guide/video-frames.md) and [numeric formats](guide/numeric-formats.md).
 
-The site contains the material formerly kept in `examples/`. It is therefore
-self-contained; notebooks are not needed to read or use the documentation.
+The site is self-contained: every tutorial and code example needed to build
+a testbench lives in these pages.
 
 ## Project links
 

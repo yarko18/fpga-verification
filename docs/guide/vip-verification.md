@@ -190,8 +190,8 @@ quiet window is unexpected.
 One independent VIP output path should have one `BaseVIPScoreboard`. This keeps
 packet order, geometry, failures, and frame counters isolated.
 
-See the
-[VIP verification notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/09_vip_verification_components.ipynb)
-for executable connection and lifecycle examples.
+Use the environment lifecycle from [Project style](testbench-style.md):
+construct components in `build_phase()`, connect analysis ports in
+`connect_phase()`, and stop every background task in a `finally` block.
 
 Next: [measure stream performance](performance.md).

@@ -107,9 +107,9 @@ transactions, video frames, and completion events can have different semantic
 meaning. The scoreboard is the right place to dispatch protocol objects to
 typed behavior-model operations.
 
-The [library overview notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/00_library_overview.ipynb)
-maps the package layers. The
-[VIP verification notebook](https://github.com/yarko18/fpga-verification/blob/main/examples/09_vip_verification_components.ipynb)
-shows how the simulation-side pieces connect.
+The architecture is deliberately a dependency rule rather than a class
+hierarchy. Start by applying the file ownership rules in
+[Project style](testbench-style.md), then use the runner to instantiate the
+resulting testbench.
 
 Next: [start a simulation](../sim/runners.md).
