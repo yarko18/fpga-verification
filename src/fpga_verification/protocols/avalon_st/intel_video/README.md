@@ -137,13 +137,19 @@ the wire.
 
 ## Strict VIP scoreboard and custom behavior model
 
-`BaseVIPScoreboard` is a protocol-level ordered engine. IP register decoding,
-functional transforms, temporal state, and input-to-output mapping belong in a
-custom scoreboard and its behavior model. There is no generic predictor API in
-v1.0.0.
+`BaseVIPScoreboard` is a protocol-level ordered engine. Component register
+decoding, functional transforms, temporal state, and input-to-output mapping
+belong in a custom scoreboard and an optional behavior model. There is no
+generic predictor API in v1.0.0. See the public
+[modeling guide](https://yarko18.github.io/fpga-verification/guide/modeling/)
+for the responsibility boundaries.
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import VIPUserPacket
+from fpga_verification.protocols.avalon_st.intel_video import (
+    VIPControlPacket,
+    VIPUserPacket,
+    VIPVideoPacket,
+)
 from fpga_verification.sim.scoreboards import (
     BaseVIPScoreboard,
     CheckMode,
@@ -162,15 +168,33 @@ class MyIPScoreboard(BaseVIPScoreboard):
         self.model = model
 
     def process_input_packet(self, packet):
+        if isinstance(packet, VIPControlPacket):
+            return self.process_control_packet(packet)
         if isinstance(packet, VIPUserPacket):
             if self.user_packet_policy is UserPacketPolicy.PASSTHROUGH:
                 self.add_expectation(PacketExpectation(packet))
             return
-        expected = self.model.process_packet(packet)
-        self.add_expectation(PacketExpectation(expected, check=CheckMode.EXACT))
+        if isinstance(packet, VIPVideoPacket):
+            return self.process_video_packet(packet)
+        raise TypeError(f"Unsupported packet: {type(packet)!r}")
+
+    def process_video_packet(self, packet):
+        frame = self.decode_input_frame(packet)
+        result = self.model.process_video_frame(frame)
+        expected = self.encode_output_frame(result.expected)
+        self.add_expectation(PacketExpectation(
+            expected,
+            check=CheckMode(result.policy.value),
+            tolerance=result.tolerance,
+            reason=result.reason,
+        ))
 
     def process_control_transaction(self, transaction):
-        self.model.process_control_transaction(transaction)
+        if transaction.kind == "write":
+            self.model.process_register_write(
+                transaction.address,
+                transaction.data,
+            )
 
     def on_reset(self):
         self.model.reset()

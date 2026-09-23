@@ -3,16 +3,18 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-Use [mkdoc.sh](./mkdoc.sh) to build and test documentation using MkDocs
-  
-  
-  # After git clone run:
-  ./scripts/mkdoc.sh setup
+Use [mkdoc.sh](./mkdoc.sh) to build and validate the documentation with MkDocs.
 
-  # During docmentation development
-  ./scripts/mkdoc.sh serve
+```bash
+# After cloning the repository
+./docs/mkdoc.sh setup
 
-  # Before commit
-  ./scripts/mkdoc.sh build
+# During documentation development
+./docs/mkdoc.sh serve
 
-Then GitHub CI/CD will automaticaly deploy new documentation to pages
+# Before committing
+./docs/mkdoc.sh build
+```
+
+GitHub Actions builds the documentation in strict mode and deploys changes from
+`main` to GitHub Pages.

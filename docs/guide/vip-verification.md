@@ -340,5 +340,3 @@ packet order, geometry, failures, and frame counters isolated.
 Use the environment lifecycle from [Project style](testbench-style.md):
 construct components in `build_phase()`, connect analysis ports in
 `connect_phase()`, and stop every background task in a `finally` block.
-
-Next: [measure stream performance](performance.md).

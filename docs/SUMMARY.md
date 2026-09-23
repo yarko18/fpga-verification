@@ -1,0 +1,35 @@
+# Navigation
+
+- [Home](index.md)
+- Getting started
+    - [Installation](getting-started/install.md)
+    - [Run the minimal testbench](getting-started/minimal-testbench.md)
+- Tutorial
+    - [Stream pipeline](tutorial/stream-pipeline.md)
+- Concepts
+    - [Architecture](guide/architecture.md)
+    - [Project style](guide/testbench-style.md)
+    - [Modelling DUT behaviour](guide/modeling.md)
+    - [Ordered VIP verification](guide/vip-verification.md)
+- How-to guides
+    - [Simulation runners](sim/runners.md)
+    - [Avalon-ST](guide/avalon-st.md)
+    - [Avalon-MM and DMA](guide/control-and-memory.md)
+    - [Intel Avalon-ST Video](guide/intel-video.md)
+    - [Video frames](guide/video-frames.md)
+    - [Numeric formats](guide/numeric-formats.md)
+    - [Stream performance](guide/performance.md)
+    - [Hardware-in-the-loop](guide/hil.md)
+- Case studies
+    - [Stateless stream converter](case-studies/stateless-converter.md)
+    - [Stateful frame transform](case-studies/stateful-transform.md)
+    - [Memory-backed component](case-studies/memory-backed-component.md)
+- Reference
+    - [Formats and video](reference/formats-video.md)
+    - [Protocols](reference/protocols.md)
+    - [Simulation](reference/simulation.md)
+    - [BFMs and runners](reference/bfms-runners.md)
+    - [Hardware-in-the-loop](reference/hil.md)
+    - [Implementation map](video.md)
+- Release notes
+    - [1.0.0](releases/1.0.0.md)

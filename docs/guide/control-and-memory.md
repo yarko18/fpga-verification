@@ -199,5 +199,3 @@ test to wait for accepted or completed operations.
 Always call `stop()` in teardown or a `finally` block. The model validates
 negative response delays, malformed packet flags, unaligned reads and addresses
 outside configured regions with contextual errors.
-
-Next: [reuse the same data with hardware-in-the-loop](hil.md).

@@ -27,44 +27,25 @@ It includes:
 - simulator-independent video and numeric data helpers;
 - persistent Intel System Console access for hardware-in-the-loop tests.
 
-## Install
+## Start here
 
-`fpga-verification` supports Python 3.10 through 3.13. Install the released
-package from PyPI:
+1. [Install the package](getting-started/install.md).
+2. [Run the minimal testbench](getting-started/minimal-testbench.md).
+3. Follow the complete [generic stream-pipeline tutorial](tutorial/stream-pipeline.md).
 
-```bash
-python -m pip install fpga-verification
-```
+The tutorial answers how to assemble a working testbench. The
+[architecture](guide/architecture.md) and [modeling](guide/modeling.md) chapters
+explain why the responsibilities are separated. Focused how-to guides cover
+runners, interfaces, data formats, performance and hardware access.
 
-For development of the library itself:
+The case studies describe reusable verification problems:
 
-```bash
-git clone https://github.com/yarko18/fpga-verification.git
-cd fpga-verification
-python -m pip install -e ".[docs]"
-```
+- a [stateless stream converter](case-studies/stateless-converter.md);
+- a [stateful frame transform](case-studies/stateful-transform.md);
+- a [memory-backed streaming component](case-studies/memory-backed-component.md).
 
-## Documentation path
-
-For a new testbench, read these chapters in order:
-
-1. [Architecture](guide/architecture.md) gives the responsibility boundaries.
-2. [Project style](guide/testbench-style.md) defines the files in
-   `simulation/<name>/` and their ownership rules.
-3. [Simulation runners](sim/runners.md) starts plain RTL, generated
-   components, or a Platform Designer system.
-4. [Modelling DUT behaviour](guide/modeling.md) creates the pure functional
-   model, stateful behaviour model and protocol adapter.
-5. [Verification environment](guide/vip-verification.md) connects agents and
-   scoreboards, drives tests and finishes cleanly.
-
-Read the interface chapters as they become relevant: [Avalon-ST](guide/avalon-st.md),
-[Avalon-MM and DMA](guide/control-and-memory.md), and
-[Intel Avalon-ST Video](guide/intel-video.md). The data chapters describe
-[video frames](guide/video-frames.md) and [numeric formats](guide/numeric-formats.md).
-
-The site is self-contained: every tutorial and code example needed to build
-a testbench lives in these pages.
+Use the generated [API reference](reference/simulation.md) when you already know
+which component you need.
 
 ## Project links
 

@@ -146,5 +146,3 @@ except VIPProtocolError as error:
 The checker deliberately validates protocol history, not DUT behavior. The
 custom scoreboard converts decoded packets to domain values and asks the
 behavior model for expected output.
-
-Next: [build that verification environment](vip-verification.md).

@@ -107,6 +107,36 @@ async def measure_sequence(clock, observations):
 `required_clock_multiplier` is the clock-rate multiplier needed to match an
 ideal one-beat-per-cycle stream.
 
+## Different input and output beat counts
+
+`PacketObservation.beats` assumes that one logical packet contains the same
+number of useful beats at both interfaces. This is appropriate for a pipeline
+that preserves its physical layout. It is not sufficient for a width converter,
+packet grouper or splitter.
+
+When beat counts differ, calculate metrics for the two sides separately:
+
+```python
+input_metrics = analyzer.packet(PacketObservation(
+    name="input side",
+    beats=input_beats,
+    input_frame=input_frame,
+    output_frame=output_frame,
+))
+output_metrics = analyzer.packet(PacketObservation(
+    name="output side",
+    beats=output_beats,
+    input_frame=input_frame,
+    output_frame=output_frame,
+))
+```
+
+Interpret only the input duration and efficiency from the first result and only
+the output duration and efficiency from the second. A project helper can combine
+them and report `output_beats / input_beats` as the physical conversion ratio.
+The [stateless converter case study](../case-studies/stateless-converter.md)
+describes the corresponding throughput contract.
+
 ## Recommended workflow
 
 1. Start the DUT clock and create one analyzer for that clock domain.
@@ -120,5 +150,3 @@ Measure a long, representative interval with source traffic queued in advance
 and the sink ready unless sink backpressure is part of the requirement. A
 performance test that accidentally measures testbench gaps is not a DUT
 throughput test.
-
-Next: [add control and memory interfaces](control-and-memory.md).

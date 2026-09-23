@@ -3,184 +3,111 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Modeling DUT behavior
+# Modelling DUT behavior
 
-A verification environment needs more than a Python version of an algorithm.
-It must also describe register state, packet order, reset behavior, and the
-mapping from input traffic to expected output traffic. These tasks are easier
-to maintain when they are split into small layers.
+Prediction has three distinct concerns:
 
 ```text
-protocol packets and control transactions
-                    |
-             custom scoreboard
-                    |
-              behavior model
-                    |
-        one or more functional models
-                    |
-          values, arrays, and results
+protocol objects -> custom scoreboard -> behavior model -> functional model
 ```
 
-The layers have clear boundaries:
+The split is useful when each boundary can be explained and tested
+independently. Do not create wrapper classes merely to satisfy a diagram.
 
-- a functional model performs a pure calculation;
-- a behavior model represents the visible state and behavior of the DUT;
-- a custom scoreboard adapts protocol objects to model operations;
-- `BaseVIPScoreboard` checks ordered output expectations.
+## Functional model: values in, values out
 
-`FunctionalModel` and `BehaviorModel` are naming conventions. The library does
-not require a common base class for them. Their public operations should match
-the work performed by the DUT.
-
-## Describe the interface layout
-
-Start with one immutable layout object derived from the test configuration. It
-can hold input and output video formats, frame limits, numeric formats, and
-other parameters that change the meaning of data. The environment can pass the
-same layout to agents, codecs, and models.
-
-This avoids repeated calculations and makes configuration errors visible
-before traffic starts. It is also useful when input and output interfaces have
-different symbol widths or pixels per beat.
-
-## Keep the functional model pure
-
-A functional model accepts domain values such as arrays, frame sizes, or
-numeric parameters. It returns a value or a small result object. It should not
-know about cocotb, pyuvm, clocks, resets, bus transactions, or VIP packet
-classes.
+A functional model accepts arrays, integers or small dataclasses and returns new
+values. It has no clocks, resets, register timing, packet order or analysis
+ports.
 
 ```python
-class StreamFunctionalModel:
-    def __init__(self, layout):
-        self.layout = layout
+class TransformFunctionalModel:
+    def __init__(self, maximum):
+        self.maximum = maximum
 
-    def process_video_frame(self, frame, coefficient):
-        return calculate_output(frame, coefficient, self.layout)
+    def process_frame(self, frame, coefficient_0, coefficient_1):
+        value = frame * coefficient_0 + coefficient_1
+        return value.clip(0, self.maximum)
 ```
 
-The same object can then be used in fast Python unit tests, in simulation, or
-in a software tool. A pure model is deterministic: the same inputs and
-configuration produce the same result.
+Use ordinary Python tests for boundaries, rounding, saturation and randomized
+input. If a calculation returns several diagnostic values, return a dataclass
+instead of placing them in hidden mutable state.
 
-If a calculation has several outputs, return a dataclass instead of changing
-hidden object state. This makes intermediate values available to tests without
-mixing them with the DUT lifecycle.
+## Behavior model: visible state and time
 
-## Put DUT state in the behavior model
-
-The behavior model owns state that changes while the DUT runs. Typical state
-includes register values, operating modes, history windows, active
-coefficients, and counters. It creates and owns any functional models that it
-needs.
+Add a behavior model when prediction depends on accepted register writes,
+operating mode, frame history, command completion or reset. Its public methods
+should name component operations rather than protocol containers:
 
 ```python
-class StreamBehaviorModel:
-    def __init__(self, layout):
-        self.functional_model = StreamFunctionalModel(layout)
+class TransformBehaviorModel:
+    def __init__(self, functional_model):
+        self.functional_model = functional_model
         self.reset()
 
     def reset(self):
-        self.mode = DEFAULT_MODE
-        self.coefficient = DEFAULT_COEFFICIENT
+        self.coefficient_0 = 1
+        self.coefficient_1 = 0
 
     def process_register_write(self, address, data):
         ...
 
     def process_video_frame(self, frame):
-        expected = self.functional_model.process_video_frame(
+        expected = self.functional_model.process_frame(
             frame,
-            self.coefficient,
+            self.coefficient_0,
+            self.coefficient_1,
         )
         return VideoPacketResult.exact(expected)
 ```
 
-Use typed operations that express real DUT actions. For example,
-`process_register_write()`, `process_video_frame()`,
-`process_control_geometry()`, and `process_user_payload()` give useful
-boundaries. A universal `process_packet()` method would couple the model to the
-wire protocol and hide the meaning of each operation.
+Avoid a universal `process_packet()` method. Control writes, frames, external
+memory updates and completion events have different semantic meaning.
 
-A behavior model may still be stateless. Give it an explicit `reset()` method
-so all environments use the same lifecycle and future state can be added
-without changing their structure.
+## Custom scoreboard: protocol adaptation
 
-## Adapt protocols in the custom scoreboard
+The custom scoreboard is the only layer that needs both protocol objects and
+the behavior model. It may:
 
-The custom scoreboard is the boundary between protocol objects and the
-behavior model. It performs work such as:
+- dispatch control, user and video packets;
+- decode a video payload using active control geometry;
+- forward an accepted control-bus write;
+- encode a model result as an output packet;
+- create zero or more ordered expectations.
 
-- dispatching control, user, and video packets;
-- converting a video packet to a frame with the active input geometry;
-- translating an observed control-bus write to
-  `process_register_write(address, data)`;
-- converting a model result back to an output packet;
-- creating zero or more `PacketExpectation` objects in output order.
+Keep arithmetic and long-lived component state out of this layer.
 
-Keep arithmetic and long-lived DUT state out of this layer. The custom
-scoreboard should contain protocol context and small conversion rules.
+## Explicit output policy
 
-Control-bus transactions must be applied in the order in which their monitor
-publishes them. This gives the behavior model the same register state that the
-DUT had when it accepted each input packet.
+One input video packet should result in an explicit policy:
 
-## Compose the objects in the environment
+- `VideoPacketResult.exact(value, tolerance=...)` when content is predictable;
+- `VideoPacketResult.shape(reason=...)` when a packet must exist but its content
+  is not defined;
+- `VideoPacketResult.drop(reason=...)` when no packet should be produced.
 
-The pyuvm environment is the composition root. It creates one behavior model
-and injects it into the custom scoreboard.
+Warm-up periods, disabled modes and malformed-input recovery then become visible
+contracts instead of implicit exceptions in a scoreboard.
 
-```python
-class StreamEnv(uvm_env):
-    def build_phase(self):
-        self.layout = StreamLayout.from_config(self.cfg)
-        self.behavior_model = StreamBehaviorModel(self.layout)
-        self.scoreboard = StreamScoreboard(
-            "scoreboard",
-            self,
-            source_fmt=self.layout.input_format,
-            sink_fmt=self.layout.output_format,
-            behavior_model=self.behavior_model,
-            clock=self.clock,
-            reset=self.reset_signal,
-        )
-```
+## Reset and external state
 
-Share this behavior model with another checker only when both components
-represent the same DUT state. Do not create separate stateful models for the
-data path and control path, because they can move to different states.
+Decide which state resets and which survives. External memory can retain
+coefficient arrays while registers and pending history return to defaults. The
+behavior model, memory BFM and scoreboard protocol context do not necessarily
+share one reset policy.
 
-Use one `BaseVIPScoreboard` instance for each independent output stream. Each
-instance owns one expectation queue, protocol context, failure state, and frame
-counters.
+When a test writes model-visible data directly into a memory BFM, update the
+prediction state through the same environment helper. Otherwise the DUT and
+model can consume different coefficient sets.
 
-## Treat reset as a state transition
+## Test the boundaries
 
-When reset is asserted, `BaseVIPScoreboard` clears pending expectations and its
-output protocol context. It then calls the custom `on_reset()` hook. The custom
-scoreboard should clear its input context and call the behavior model's
-`reset()` method.
+1. Test functional calculations without a simulator.
+2. Test behavior modes, register writes, history and reset as ordinary Python.
+3. Test scoreboard packet dispatch and expectation creation.
+4. Use RTL simulation for handshake, timing and integration.
 
-Decide explicitly which state survives reset. For example, external memory may
-keep its contents even when registers and temporary windows return to their
-defaults. The Python model should follow the RTL contract.
-
-## Test each boundary
-
-The same split gives a useful test order:
-
-1. Test functional models with normal Python unit tests.
-2. Test behavior-model modes, register writes, history, and reset without a
-   simulator.
-3. Test the custom scoreboard's packet dispatch and expectation creation.
-4. Run integration tests with agents, monitors, and the RTL DUT.
-
-Errors found in the first three steps are faster to reproduce and easier to
-understand. The full simulation can then focus on handshake, timing, and RTL
-integration.
-
-The custom scoreboard is the protocol boundary around these models. Its
-expectation queue turns one behavior-model result into an observable output
-contract without putting algorithm logic into a driver or monitor.
-
-Next: [turn model results into ordered VIP checks](vip-verification.md).
+The [stateful transform](../case-studies/stateful-transform.md) and
+[memory-backed component](../case-studies/memory-backed-component.md) show how
+these rules scale to larger testbenches.

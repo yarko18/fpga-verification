@@ -222,5 +222,3 @@ SIM=questa python -m simulation.stream.run_test -g
 
 For Questa without the GUI, set `QUESTA_ACC=1` to retain signal visibility.
 `compile_log` and `ip_generate_log` keep tool output outside the source tree.
-
-Next: [connect an Avalon-ST stream](../guide/avalon-st.md).

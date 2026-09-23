@@ -166,5 +166,3 @@ except AssertionError as error:
 
 Do not use a tolerance to hide packet-order, geometry, or format errors. Those
 belong in the protocol checker and scoreboard.
-
-Next: [put the payload into Intel Avalon-ST Video packets](intel-video.md).

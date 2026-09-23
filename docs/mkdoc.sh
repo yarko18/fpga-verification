@@ -23,7 +23,7 @@ case "${1:-help}" in
         ;;
     help|-h|--help)
         printf '%s\n' \
-            "Usage: scripts/docs.sh <command>" \
+            "Usage: docs/mkdoc.sh <command>" \
             "" \
             "Commands:" \
             "  setup  Install the documentation dependencies" \
@@ -32,7 +32,7 @@ case "${1:-help}" in
         ;;
     *)
         printf 'Unknown command: %s\n' "$1" >&2
-        printf 'Run scripts/mkdoc.sh help for usage.\n' >&2
+        printf 'Run docs/mkdoc.sh help for usage.\n' >&2
         exit 2
         ;;
 esac

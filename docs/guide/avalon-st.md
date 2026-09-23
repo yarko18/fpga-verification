@@ -177,5 +177,3 @@ bus value.
 When a test fails, log the frame summary, accepted beat count, sideband fields
 and pause seed. Those four values usually distinguish a protocol-ordering bug,
 a payload packing mismatch, and a randomisation reproduction problem.
-
-Next: [add packet meaning with Intel Avalon-ST Video](intel-video.md).

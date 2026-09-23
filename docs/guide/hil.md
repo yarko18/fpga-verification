@@ -104,5 +104,3 @@ The session creates and replaces `data_in.bin` and `data_out.bin` in its work
 directory. Confirm service indices and target addresses before writing: unlike
 simulation, an incorrect address can modify a live board state. Startup,
 timeouts, malformed responses and short reads are reported as Python errors.
-
-Next: [see how frame data is represented](video-frames.md).

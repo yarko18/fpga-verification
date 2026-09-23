@@ -123,5 +123,3 @@ print(result_format.qraw_to_float(raw_product))
 Create the intended output format explicitly, then choose saturation or masking
 at the hardware boundary. Keeping that final decision visible makes a
 functional model reviewable.
-
-Next: [use these representations in a behavior model](modeling.md).

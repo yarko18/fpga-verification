@@ -5,27 +5,25 @@ SPDX-License-Identifier: RPL-1.5
 
 # Architecture
 
-The library is split by responsibility so the same data and prediction code
-can be used without a simulator, inside cocotb, and later against real
-hardware.
+`fpga-verification` separates values, protocol transport, prediction and
+simulation launch so the same calculation can be checked without a simulator,
+inside cocotb, and later against hardware.
 
 ```text
-data and codecs          Python/numpy values, frames, protocol packets
-        |
-simulation components   buses, BFMs, agents, monitors, scoreboards
-        |
-runners                  simulator and generated-IP launch
-        |
-hardware access          persistent System Console session
+data and numeric formats      numpy values, frames, fixed-point words
+protocol layer                packets, codecs and protocol history
+simulation layer              BFMs, agents, monitors and scoreboards
+launch layer                  RTL, generated-component and system runners
+hardware layer                persistent System Console access
 ```
 
-The lower layers do not know about clocks or a DUT. Simulation components add
-handshaking, reset, ordering, logging, and observation. A project-specific
-testbench supplies the behavior of the IP being checked.
+Dependencies point downward. Neutral data objects do not know about clocks or a
+DUT. Protocol codecs do not retain application state. Simulation components add
+handshaking, observation, ordering and reset behavior.
 
-## A verification path
+## Verification path
 
-For a streaming IP, one complete path normally looks like this:
+For one streaming path:
 
 ```text
 sequence -> driver -> input bus -> DUT -> output bus -> monitor
@@ -35,81 +33,38 @@ sequence -> driver -> input bus -> DUT -> output bus -> monitor
                                       |
                                behavior model
                                       |
-                          optional functional models
+                          optional functional model
 ```
 
-The codec translates between Python objects and wire symbols. The agent drives
-and observes the protocol. The scoreboard preserves ordering and turns
-semantic model results into explicit output expectations.
+- The codec translates between Python objects and wire symbols.
+- The agent drives and observes a protocol.
+- The custom scoreboard translates protocol events into model operations.
+- The behavior model predicts externally visible component behavior.
+- `BaseVIPScoreboard` compares output against a strict FIFO of expectations.
 
-## Composition rule for an IP testbench
+## Composition boundary
 
-Use the pyuvm `Env` as the composition root:
+The pyuvm environment is normally the composition root. It creates clocks,
+buses, BFMs, agents, models and scoreboards, then connects their analysis ports.
+Tests interact with short semantic helpers such as `reset()`, `send_frame()` and
+`control_write()` rather than constructing buses themselves.
 
-- create one explicit `*BehaviorModel` for every IP;
-- let that behavior model create any pure `*FunctionalModel` helpers it needs;
-- pass the behavior model into the custom scoreboard;
-- share the same behavior model with other scoreboards or environment helpers
-  only when they represent the same DUT state;
-- reset state through the behavior model API instead of changing its fields
-  from the environment.
+A separate behavior model is a recommendation, not a library requirement. It is
+valuable when the component has registers, modes, history, memory selection or
+reset state. A small stateless converter may call a pure functional model
+directly from its scoreboard; teams may still keep an empty-lifecycle behavior
+object for structural consistency.
 
-The behavior model remains explicit even when it is currently stateless. This
-makes dependency injection, reset lifecycle, and future state changes uniform
-across testbenches.
+## Ownership summary
 
-```python
-class MyIPBehaviorModel:
-    def __init__(self, cfg, functional_model=None):
-        self.cfg = cfg
-        self.functional_model = functional_model or MyIPFunctionalModel(cfg)
-        self.reset()
+| Layer | Owns | Must not own |
+| --- | --- | --- |
+| Functional model | Pure calculation and conversion | Protocol order, registers, clocks, reset |
+| Behavior model | Visible state and typed component operations | VIP packet decoding and analysis ports |
+| Custom scoreboard | Protocol context and input-to-expectation mapping | Application arithmetic and long-lived state |
+| Base scoreboard | Ordered comparison, reset epochs, completion, failures | Component prediction |
+| Environment | Construction, connections and task lifecycle | Expected-result algorithms |
+| Test | Scenario and observable assertions | Duplicated bus setup or model calculation |
 
-    def reset(self):
-        ...
-
-
-class MyEnv(uvm_env):
-    def build_phase(self):
-        self.model = MyIPBehaviorModel(self.cfg)
-        self.scoreboard = MyIPScoreboard(
-            "scoreboard",
-            self,
-            source_fmt=self.source_fmt,
-            sink_fmt=self.sink_fmt,
-            model=self.model,
-        )
-```
-
-This is a composition convention, not a required library base class. A simple
-IP may have no separate functional model at all.
-
-## Responsibility boundaries
-
-`FunctionalModel`
-: Performs pure calculation or conversion. It has no protocol ordering,
-  register lifecycle, memory addresses, or reset state.
-
-`BehaviorModel`
-: Describes IP-visible behavior and state transitions. It owns functional
-  helpers and exposes typed operations appropriate to the IP.
-
-Custom scoreboard
-: Adapts observed packets or transactions to typed model calls. It handles
-  protocol context and creates `PacketExpectation` objects.
-
-`BaseVIPScoreboard`
-: Compares the observed output with queued expectations in strict order. It
-  does not predict IP behavior.
-
-Avoid forcing every model into a single `process_packet()` interface. Control
-transactions, video frames, and completion events can have different semantic
-meaning. The scoreboard is the right place to dispatch protocol objects to
-typed behavior-model operations.
-
-The architecture is deliberately a dependency rule rather than a class
-hierarchy. Start by applying the file ownership rules in
-[Project style](testbench-style.md), then use the runner to instantiate the
-resulting testbench.
-
-Next: [start a simulation](../sim/runners.md).
+Use [Project style](testbench-style.md) for file ownership and
+[Modelling DUT behavior](modeling.md) for state and prediction rules.

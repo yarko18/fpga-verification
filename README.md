@@ -25,7 +25,7 @@ and Quartus System Console access.
 
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
 [PyPI](https://pypi.org/project/fpga-verification/) ·
-[Examples](https://github.com/yarko18/fpga-verification/tree/main/examples) ·
+[Minimal example](examples/stream_pipeline) ·
 [Changelog](CHANGELOG.md)
 
 ## Install
@@ -53,19 +53,18 @@ python -m pip install -e ".[docs]"
 - persistent Intel System Console access for hardware tests;
 - video frame and raw numeric data helpers.
 
-Start with the [documentation](https://yarko18.github.io/fpga-verification/).
-It introduces the architecture first, then builds a verification environment
-from simulation startup through streams, agents, models, scoreboards, control,
-memory, and hardware access. The
-[example notebooks](https://github.com/yarko18/fpga-verification/tree/main/examples)
-contain executable walkthroughs.
+Start with the [documentation](https://yarko18.github.io/fpga-verification/)
+or run the [stream-pipeline example](examples/stream_pipeline). The repository
+includes examples for several verification patterns. The site separates a
+complete tutorial, verification concepts, focused how-to guides, case studies,
+and generated API reference.
 
 ## Build the documentation locally
 
 ```bash
-./scripts/mkdoc.sh setup
-./scripts/mkdoc.sh serve
-./scripts/mkdoc.sh build
+./docs/mkdoc.sh setup
+./docs/mkdoc.sh serve
+./docs/mkdoc.sh build
 ```
 
 GitHub Pages is rebuilt automatically when documentation changes reach
