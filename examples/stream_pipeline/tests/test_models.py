@@ -1,8 +1,6 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: RPL-1.5
 
-import numpy as np
-
 from examples.stream_pipeline.simulation.vip.behavior_model import (
     StreamBehaviorModel,
 )
@@ -12,19 +10,20 @@ from examples.stream_pipeline.simulation.vip.functional_model import (
 from fpga_verification.sim.scoreboards import VideoPacketPolicy
 
 
-def test_functional_model_returns_an_independent_equal_frame():
-    frame = np.arange(12, dtype=np.uint8).reshape(3, 4)
+def test_functional_model_reverses_each_complete_and_partial_beat():
+    payload = [0x10, 0x11, 0x12, 0x13, 0x20, 0x21]
 
-    result = StreamFunctionalModel().process_frame(frame)
+    result = StreamFunctionalModel(bytes_per_beat=4).process_payload(payload)
 
-    np.testing.assert_array_equal(result, frame)
-    assert result is not frame
+    assert result == [0x13, 0x12, 0x11, 0x10, 0x21, 0x20]
+    assert result is not payload
+    assert payload == [0x10, 0x11, 0x12, 0x13, 0x20, 0x21]
 
 
 def test_behavior_model_returns_an_exact_contract():
-    frame = np.arange(12, dtype=np.uint8).reshape(3, 4)
+    payload = [1, 2, 3, 4, 5]
 
-    result = StreamBehaviorModel().process_video_frame(frame)
+    result = StreamBehaviorModel(bytes_per_beat=4).process_video_payload(payload)
 
     assert result.policy is VideoPacketPolicy.EXACT
-    np.testing.assert_array_equal(result.expected, frame)
+    assert result.expected == [4, 3, 2, 1, 5]

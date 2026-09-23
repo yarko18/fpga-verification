@@ -39,7 +39,7 @@ class BaseStreamTest(uvm_test):
 
 @pyuvm.test()
 class OrderedPacketsTest(BaseStreamTest):
-    """Check control, user and video packets through one ordered pipeline."""
+    """Change byte order in VIDEO payloads and preserve other packets."""
 
     async def body(self):
         layout = self.env.layout

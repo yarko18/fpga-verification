@@ -12,10 +12,7 @@ Avalon-MM, along with models for components such as DMA controllers.
 
 The library supports verification workflows for components from:
 
-It's also fully compatible with:
-
 - [Video and Vision Processing Suite (VVP)](https://www.altera.com/products/ip/po-3150/video-and-vision-processing-suite)
-
 - [Video and Image Processing Suite (VIP)](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
 
 The library provides a UVM-like testbench structure built on cocotb and pyuvm.
@@ -35,16 +32,20 @@ It includes:
 - simulator-independent video and numeric data helpers;
 - persistent Intel System Console access for hardware-in-the-loop tests.
 
-!!! note 
+!!! note
     Hardware-in-the-loop functionality is under development.
 
 ## Start here
 
 1. [Install the package](getting-started/install.md).
 2. [Run the minimal testbench](getting-started/minimal-testbench.md).
-3. Follow the complete [generic stream-pipeline tutorial](tutorial/stream-pipeline.md).
+3. Follow the complete [video-packet endianness tutorial](tutorial/stream-pipeline.md).
 
-The tutorial answers how to assemble a working testbench. The
+The example preserves packet order, identifier beats, CONTROL packets and USER
+packets. It reverses the valid bytes within each VIDEO payload beat, including
+a partial final beat.
+
+The tutorial shows how to assemble a working testbench. The
 [architecture](guide/architecture.md) and [modeling](guide/modeling.md) chapters
 explain why the responsibilities are separated. Focused how-to guides cover
 runners, interfaces, data formats, performance and hardware access.

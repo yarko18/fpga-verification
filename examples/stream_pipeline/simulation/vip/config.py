@@ -11,15 +11,15 @@ class TestConfig(ComponentConfig):
     """Values shared by the RTL build and the running testbench."""
 
     bits_per_symbol: int = hdl_parameter(8, name="BITS_PER_SYMBOL")
-    symbols_per_beat: int = hdl_parameter(2, name="SYMBOLS_PER_BEAT")
-    frame_width: int = 8
-    frame_height: int = 4
+    symbols_per_beat: int = hdl_parameter(4, name="SYMBOLS_PER_BEAT")
+    frame_width: int = 7
+    frame_height: int = 3
 
     def __post_init__(self):
-        if self.bits_per_symbol <= 0:
-            raise ValueError("bits_per_symbol must be positive")
-        if self.symbols_per_beat <= 0:
-            raise ValueError("symbols_per_beat must be positive")
+        if self.bits_per_symbol != 8:
+            raise ValueError("the endianness example requires 8-bit symbols")
+        if self.symbols_per_beat < 2:
+            raise ValueError("symbols_per_beat must be at least 2")
         if self.frame_width <= 0 or self.frame_height <= 0:
             raise ValueError("frame dimensions must be positive")
 

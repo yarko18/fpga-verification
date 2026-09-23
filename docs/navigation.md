@@ -5,7 +5,7 @@
     - [Installation](getting-started/install.md)
     - [Run the minimal testbench](getting-started/minimal-testbench.md)
 - Tutorial
-    - [Stream pipeline](tutorial/stream-pipeline.md)
+    - [Video-packet endianness](tutorial/stream-pipeline.md)
 - Concepts
     - [Architecture](guide/architecture.md)
     - [Project style](guide/testbench-style.md)

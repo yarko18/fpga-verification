@@ -25,7 +25,7 @@ and Quartus System Console access.
 
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
 [PyPI](https://pypi.org/project/fpga-verification/) ·
-[Minimal example](examples/stream_pipeline) ·
+[Video endianness example](examples/stream_pipeline) ·
 [Changelog](CHANGELOG.md)
 
 ## Install
@@ -54,10 +54,11 @@ python -m pip install -e ".[docs]"
 - video frame and raw numeric data helpers.
 
 Start with the [documentation](https://yarko18.github.io/fpga-verification/)
-or run the [stream-pipeline example](examples/stream_pipeline). The repository
-includes examples for several verification patterns. The site separates a
-complete tutorial, verification concepts, focused how-to guides, case studies,
-and generated API reference.
+or run the [video-packet endianness example](examples/stream_pipeline). It
+preserves CONTROL and USER packets while reversing byte order in VIDEO payload
+beats. The repository includes examples for several verification patterns. The
+site separates a complete tutorial, verification concepts, focused how-to
+guides, case studies, and generated API reference.
 
 ## Build the documentation locally
 

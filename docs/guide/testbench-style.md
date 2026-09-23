@@ -92,4 +92,4 @@ async def run_phase(self):
 - The runner contains no stimulus or expected-result calculation.
 
 The complete repository example is described in the
-[stream-pipeline tutorial](../tutorial/stream-pipeline.md).
+[video-packet endianness tutorial](../tutorial/stream-pipeline.md).

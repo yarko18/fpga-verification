@@ -7,8 +7,8 @@ SPDX-License-Identifier: RPL-1.5
 
 The repository contains several verification examples. Start with the complete,
 simulator-ready example in `examples/stream_pipeline`. The component accepts an
-Intel Avalon-ST packet stream, stores one beat, and forwards the packet stream
-unchanged.
+Intel Avalon-ST Video packet stream and stores one beat. It reverses byte order
+inside VIDEO payload beats while forwarding CONTROL and USER packets unchanged.
 
 ```text
 examples/stream_pipeline/
@@ -38,8 +38,9 @@ SIM=questa python -m examples.stream_pipeline.simulation.vip.run_test
 ```
 
 The test sends an ordered control, user, and video packet sequence. The source
-monitor creates expectations before the registered output can appear, and the
-sink monitor checks every output packet against the scoreboard FIFO.
+monitor creates pass-through expectations for CONTROL and USER packets and
+byte-reversed expectations for VIDEO payloads. The sink monitor checks every
+output packet against the scoreboard FIFO.
 
 The two model checks run without a simulator:
 

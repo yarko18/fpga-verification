@@ -3,82 +3,92 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Tutorial: verify a stream pipeline
+# Tutorial: verify a video-packet endianness converter
 
 This tutorial builds the `stream_pipeline` example shipped with the repository.
-The RTL is a one-entry elastic stage, and the tutorial follows its complete
-verification path.
+The RTL is a one-entry elastic stage that changes byte order only in VIDEO
+payload beats, and the tutorial follows its complete verification path.
 
 ## The observable contract
 
-The component has one input and one output Intel Avalon-ST packet stream. Its
-contract is:
+The component has one input and one output Intel Avalon-ST Video packet stream.
+Its contract is:
 
 1. preserve packet order and packet type;
-2. preserve control geometry and user payloads;
-3. preserve every video sample;
-4. retain valid output while the sink applies backpressure;
-5. discard in-flight state on reset.
+2. preserve every packet identifier beat;
+3. preserve CONTROL and USER packets exactly;
+4. reverse the valid bytes in each VIDEO payload beat;
+5. retain valid output while the sink applies backpressure;
+6. discard in-flight state on reset.
+
+The default interface carries four 8-bit symbols per beat. A complete VIDEO
+payload beat therefore changes from `[0x10, 0x11, 0x12, 0x13]` to
+`[0x13, 0x12, 0x11, 0x10]`. If the final beat contains only two valid bytes,
+`[0x20, 0x21]` becomes `[0x21, 0x20]`; empty lanes remain empty.
 
 The verification path is:
 
 ```text
-VIPSequence -> source driver -> input register -> sink monitor
-                    |                                |
-             source monitor ----------------> scoreboard
-                                                   |
-                                            behavior model
+VIPSequence -> source driver -> endianness converter -> sink monitor
+                    |                                  |
+             source monitor --------------------> scoreboard
+                                                       |
+                                                behavior model
 ```
 
 ## Share one configuration
 
 [`config.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/simulation/vip/config.py)
-declares HDL parameters and runtime-only frame dimensions. The runner passes
-`cfg.to_parameters()` to the RTL compiler and serialises the complete object for
-cocotb. The running test restores it with `load_runtime_config(TestConfig)`.
+declares the 8-bit symbol width, four symbols per beat, and runtime-only frame
+dimensions. The runner passes `cfg.to_parameters()` to the RTL compiler and
+serialises the complete object for cocotb. The running test restores it with
+`load_runtime_config(TestConfig)`.
 
-This prevents a test from silently interpreting a stream differently from the
-compiled RTL.
+The frame contains 21 bytes, so the test covers both complete beats and a final
+partial beat. Keeping these values in one object prevents the testbench from
+interpreting the stream differently from the compiled RTL.
 
 ## Derive the interface layout once
 
 [`layout.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/simulation/vip/layout.py)
-converts the configuration into one `VideoFormat` and one `FrameSize`. Agents,
-codecs, models and tests share those objects. No later layer recalculates bus
-width or frame geometry.
+converts the configuration into one `VideoFormat` and one `FrameSize`. The agent,
+codec and test share those objects. No later layer recalculates bus width or
+frame geometry.
 
-## Keep calculation separate from lifecycle
+## Model the byte-order conversion as a pure operation
 
-The example's functional model returns an independent copy of the input frame.
-The behavior model converts that value into `VideoPacketResult.exact()` and has
-an explicit `reset()` even though it currently retains no state.
-
-[`tests/test_models.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/tests/test_models.py)
-checks both boundaries as ordinary Python, without compiling RTL.
-
-For a component with a calculation, replace only the pure operation:
+The functional model receives a VIDEO payload without its identifier beat. It
+splits that payload into bus-width groups and reverses each group independently:
 
 ```python
 class StreamFunctionalModel:
-    def __init__(self, coefficient_0, coefficient_1, maximum):
-        self.coefficient_0 = coefficient_0
-        self.coefficient_1 = coefficient_1
-        self.maximum = maximum
+    def __init__(self, bytes_per_beat):
+        self.bytes_per_beat = bytes_per_beat
 
-    def process_frame(self, frame):
-        value = frame * self.coefficient_0 + self.coefficient_1
-        return value.clip(0, self.maximum)
+    def process_payload(self, payload):
+        result = list(payload)
+        for start in range(0, len(result), self.bytes_per_beat):
+            stop = min(start + self.bytes_per_beat, len(result))
+            result[start:stop] = reversed(result[start:stop])
+        return result
 ```
 
-Register timing and reset still belong in the behavior model, not in this pure
-calculation.
+The last slice can be shorter than one beat, which models `empty` correctly
+without adding padding to the expected packet. The behavior model wraps the
+result in `VideoPacketResult.exact()` and exposes `reset()` even though this
+component retains no model state.
 
-## Adapt packets in the scoreboard
+[`tests/test_models.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/tests/test_models.py)
+checks complete and partial groups as ordinary Python, without compiling RTL.
+
+## Apply the model only to VIDEO packets
 
 [`scoreboard.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/simulation/vip/scoreboard.py)
-is the protocol boundary. It passes control and user packets through exactly. A
-video packet is decoded with the active geometry, sent to the behavior model,
-encoded again, and queued as a `PacketExpectation`.
+is the protocol boundary. It queues CONTROL and USER packets unchanged. For a
+`VIPVideoPacket`, it sends only `packet.payload` to the behavior model and wraps
+the transformed bytes in a new `VIPVideoPacket` expectation. The VIDEO
+identifier beat is generated by the packet codec and is never passed through
+the endianness model.
 
 The base scoreboard owns output ordering, comparison, sticky failures, reset
 epochs and completion. The custom scoreboard owns only the mapping specific to
@@ -101,9 +111,10 @@ Semantic helpers keep tests independent from signal names: `reset()`,
 ## State the scenario in the test
 
 [`test_pyuvm.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/simulation/vip/test_pyuvm.py)
-contains a base lifecycle and one contract-focused scenario. The scenario builds
-control, user and video packets, sends them as one ordered sequence, and relies
-on the scoreboard for output checking.
+contains a base lifecycle and one contract-focused scenario. The scenario sends
+CONTROL, USER and VIDEO packets as one ordered sequence. Distinct USER payload
+bytes catch accidental conversion of a non-video packet, while the generated
+frame exercises the VIDEO conversion.
 
 The `finally` block always cancels BFMs and the clock. A failed comparison must
 not leave simulator tasks running.
@@ -117,7 +128,7 @@ configuration. It contains no stimulus and no expected data.
 After the example passes, useful extensions are:
 
 - enable source and sink timing randomisation;
-- insert two or more packets before waiting for output;
+- send several VIDEO packets between CONTROL packets;
 - assert reset while a packet is pending;
-- add a register interface and move its state into the behavior model;
-- replace the identity functional model with an independently tested transform.
+- parameterise a different number of bytes per beat;
+- add an independently modelled transformation after the byte-order converter.

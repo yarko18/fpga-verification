@@ -3,11 +3,15 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Stream-pipeline example
+# Video-packet endianness example
 
-This example verifies a one-entry Intel Avalon-ST packet pipeline. It
-demonstrates the recommended `config`, `layout`, functional model, behavior
-model, scoreboard, environment, test and runner boundaries.
+This example verifies a one-entry Intel Avalon-ST Video pipeline that reverses
+the byte order of each VIDEO payload beat. Packet identifier beats, CONTROL
+packets and USER packets pass through unchanged. The final partial VIDEO beat
+reverses only its valid bytes.
+
+The testbench demonstrates the recommended `config`, `layout`, functional
+model, behavior model, scoreboard, environment, test and runner boundaries.
 
 From the `fpga-verification` repository root:
 

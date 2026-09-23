@@ -15,7 +15,7 @@ from .scoreboard import StreamScoreboard
 
 
 class TestEnv(uvm_env):
-    """Composition root for the generic stream-pipeline testbench."""
+    """Composition root for the video-packet endianness testbench."""
 
     def __init__(self, name, parent, dut, cfg):
         super().__init__(name, parent)
@@ -41,7 +41,7 @@ class TestEnv(uvm_env):
             source_fmt=fmt,
             sink_fmt=fmt,
         )
-        self.behavior_model = StreamBehaviorModel()
+        self.behavior_model = StreamBehaviorModel(fmt.samples_per_beat)
         self.scoreboard = StreamScoreboard(
             "scoreboard",
             self,
