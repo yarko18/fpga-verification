@@ -1,266 +1,226 @@
 <!--
 Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
-
-Unless explicitly acquired and licensed from Licensor under another license,
-the contents of this file are subject to the Reciprocal Public License ("RPL")
-Version 1.5, or subsequent versions as allowed by the RPL, and You may not copy
-or use this file in either source code or executable form, except in compliance
-with the terms and conditions of the RPL.
-
-All software distributed under the RPL is provided strictly on an "AS IS"
-basis, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, AND LICENSOR
-HEREBY DISCLAIMS ALL SUCH WARRANTIES, INCLUDING WITHOUT LIMITATION, ANY
-WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, QUIET
-ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
-rights and limitations under the RPL.
 -->
 
-# Simulation Runners
+# Simulation runners
 
-You can run Cocotb test using Makefile or with python runner. Python runner method is used in this project.
+The runner is the boundary between a human command line and a cocotb testbench.
+Keep it small: select the DUT, source tree, test module and configuration here;
+keep stimulus, expected data and bus setup in the testbench package.
 
+All runners select `verilator` unless `SIM` is set. Use `SIM=questa` for an
+interactive debug session or a generated design that requires Questa libraries.
 
-## Runners
-
-The simulation helpers cover three levels of generated and non-generated
-designs:
-
-1) Low-level runners (library/pytest):
- - `rtl_test_cocotb`
-
-    RTL sources -> cocotb build/test
-
- - `intel_component_test_cocotb`
-
-    *_hw.tcl -> ip-generate -> generated composition HDL + original RTL -> rtl_runner
-
-2) Script wrappers (shared CLI setup):
- - `run_rtl_test`
-
-    Run a standard RTL cocotb simulation from a script or pytest.
-
- - `run_intel_component_test`
-
-    Run a standard Intel component cocotb simulation from a small script or pytest.
-
-### RTL sources
-
-`rtl_test_cocotb` is the direct RTL path. Pass it explicit HDL sources or source
-directories, and it delegates build/test to the selected cocotb simulator runner.
-
-#### Example for run_rtl_test:
-
-```verilog
-  from pathlib import Path
-
-  from fpga_verification.sim.runners import run_rtl_test
-
-
-  if __name__ == "__main__":
-      project_root = Path(__file__).resolve().parent
-
-      run_rtl_test(
-          project_root=project_root,
-          hdl_toplevel="MyIP",
-          test_module="vip.test_pyuvm",
-          source_dirs=(
-            "src",
-            "rtl/common",
-            "../../common/hdl",
-          ),
-          enable_questa_acc=True,
-      )
+```text
+run_test.py -> runner -> compile / generate -> cocotb test module -> pyuvm Env
 ```
 
-where project stucture looks like:
+## Choose the entry point
+
+| Entry point | Use it for |
+| --- | --- |
+| `rtl_test_cocotb()` | Plain Verilog or SystemVerilog sources. |
+| `intel_component_test_cocotb()` | A component description that must be generated first. |
+| `platform_test_cocotb()` | An already generated Platform Designer simulation tree. |
+| `run_rtl_test()` | A concise command-line wrapper around the RTL runner. |
+| `run_intel_component_test()` | A concise command-line wrapper around the component runner. |
+
+Low-level functions are useful from pytest or a Python tool. `run_*` wrappers
+are normally the right choice for `simulation/<name>/run_test.py`: they prepare
+paths and logs, accept `-g`, and ignore unrelated pytest options.
+
+## Plain RTL
+
+`rtl_test_cocotb()` either receives explicit `sources` or recursively discovers
+`.v` and `.sv` files in `source_dirs`. It creates `sim_build_<SIM>`, forwards
+HDL parameters, runs the cocotb module, and treats a failed results XML as a
+failed Python process.
+
+```python
+import os
+from pathlib import Path
+
+from fpga_verification.sim.runners import rtl_test_cocotb
+
+
+def run_plain_rtl():
+    os.environ["SIM"] = "verilator"
+    rtl_test_cocotb(
+        project_root=Path("."),
+        hdl_toplevel="stream_component",
+        test_module="stream.test_pyuvm",
+        sources=[Path("src/stream_component.sv")],
+        parameters={"DATA_WIDTH": 32},
+        compile_log=Path("logs/verilator_compile.log"),
+    )
 ```
+
+A typical source layout is intentionally boring:
+
+```text
 project/
-  ├── run_test.py
-  ├── src/
-  │   ├── MyIP.sv
-  │   └── other_module1.sv
-  └── rtl/
-      └── common/
-          └── other_module2.sv
+  src/
+    stream_component.sv
+    common/
+  simulation/
+    stream/
+      run_test.py
+      test_pyuvm.py
+      env.py
 ```
 
+Use explicit sources when source order matters. Otherwise pass source
+directories and let the runner discover HDL files.
 
-### Intel component runner
+## Generated component
 
-`intel_component_test_cocotb` is for Platform Designer component `_hw.tcl` files.
-It generates only the HDL needed for simulation, keeps composition HDL that has
-no source equivalent, replaces generated copies of project RTL with exact
-matches from `source_dirs`, and then calls `rtl_test_cocotb`.
+`intel_component_test_cocotb()` runs `ip-generate`, reads the generated `.spd`
+file, joins generated composition HDL with source HDL, adds selected tool
+models, then calls the RTL runner. The normal generated directory is temporary.
 
-Its generated-catalog flow is:
+```python
+from pathlib import Path
+
+from fpga_verification.sim.runners import intel_component_test_cocotb
+
+
+def run_generated_component(generate_only=False):
+    return intel_component_test_cocotb(
+        project_root=Path("."),
+        component_file=Path("src/component_hw.tcl"),
+        source_dirs=[Path("src/hw")],
+        hdl_toplevel="component",
+        test_module="stream.test_pyuvm",
+        component_parameters={"DATA_WIDTH": 32},
+        build_args=["-Wno-PARAMNODEFAULT"],
+        generate_only=generate_only,
+        ip_generate_log=Path("logs/ip_generate.log"),
+        compile_log=Path("logs/verilator_compile.log"),
+    )
+```
+
+Use `generate_only=True` to retain and return the generated directory without
+starting simulation. Use `retain_generated=True` after a normal run when a
+failed generated tree needs investigation. Generated trees are build artifacts,
+not source files: they depend on the selected tool version and simulator.
+
+The generation flow is:
 
 ```text
 source_dirs
-  -> ip-make-ipx --thorough-descent --source-directory=<source_dirs>
-  -> components.ipx in generated temp dir
-  -> ip-generate --search-path=<components.ipx>,$
-  -> parse .spd
-  -> replace generated RTL copies with original source files
+  -> ip-make-ipx --thorough-descent
+  -> generated components catalogue
+  -> ip-generate
+  -> generated composition HDL + original source HDL
   -> rtl_test_cocotb
 ```
 
-Pass `generate_only=True` to retain and return the generated composition
-directory without running simulation.
+Useful component options include `part`, `project_directory`,
+`quartus_model_files`, `ip_search_paths` and `make_ipx`.
+
+## One configuration for HDL and cocotb
+
+For a generated DUT, use one resolved `ComponentConfig`. Fields marked with
+`hdl_parameter()` are passed to generation; the same resolved object is
+serialised into the cocotb environment. The testbench restores it with
+`load_runtime_config()`.
+
+```python
+from dataclasses import dataclass
+
+from fpga_verification.sim import ComponentConfig, hdl_parameter
 
 
-#### Example for run_intel_component_test:
+@dataclass(frozen=True)
+class TestConfig(ComponentConfig):
+    data_width: int = hdl_parameter(32, name="DATA_WIDTH")
+    queue_depth: int = hdl_parameter(8, name="QUEUE_DEPTH")
+    case_note: str = "smoke"
+```
 
-```verilog
+```python
+# Host side, in run_test.py
+run_intel_component_test(..., config=get_test_config())
+
+# Cocotb side, in test_pyuvm.py
+cfg = load_runtime_config(TestConfig)
+```
+
+Do not also pass a conflicting `component_parameters` mapping. A missing,
+stale or malformed runtime configuration is an error by design: creating a
+new default config in cocotb would hide a mismatch with generated HDL. See
+[Project style](../guide/testbench-style.md) for the ownership rule.
+
+## Platform Designer system
+
+`platform_test_cocotb()` targets an existing generated simulation tree.
+With Questa it compiles through `msim_setup.tcl` and uses the generated
+libraries. With Verilator it extracts a compatible source list from that setup.
+Other simulator values are rejected.
+
+```python
+from fpga_verification.sim.platform_designer import platform_test_cocotb
+
+
+platform_test_cocotb(
+    project_root="platforms/system/sim",
+    hdl_toplevel="system",
+    test_module="system.test_pyuvm",
+    debug=False,
+)
+```
+
+Keep the project root, top-level name, selected simulator and installed tool
+version consistent with the generated tree.
+
+## A human-readable `run_test.py`
+
+A command-line runner should be readable without opening the environment. It
+may contain documented simulator workarounds; it must not calculate expected
+results or construct agents.
+
+```python
+import os
 from pathlib import Path
 
 from fpga_verification.sim.runners import run_intel_component_test
 
-from test_config import get_test_config
+from .config import get_test_config
+
 
 if __name__ == "__main__":
-    project_root = Path(__file__).resolve().parent
+    sim = os.getenv("SIM", "verilator")
+    build_args = ["-Wno-PARAMNODEFAULT"] if sim == "verilator" else []
 
     run_intel_component_test(
-        project_root=project_root,
-        component_file="./src/MyIP_hw.tcl",
-        hdl_toplevel="MyIP_component",
-        test_module="vip.test_pyuvm",
-        test_module_env="MYIP_VIP_TEST_MODULE",
+        project_root=Path(__file__).resolve().parent,
+        component_file="../../src/component_hw.tcl",
+        hdl_toplevel="component",
+        test_module="stream.test_pyuvm",
         config=get_test_config(),
         enable_questa_acc=True,
         build_args=build_args,
     )
 ```
 
-where project stucture looks like:
-```
-project/
-  ├── run_test.py
-  ├── src/
-  │   ├── MyIP.sv
-  │   └── MyIP_hw.tcl
-  └── vip/
-      └── test_pyuvm.py
-```
-
-### Resolved component configuration
-
-Define generated-component configuration as a dataclass inheriting
-`ComponentConfig`, and mark Platform Designer values with `hdl_parameter()`.
-`run_intel_component_test()` uses `to_parameters()` to generate the DUT and
-passes the same resolved object as JSON to cocotb through
-`Runner.test(extra_env=...)`.
-Providing a conflicting `component_parameters` mapping together with `config`
-is rejected before generation.
-
-```python
-@dataclass(frozen=True)
-class TestConfig(ComponentConfig):
-    width: int = hdl_parameter(32, name="MAX_WIDTH")
-    case_note: str = "smoke"
-
-
-config = get_test_config(os.getenv("FPGA_VERIFICATION_CONFIG_CASE", "smoke"))
-run_intel_component_test(..., config=config)
-```
-
-The cocotb module must restore it with `load_runtime_config(TestConfig)`.
-Missing JSON, malformed JSON, missing/extra fields, and wrong JSON field types
-are errors; constructing `TestConfig()` inside cocotb is intentionally not a
-fallback. Named cases therefore select host-side configurations only, while
-`FPGA_VERIFICATION_TEST_CONFIG_JSON` remains the sole configuration seen by the
-running testbench.
-
-## Simulator setup
-
-All runners use Verilator by default. Set the `SIM` environment variable to select simulator explicitly.
-
-run_test.py:
-```python
-os.environ["SIM"] = "questa"
-
-run_rtl_test(
-    # ...
-)
-run_intel_component_test(
-    # ...
-)
-```
-
-or directly in CLI:
+Run it with:
 
 ```bash
-        # use Questa
-        SIM=questa python run_test.py
-
-        # use Verilator
-        SIM=verilator python run_test.py
+SIM=verilator python -m simulation.stream.run_test
+SIM=questa python -m simulation.stream.run_test -g
 ```
 
+## Debugging
 
-For Questa, the platform runner compiles through `msim_setup.tcl` and runs
-cocotb against the generated simulator libraries. For Verilator, it reads
-Verilog/SystemVerilog sources from `msim_setup.tcl` and builds them directly.
+`-g` enables debug mode in both script wrappers.
 
-```text
-project_root/
-  <hdl_toplevel>/
-    <hdl_toplevel>/
-      testbench/
-        mentor/
-          msim_setup.tcl
-```
+| Simulator | Debug result |
+| --- | --- |
+| Verilator | Enables tracing and creates `dump.vcd`; there is no GUI. |
+| Questa | Starts the GUI, enables signal access, writes waves and runs `wave.do` when present. |
 
-## Debug mode
-
-Both script wrappers accept the `-g` flag to enable debug mode:
-
-        python run_test.py -g
-
-Behavioral for different simulators:
-- Verilator:
-  - still no GUI
-  - enable `VM_TRACE=1`
-  - add `--trace` flag during compilation  phase
-  - add `--trace` flag during run phase
-  - create `dump.vcd` file
-
-- Questa:
-  - run GUI
-  - enable access to all signals using `+acc`
-  - enable waveform write
-  - run `wave.do` script (if avaliable) to open already configured waveform
-
-
-For a plain RTL run script:
-
-```python
-from pathlib import Path
-
-from fpga_verification.sim.runners import run_rtl_test
-
-
-if __name__ == "__main__":
-    run_rtl_test(
-        project_root=Path(__file__).parent,
-        hdl_toplevel="dut",
-        test_module="test_dut",
-    )
-```
-
-For pytest or another Python caller, either call the low-level runner and pass
-`debug` explicitly, or call a script wrapper. Script wrappers ignore pytest's
-own command-line arguments:
-
-```python
-def test_rtl():
-    run_rtl_test(
-        project_root=Path(__file__).parent,
-        hdl_toplevel="dut",
-        test_module="test_dut",
-        debug=True,
-    )
-```
+For Questa without the GUI, set `QUESTA_ACC=1` to retain signal visibility.
+`compile_log` and `ip_generate_log` keep tool output outside the source tree.
 
 Next: [connect an Avalon-ST stream](../guide/avalon-st.md).
