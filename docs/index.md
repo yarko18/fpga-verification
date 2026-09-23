@@ -5,11 +5,10 @@ SPDX-License-Identifier: RPL-1.5
 
 # FPGA Verification
 
-`fpga-verification` is a Python library for building repeatable FPGA tests from
-the same set of data descriptions, protocol codecs, simulation components, and
-hardware access helpers.
-
-The library covers the path from a Python stimulus to a checked DUT response:
+`fpga-verification` is a Python library for repeatable FPGA verification. It
+keeps test data, protocol conversion, reference behaviour and simulation
+plumbing in separate layers, so the same prediction code can be used in a fast
+unit test, cocotb and hardware-in-the-loop.
 
 ```text
 test data -> protocol codec -> driver -> DUT -> monitor -> scoreboard
@@ -45,35 +44,29 @@ cd fpga-verification
 python -m pip install -e ".[docs]"
 ```
 
-## Read this documentation in order
+## Documentation path
 
-The chapters deliberately follow the way a verification environment grows:
+For a new testbench, read these chapters in order:
 
-1. [Architecture](guide/architecture.md) explains the library layers and the
-   boundary between agents, behavior models, and scoreboards.
-2. [Simulation runners](sim/runners.md) start a DUT in a supported simulator.
-3. [Avalon-ST](guide/avalon-st.md) introduces transfers, frames, sources,
-   sinks, and monitors.
-4. [Intel video](guide/intel-video.md) adds packet meaning above the stream.
-5. [Modeling DUT behavior](guide/modeling.md) separates pure calculations,
-   stateful behavior, and protocol adaptation.
-6. [VIP verification](guide/vip-verification.md) turns model results and packet
-   policies into ordered output expectations.
-7. [Performance](guide/performance.md) measures latency, bubbles, and sustained
-   throughput after functional checking is in place.
-8. [Control and memory](guide/control-and-memory.md) covers Avalon-MM and DMA
-   traffic alongside the main stream.
-9. [Hardware-in-the-loop](guide/hil.md) reuses Python-side data on a real FPGA.
-10. [Video frames](guide/video-frames.md) and
-   [numeric formats](guide/numeric-formats.md) document the lower-level data
-   representations when a test needs them.
+1. [Architecture](guide/architecture.md) gives the responsibility boundaries.
+2. [Project style](guide/testbench-style.md) defines the files in
+   `simulation/<name>/` and their ownership rules.
+3. [Simulation runners](sim/runners.md) starts plain RTL, generated
+   components, or a Platform Designer system.
+4. [Modelling DUT behaviour](guide/modeling.md) creates the pure functional
+   model, stateful behaviour model and protocol adapter.
+5. [Verification environment](guide/vip-verification.md) connects agents and
+   scoreboards, drives tests and finishes cleanly.
 
-Each chapter links to an executable notebook with more examples. The notebooks
-also state whether they need only Python, a cocotb simulator, Quartus tools, or
-connected hardware.
+Read the interface chapters as they become relevant: [Avalon-ST](guide/avalon-st.md),
+[Avalon-MM and DMA](guide/control-and-memory.md), and
+[Intel Avalon-ST Video](guide/intel-video.md). The data chapters describe
+[video frames](guide/video-frames.md) and [numeric formats](guide/numeric-formats.md).
+
+The site contains the material formerly kept in `examples/`. It is therefore
+self-contained; notebooks are not needed to read or use the documentation.
 
 ## Project links
 
 - [Package on PyPI](https://pypi.org/project/fpga-verification/)
 - [Source repository](https://github.com/yarko18/fpga-verification)
-- [Example notebooks](https://github.com/yarko18/fpga-verification/tree/main/examples)
