@@ -24,6 +24,153 @@ and sink monitors publish decoded packets through pyuvm analysis ports. The
 custom scoreboard consumes them and adds `PacketExpectation` objects to
 `BaseVIPScoreboard`.
 
+## `VIPAgent`: drive, observe, publish
+
+`VIPAgent` is the pyuvm component around one Intel Avalon-ST Video path. It
+creates the protocol-specific objects from buses and formats; it does not
+predict DUT behavior. Give it at least one of `source_bus` or `sink_bus`.
+
+| Bus supplied | Always created | Created in active mode |
+| --- | --- | --- |
+| `source_bus` | `source_monitor` | Avalon-ST source, `VIPDriver`, `sequencer` |
+| `sink_bus` | `sink_monitor` | Sink monitor drives `ready` |
+
+An active agent (`UVM_ACTIVE`, the default) can send a `VIPSequence` through
+`source_bus` and provides backpressure on `sink_bus`. A passive agent
+(`UVM_PASSIVE`) only reconstructs and publishes traffic already driven by the
+DUT or another testbench component. It creates no source driver or sequencer
+and never drives `ready`.
+
+```python
+from pyuvm import uvm_active_passive_enum
+from cocotbext.avalon import AvalonSTBus
+from fpga_verification.sim.agents import VIPAgent
+
+
+active_agent = VIPAgent(
+    "data_agent",
+    parent,
+    clock=dut.clk,
+    reset=dut.reset,
+    source_bus=AvalonSTBus.from_prefix(dut, "din"),
+    sink_bus=AvalonSTBus.from_prefix(dut, "dout"),
+    source_fmt=layout.input_format,
+    sink_fmt=layout.output_format,
+    reset_active_level=True,
+    ready_latency=0,
+    ready_allowance=None,
+    idle_value=0,
+    randomize=False,
+    packet_logging=True,
+)
+
+passive_tap = VIPAgent(
+    "output_tap",
+    parent,
+    clock=dut.clk,
+    reset=dut.reset,
+    sink_bus=AvalonSTBus.from_prefix(dut, "dout"),
+    sink_fmt=layout.output_format,
+    is_active=uvm_active_passive_enum.UVM_PASSIVE,
+)
+```
+
+`source_fmt` is required with `source_bus`; `sink_fmt` is required with
+`sink_bus`. When both stream formats are identical, `sink_fmt` defaults to
+`source_fmt`.
+
+### Send packet objects through the sequencer
+
+`VIPItem` contains exactly one complete VIP packet. `VIPSequence.from_packets()`
+converts an ordered packet list into items; the active agent's `VIPDriver`
+serialises each packet to an `AvalonSTFrame`.
+
+```python
+from fpga_verification.sim.agents import VIPSequence
+
+packets = [
+    input_codec.control_packet(frame_size),
+    input_codec.frame_to_video_packet(frame, frame_size),
+]
+sequence = VIPSequence.from_packets(packets, name="input_frame")
+await sequence.start(active_agent.sequencer)
+```
+
+Keep control, user and video packets as separate sequence items. Packet
+boundaries then remain visible to the driver, source monitor and scoreboard.
+A passive agent has no sequencer; attempting to use one is a testbench
+configuration error.
+
+### Analysis ports and `AnalysisImp`
+
+Both monitor accessors return ordinary pyuvm analysis ports:
+
+- `source_analysis_port` publishes decoded packets accepted at `source_bus`;
+- `sink_analysis_port` publishes decoded packets accepted at `sink_bus`.
+
+Accessing a port whose corresponding bus was not supplied raises a `RuntimeError`.
+Connect ports in the environment's `connect_phase()` to exports owned by the
+scoreboard.
+
+```python
+def connect_phase(self):
+    if self.scoreboard.data_in_export is not None:
+        self.data_agent.source_analysis_port.connect(
+            self.scoreboard.data_in_export,
+        )
+    self.data_agent.sink_analysis_port.connect(
+        self.scoreboard.data_out_export,
+    )
+    self.control_agent.analysis_port.connect(
+        self.scoreboard.control_export,
+    )
+```
+
+`AnalysisImp` is the adapter from `uvm_analysis_port.write(item)` to a Python
+callback. `BaseVIPScoreboard` creates three instances:
+
+```text
+source_analysis_port.write(packet)
+  -> data_in_export.write(packet)
+  -> _process_input_packet(packet)
+  -> process_input_packet(packet)*
+  -> add_expectation(...)
+
+sink_analysis_port.write(packet)
+  -> data_out_export.write(packet)
+  -> _process_output_packet(packet)
+  -> compare packet with expected_queue[0]
+
+control_agent.analysis_port.write(transaction)
+  -> control_export.write(transaction)
+  -> _process_control_transaction(transaction)
+  -> process_control_transaction(transaction)*
+  -> behavior_model.process_register_write(...)
+```
+
+The underscored callbacks are library wrappers: they ignore traffic while reset
+is active, capture exceptions as sticky scoreboard failures, and then invoke
+the corresponding public hook. The `*` hooks are implemented by the custom
+scoreboard for the concrete IP.
+
+### Timing randomisation, logging and cleanup
+
+`randomize=True` applies pause generators to the active source and to the
+active sink's `ready` path. Enable it after directed tests pass, and retain the
+random seed in failure output. It can be changed at run time:
+
+```python
+self.data_agent.set_randomize(True)
+self.data_agent.set_packet_logging(True)
+```
+
+`set_packet_logging(enable, level=None)` affects packet summaries from the
+driver and monitors. `cancel_bfms()` stops the source and monitor background
+tasks. `clear_bfms()` clears queued source data and monitor protocol state; it
+is useful only as controlled environment cleanup, not as a replacement for
+reset. The environment calls `cancel_bfms()` from `stop_tasks()` in a `finally`
+block.
+
 ## The ordered output contract
 
 `BaseVIPScoreboard` owns a FIFO expectation queue. Every observed output packet
