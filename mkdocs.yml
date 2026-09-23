@@ -9,10 +9,20 @@ site_dir: site
 
 theme:
   name: material
-  features:
-    - navigation.sections
-    - navigation.indexes
-    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Переключить на тёмную тему
+
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Переключить на светлую тему
 
 plugins:
   - search
@@ -29,6 +39,15 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/wavedrom@3.6.2/skins/default.js
+  - https://cdn.jsdelivr.net/npm/wavedrom@3.6.2/skins/dark.js
+  - https://cdn.jsdelivr.net/npm/wavedrom@3.6.2/wavedrom.min.js
+  - javascripts/wavedrom-init.js
+
+extra_css:
+  - stylesheets/extra.css
+  
 nav:
   - Home: index.md
   - Architecture: guide/architecture.md

@@ -1,0 +1,11 @@
+.wavedrom {
+  overflow-x: auto;
+  padding: 0.6rem;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+}
+
+.wavedrom svg {
+  display: block;
+}

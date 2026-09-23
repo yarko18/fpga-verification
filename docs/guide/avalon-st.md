@@ -9,14 +9,23 @@ After the simulator is running, Avalon-ST helpers provide the first reusable
 connection to a streaming DUT. `AvalonFormat` describes how symbols occupy the
 `data` word; source, sink, and monitor objects implement clocked transfers.
 
-```text
-AvalonSTSource -> valid/data/SOP/EOP -> DUT -> AvalonSTSink
-                                             AvalonSTMonitor
-```
+![](./media/avalon-st.svg)
+
 
 A beat transfers when the configured `valid`/`ready` condition succeeds.
 `AvalonSTFrame` groups accepted beats into a packet and preserves sideband
 metadata such as `channel`, `error`, and `empty`.
+
+<script type="WaveDrom" data-wavedrom-skin="auto">
+{
+  signal: [
+    { name: "clk",   wave: "p......." },
+    { name: "ready", wave: "01..01..." },
+    { name: "valid", wave: "0.1..0..." },
+    { name: "data",  wave: "x.===.x..", data: "0x11 0x22 0x33" }
+  ]
+}
+</script>
 
 ```python
 from cocotbext.avalon import (
