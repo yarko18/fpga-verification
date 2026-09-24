@@ -114,8 +114,10 @@ def _export_svg(source: Path, selector: str) -> str:
 
         output.parent.mkdir(parents=True, exist_ok=True)
         temporary = output.with_name(f".{output.stem}.{os.getpid()}.tmp.svg")
-        command = [
-            executable,
+        command = [executable]
+        if getattr(os, "geteuid", lambda: -1)() == 0:
+            command.append("--no-sandbox")
+        command.extend([
             "--disable-update",
             "--export",
             "--format",
@@ -132,7 +134,11 @@ def _export_svg(source: Path, selector: str) -> str:
             "--output",
             str(temporary),
             str(source),
-        ]
+        ])
+        if not os.environ.get("DISPLAY"):
+            xvfb_run = shutil.which("xvfb-run")
+            if xvfb_run is not None:
+                command = [xvfb_run, "--auto-servernum", *command]
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=False)
             if result.returncode != 0 or not temporary.is_file():

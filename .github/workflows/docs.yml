@@ -24,6 +24,10 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DRAWIO_VERSION: "31.3.2"
+  DRAWIO_SHA256: "725453f32ef7f2f63f8b50b374857a5c312e2aaabcf221cb0600332741ae1094"
+
 jobs:
   build-documentation:
     name: Build documentation
@@ -36,6 +40,16 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - name: Install Draw.io CLI
+        run: |
+          drawio_package="${RUNNER_TEMP}/drawio-amd64-${DRAWIO_VERSION}.deb"
+          curl --fail --location --silent --show-error \
+            --output "${drawio_package}" \
+            "https://github.com/jgraph/drawio-desktop/releases/download/v${DRAWIO_VERSION}/drawio-amd64-${DRAWIO_VERSION}.deb"
+          echo "${DRAWIO_SHA256}  ${drawio_package}" | sha256sum --check -
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            xauth xvfb "${drawio_package}"
       - name: Install documentation dependencies
         run: python -m pip install -e ".[docs]"
       - name: Build documentation site
