@@ -11,7 +11,7 @@ frames or individual beats. Both classes are provided by the installed
 `cocotbext.avalon` dependency and are the stream BFMs used by
 `fpga-verification` agents and the Intel DMA model.
 
-![](./media/avalon-st.svg)
+![](./media/schema.drawio::Page-1)
 
 A transfer is accepted on a rising clock edge when both `valid` and `ready`
 are high. The source owns `valid`, `data` and packet sidebands; the sink owns

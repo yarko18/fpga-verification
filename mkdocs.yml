@@ -8,6 +8,8 @@ docs_dir: docs
 site_dir: site
 exclude_docs: |
   README.md
+  **/*.drawio
+  hooks/**
 
 theme:
   name: material
@@ -35,6 +37,9 @@ plugins:
         python:
           paths:
             - src
+
+hooks:
+  - docs/hooks/drawio.py
 
 markdown_extensions:
   - admonition

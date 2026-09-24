@@ -20,7 +20,7 @@ It keeps test data, protocol conversion, reference behaviour, and simulation
 plumbing in separate layers. This allows the same prediction code to be reused
 in fast unit tests, cocotb simulations, and hardware-in-the-loop tests.
 
-![](./guide/media/img1.svg)
+![](./media/schema.drawio::Page-1)
 
 It includes:
 
