@@ -18,6 +18,13 @@ rights and limitations under the RPL.
 
 # Changelog
 
+## 1.0.5 - 2026-09-24
+
+- Update mkdoc documentation
+  - Add drawio inline support
+  - Add wavedrom inline support
+  - Add dark mode
+
 ## 1.0.4 - 2026-09-15
 
 - Create standard `VideoPacketPolicy` for intel video packets:
