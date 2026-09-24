@@ -56,7 +56,7 @@ The case studies describe reusable verification problems:
 - a [stateful frame transform](case-studies/stateful-transform.md);
 - a [memory-backed streaming component](case-studies/memory-backed-component.md).
 
-Use the generated [API reference](reference/simulation.md) when you already know
+Use the generated [API reference](api/simulation.md) when you already know
 which component you need.
 
 ## Project links

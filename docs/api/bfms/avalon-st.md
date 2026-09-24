@@ -3,7 +3,7 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Avalon-ST source and sink
+# Avalon-ST BFM
 
 `AvalonSTSource` drives an Avalon Streaming interface from testbench frames.
 `AvalonSTSink` owns `ready`, captures accepted transfers and returns complete
@@ -11,17 +11,28 @@ frames or individual beats. Both classes are provided by the installed
 `cocotbext.avalon` dependency and are the stream BFMs used by
 `fpga-verification` agents and the Intel DMA model.
 
+![](./media/avalon-st.svg)
+
+A transfer is accepted on a rising clock edge when both `valid` and `ready`
+are high. The source owns `valid`, `data` and packet sidebands; the sink owns
+`ready`. While `valid` is high and `ready` is low, the source keeps the current
+beat stable. In packet mode, accepted beats from `startofpacket` through
+`endofpacket` form one frame.
+
 ```python
 from cocotbext.avalon import (
     AvalonFormat,
+    AvalonSTBeat,
     AvalonSTBus,
     AvalonSTFrame,
+    AvalonSTMonitor,
     AvalonSTSink,
     AvalonSTSource,
 )
 ```
 
-For an end-to-end test example, see the [Avalon-ST guide](../../guide/avalon-st.md).
+For an end-to-end testbench flow, see the
+[video-packet tutorial](../../tutorial/stream-pipeline.md).
 
 ## Shared interface description
 
@@ -72,6 +83,13 @@ the logical item accepted by a source and returned by `sink.recv()`.
 | `tx_complete` | Cocotb `Event` or callback invoked when source transmission finishes or an in-flight frame is flushed by reset. |
 | `sim_time_start`, `sim_time_end` | Simulation timestamps populated by the source or receiver. |
 
+### `AvalonSTBeat`
+
+`AvalonSTBeat` represents one accepted bus transfer. `recv_beat()` returns it
+when a test needs packed `data`, unpacked `symbols`, packet flags, sidebands or
+the exact transfer timestamp. Use `AvalonSTFrame` for payload-level checks and
+`AvalonSTBeat` for protocol-level checks.
+
 ## Common constructor arguments
 
 The source and sink share these arguments:
@@ -86,6 +104,8 @@ The source and sink share these arguments:
 | `ready_latency` | 0 | Supported values are 0 and 1. |
 | `ready_allowance` | same as `ready_latency` | Supported pairs are `(0, 0)` and `(1, 1)`. |
 | `packets` | `None` | Auto-detects packet mode from `startofpacket` and `endofpacket`; true requires both signals; false treats every accepted beat as a frame. |
+| `strict_ready_latency` | `False` | For an RL=1 receiver, rejects `valid` when raw `ready` was low in the preceding cycle. |
+| `timeout_cycles` | `0` | For a receiver, raises `TimeoutError` after this many clocks without an accepted transfer; zero disables the timeout. |
 
 The constructor starts reset handling immediately. When a reset signal is
 provided, transfer processing runs after reset is released. No separate
@@ -172,6 +192,17 @@ completes. In packet mode it collects beats from `startofpacket` through
 the receive queue. A full or paused sink deasserts `ready` until a frame is
 removed or the pause is cleared.
 
+## `AvalonSTMonitor`
+
+`AvalonSTMonitor` uses the same bus, format, packet and ready-timing arguments
+as the sink, but it never drives `ready`. It observes transfers already
+accepted by the connected source and sink. Its frame and beat receive methods
+have the same meaning as the corresponding sink methods.
+
+Use a monitor for scoreboards, coverage and timing measurements. Use a sink
+when the testbench must provide `ready` or insert backpressure. Calling
+`cancel()` stops the monitor's receive and reset coroutines.
+
 ## Ready timing and backpressure
 
 `ready_latency=0, ready_allowance=0` uses the current-cycle `ready` value for
@@ -191,36 +222,6 @@ def pause_pattern():
 
 source.set_pause_generator(pause_pattern())
 sink.set_pause_generator(pause_pattern())
-```
-
-## Complete example
-
-```python
-fmt = AvalonFormat(bits_per_symbol=8, symbols_per_beat=4)
-source = AvalonSTSource(
-    AvalonSTBus.from_prefix(dut, "din"),
-    fmt,
-    dut.clk,
-    reset=dut.reset,
-    packets=True,
-    idle_value=0,
-)
-sink = AvalonSTSink(
-    AvalonSTBus.from_prefix(dut, "dout"),
-    fmt,
-    dut.clk,
-    reset=dut.reset,
-    packets=True,
-)
-
-try:
-    await source.send(AvalonSTFrame([0x11, 0x22, 0x33, 0x44, 0x55], channel=2))
-    received = await sink.recv()
-    assert received.data == [0x11, 0x22, 0x33, 0x44, 0x55]
-    assert received.channel == 2
-finally:
-    source.cancel()
-    sink.cancel()
 ```
 
 ## Errors and reset

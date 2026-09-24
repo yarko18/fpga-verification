@@ -8,12 +8,12 @@
     - [Video-packet endianness](tutorial/stream-pipeline.md)
 - Concepts
     - [Architecture](guide/architecture.md)
+    - [Video implementation map](video.md)
     - [Project style](guide/testbench-style.md)
     - [Modelling DUT behaviour](guide/modeling.md)
     - [Ordered VIP verification](guide/vip-verification.md)
 - How-to guides
     - [Simulation runners](sim/runners.md)
-    - [Avalon-ST](guide/avalon-st.md)
     - [Avalon-MM and DMA](guide/control-and-memory.md)
     - [Intel Avalon-ST Video](guide/intel-video.md)
     - [Video frames](guide/video-frames.md)
@@ -24,16 +24,16 @@
     - [Stateless stream converter](case-studies/stateless-converter.md)
     - [Stateful frame transform](case-studies/stateful-transform.md)
     - [Memory-backed component](case-studies/memory-backed-component.md)
-- Reference
-    - [Formats and video](reference/formats-video.md)
-    - [Protocols](reference/protocols.md)
-    - [Simulation](reference/simulation.md)
+- API
+    - [Formats and video](api/formats-video.md)
+    - [Protocols](api/protocols.md)
+    - [Simulation](api/simulation.md)
     - BFMs and runners
-        - [Overview](reference/bfms-runners.md)
-        - [Avalon-ST source and sink](reference/bfms/avalon-st.md)
-        - [Intel streaming DMA](reference/bfms/intel-dma.md)
-        - [Runners](reference/runners.md)
-    - [Hardware-in-the-loop](reference/hil.md)
-    - [Implementation map](video.md)
+        - [Overview](api/index.md)
+        - [Avalon-ST BFM](api/bfms/avalon-st.md)
+        - [Avalon-MM BFM](api/bfms/avalon-mm.md)
+        - [DMA BFM](api/bfms/dma.md)
+        - [Runners](api/runners.md)
+    - [Hardware-in-the-loop](api/hil.md)
 - Release notes
     - [1.0.0](releases/1.0.0.md)

@@ -3,7 +3,7 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Intel streaming DMA
+# DMA BFM
 
 The Intel DMA helpers model the streaming command, response and data boundary
 of Intel read and write DMA components. They do not model the internal FIFO or
@@ -29,7 +29,8 @@ from fpga_verification.sim.bfms import (
 )
 ```
 
-For a testbench-level example, see [Avalon-MM and DMA](../../guide/control-and-memory.md).
+For a testbench-level flow, see
+[Avalon-MM and DMA](../../guide/control-and-memory.md).
 
 ## `DMAAddressRegion`
 
@@ -54,28 +55,50 @@ half-open range, for example `input[0x1000..0x5000)`.
 ## `SparseByteMemory`
 
 `SparseByteMemory()` is a byte-addressed backing store shared by read and write
-DMA paths. Only written addresses consume dictionary entries, which makes it
-suitable for large simulated address spaces.
+DMA paths. It can also back an
+[`AvalonMMMemoryBFM`](avalon-mm.md#avalonmmmemorybfm).
+
+### Size and allocation
+
+The constructor takes no size argument. The model has no configured capacity,
+fixed upper address or preallocated byte array. It stores each written address
+as a separate entry in a Python dictionary:
+
+- every unwritten address reads as zero;
+- writing a high address does not allocate the bytes below it;
+- writing the same address replaces its previous byte;
+- storage grows with the number of distinct addresses written, rather than
+  with the highest address used;
+- the practical limit is the memory available to the Python process.
+
+The class has no `size`, `capacity` or allocated-range property. Code that
+needs a finite memory map must enforce that policy separately.
 
 | Method | Behavior |
 | --- | --- |
 | `write(address, data)` | Writes an iterable of byte values at consecutive addresses. Each value is masked to eight bits. |
-| `read(address, length)` | Returns exactly `length` bytes. Every unwritten address reads as zero. |
+| `read(address, length)` | For a non-negative `length`, returns exactly that many bytes. Every unwritten address reads as zero. |
 
-Reads return a new immutable `bytes` object. The class provides no allocation
-or overlap policy; use `DMAAddressRegion` and `IntelDMACommandMonitor` when a
-test needs address validation.
+Reads return a new immutable `bytes` object. Byte values passed to `write()`
+are converted with `int(value) & 0xFF`. The class does not validate address
+width or reject negative addresses; callers should use non-negative byte
+addresses and enforce any finite address map separately.
 
 ```python
 memory = SparseByteMemory()
 memory.write(0x1000, bytes.fromhex("11223344"))
+memory.write(0x1_0000_0000, [0x1AA])
 
 assert memory.read(0x1000, 4) == bytes.fromhex("11223344")
 assert memory.read(0x0FFE, 4) == bytes.fromhex("00001122")
+assert memory.read(0xFFFF_FFFF, 3) == bytes.fromhex("00AA00")
 ```
 
 Pass the same memory instance to all BFMs that must observe one external
-address space.
+address space. `DMAAddressRegion` does not allocate or resize this memory. It
+is only a validation rule applied by `IntelDMACommandMonitor`; direct memory
+access and `IntelDMABFM` remain unrestricted by regions unless the test starts
+that monitor.
 
 ## `ReadDMADescriptor`
 
@@ -338,37 +361,3 @@ owned Avalon-ST objects; treat it as final teardown for that instance.
 Address-region policy is intentionally separate. `IntelDMABFM` executes a
 descriptor at any address represented by `SparseByteMemory`; attach an
 `IntelDMACommandMonitor` when the test must constrain legal ranges.
-
-## Combined example
-
-```python
-from cocotbext.avalon import AvalonSTBus
-
-memory = SparseByteMemory()
-memory.write(0x1000, bytes(range(16)))
-
-dma = IntelDMABFM(
-    dut,
-    clock=dut.clk,
-    reset=dut.reset,
-    memory=memory,
-    mode="full",
-).start()
-
-monitor = IntelDMACommandMonitor(
-    clock=dut.clk,
-    reset=dut.reset,
-    rdma_cmd_bus=AvalonSTBus.from_prefix(dut, "rdma_cmd"),
-    wdma_cmd_bus=AvalonSTBus.from_prefix(dut, "wdma_cmd"),
-    read_address_regions=[DMAAddressRegion("input", 0x1000, 0x1000)],
-    write_address_regions=[DMAAddressRegion("output", 0x8000, 0x1000)],
-).start()
-
-try:
-    # Drive the DUT operation through its public control interface.
-    completed_write = await dma.write_responses.get()
-    result = memory.read(completed_write.address, completed_write.length)
-finally:
-    monitor.stop()
-    dma.stop()
-```

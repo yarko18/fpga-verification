@@ -77,9 +77,10 @@ async def configure_component(avmm):
 ## Slave and memory BFMs
 
 When the DUT is an Avalon-MM master, `AvalonMMMemoryBFM` exposes a
-byte-addressed memory. `SparseByteMemory` stores only written bytes and reads
-zero from untouched addresses, which is appropriate for large sparse address
-spaces.
+byte-addressed memory. `SparseByteMemory` has no configured size: it stores
+only written addresses and reads zero from untouched addresses. See the
+[memory API](../api/bfms/dma.md#sparsebytememory) for its allocation and
+capacity semantics.
 
 ```python
 from cocotbext.avalon import AvalonMMMemoryBFM
