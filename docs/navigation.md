@@ -28,7 +28,11 @@
     - [Formats and video](reference/formats-video.md)
     - [Protocols](reference/protocols.md)
     - [Simulation](reference/simulation.md)
-    - [BFMs and runners](reference/bfms-runners.md)
+    - BFMs and runners
+        - [Overview](reference/bfms-runners.md)
+        - [Avalon-ST source and sink](reference/bfms/avalon-st.md)
+        - [Intel streaming DMA](reference/bfms/intel-dma.md)
+        - [Runners](reference/runners.md)
     - [Hardware-in-the-loop](reference/hil.md)
     - [Implementation map](video.md)
 - Release notes
