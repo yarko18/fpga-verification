@@ -20,10 +20,16 @@ rights and limitations under the RPL.
 
 ## 1.0.5 - 2026-09-24
 
-- Update mkdoc documentation
-  - Add drawio inline support
-  - Add wavedrom inline support
-  - Add dark mode
+- Reorganized the documentation into getting-started material, guides, API
+  reference, case studies, and a complete stream-pipeline tutorial.
+- Added dedicated API documentation for Avalon-ST, Avalon-MM, and Intel DMA
+  BFMs, including descriptors, address regions, and sparse memory behavior.
+- Added guidance for verification contracts, DUT behavior models, testbench
+  structure, agents, scoreboards, and simulation runners.
+- Replaced the notebook examples with a runnable stream-pipeline RTL and pyuvm
+  example, including model tests.
+- Added dark and light themes, WaveDrom diagrams, inline Draw.io page export,
+  and CI support for generated Draw.io SVG assets.
 
 ## 1.0.4 - 2026-09-15
 
