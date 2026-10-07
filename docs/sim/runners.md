@@ -33,9 +33,11 @@ paths and logs, accept `-g`, and ignore unrelated pytest options.
 ## Plain RTL
 
 `rtl_test_cocotb()` either receives explicit `sources` or recursively discovers
-`.v` and `.sv` files in `source_dirs`. It creates `sim_build_<SIM>`, forwards
-HDL parameters, runs the cocotb module, and treats a failed results XML as a
-failed Python process.
+`.v` and `.sv` files in every `source_dirs` entry. Directories may be relative
+to `project_root` or absolute; overlapping trees are de-duplicated while the
+declared directory order is retained. The runner creates `sim_build_<SIM>`,
+forwards HDL parameters, runs the cocotb module, and treats a failed results XML
+as a failed Python process.
 
 ```python
 import os
@@ -72,6 +74,41 @@ project/
 
 Use explicit sources when source order matters. Otherwise pass source
 directories and let the runner discover HDL files.
+
+### Intel libraries without component generation
+
+Plain RTL may instantiate Intel primitives directly. Give `run_rtl_test()`
+simulator-independent library names and the runner compiles their models before
+the project RTL:
+
+```python
+run_rtl_test(
+    project_root=project_root,
+    source_dirs=("rtl", "/shared/rtl"),
+    hdl_toplevel="stream_pipeline_fifo",
+    test_module="simulation.vip.test_pyuvm",
+    config=get_test_config(),
+    intel_libraries=("lpm", "altera_mf"),
+)
+```
+
+The supported logical names are `lpm`, `altera_mf`, `altera_lnsim`, and
+`altera_primitives`. For example, `lpm` resolves to `220model.v`, while
+`altera_mf` resolves to `altera_mf.v`. The public configuration therefore does
+not contain Questa- or Verilator-specific library names.
+
+The model directory is resolved in this order:
+
+1. the `quartus_sim_lib` argument;
+2. `QUARTUS_SIM_LIB`;
+3. `QUARTUS_ROOTDIR/eda/sim_lib`;
+4. the Quartus installation containing `quartus_sh` or `ip-generate` on `PATH`.
+
+Keep machine-specific installation paths in the environment. For an explicit
+host-side selection, pass a local value such as
+`quartus_sim_lib="/opt/intelFPGA/quartus/eda/sim_lib"` rather than committing a
+developer's path to a reusable runner. Simulator compatibility fixes are
+applied to copied models; installed Quartus files are never modified.
 
 ## Generated component
 
@@ -121,10 +158,10 @@ Useful component options include `part`, `project_directory`,
 
 ## One configuration for HDL and cocotb
 
-For a generated DUT, use one resolved `ComponentConfig`. Fields marked with
-`hdl_parameter()` are passed to generation; the same resolved object is
-serialised into the cocotb environment. The testbench restores it with
-`load_runtime_config()`.
+For a plain or generated DUT, use one resolved `ComponentConfig`. Fields marked
+with `hdl_parameter()` are passed to RTL compilation or component generation;
+the same resolved object is serialised into the cocotb environment. The
+testbench restores it with `load_runtime_config()`.
 
 ```python
 from dataclasses import dataclass
@@ -141,6 +178,7 @@ class TestConfig(ComponentConfig):
 
 ```python
 # Host side, in run_test.py
+run_rtl_test(..., config=get_test_config())
 run_intel_component_test(..., config=get_test_config())
 
 # Cocotb side, in test_pyuvm.py

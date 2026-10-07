@@ -17,7 +17,13 @@
 import os
 from pathlib import Path
 
-from ._common import DEFAULT_SIMULATOR, prepare_test_run
+from ._common import (
+    DEFAULT_SIMULATOR,
+    prepare_test_run,
+    resolve_path,
+    resolve_test_config,
+)
+from ._intel_simulation import prepare_intel_libraries
 
 
 def _check_results(results_xml):
@@ -28,12 +34,38 @@ def _check_results(results_xml):
         raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
 
 
+def _discover_sources(project_root, source_dirs):
+    sources = []
+    seen = set()
+
+    for source_dir in source_dirs:
+        source_dir = resolve_path(project_root, source_dir)
+        if not source_dir.is_dir():
+            raise FileNotFoundError(f"RTL source directory does not exist: {source_dir}")
+
+        discovered = sorted(
+            source
+            for source in source_dir.rglob("*")
+            if source.is_file() and source.suffix.lower() in {".v", ".sv"}
+        )
+        for source in discovered:
+            key = source.resolve()
+            if key not in seen:
+                seen.add(key)
+                sources.append(source)
+
+    return sources
+
+
 def rtl_test_cocotb(
     project_root,
     hdl_toplevel,
     test_module,
     sources=None,
     source_dirs=("src",),
+    intel_libraries=(),
+    quartus_sim_lib=None,
+    apply_simulation_fixes=True,
     parameters=None,
     debug=False,
     compile_log=None,
@@ -41,6 +73,7 @@ def rtl_test_cocotb(
     test_args=None,
     extra_env=None,
 ):
+    """Compile plain RTL plus optional Intel models and run a cocotb test."""
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
@@ -49,15 +82,19 @@ def rtl_test_cocotb(
     build_dir = project_root / f"sim_build_{sim}"
 
     if sources is None:
-        sources = []
+        sources = _discover_sources(project_root, source_dirs)
+    else:
+        sources = [Path(source) for source in sources]
 
-        for source_dir in source_dirs:
-            src_dir = project_root / source_dir
-
-            sources += sorted(src_dir.rglob("*.v"))
-            sources += sorted(src_dir.rglob("*.sv"))
-
-    sources = [Path(s) for s in sources]
+    vendor_sources = prepare_intel_libraries(
+        intel_libraries,
+        project_root=project_root,
+        quartus_sim_lib=quartus_sim_lib,
+        simulator=sim,
+        output_dir=project_root / "logs" / "simulation_models",
+        apply_simulation_fixes=apply_simulation_fixes,
+    )
+    sources = vendor_sources + sources
 
     runner = get_runner(sim)
 
@@ -139,7 +176,13 @@ def run_rtl_test(
     project_root,
     hdl_toplevel,
     test_module,
+    config=None,
+    parameters=None,
+    extra_env=None,
     source_dirs=("src",),
+    intel_libraries=(),
+    quartus_sim_lib=None,
+    apply_simulation_fixes=True,
     python_paths=(".",),
     debug=None,
     argv=None,
@@ -148,7 +191,12 @@ def run_rtl_test(
     test_module_env=None,
     **kwargs,
 ):
-    """Run a standard RTL cocotb simulation from a script or pytest."""
+    """Run a standard RTL cocotb simulation from a script or pytest.
+
+    ``intel_libraries`` contains simulator-independent logical names. Their
+    models are loaded from ``quartus_sim_lib`` (or a discovered Quartus
+    installation) and compiled before all project RTL.
+    """
     project_root = Path(project_root)
     debug, sim = prepare_test_run(
         project_root=project_root,
@@ -162,12 +210,23 @@ def run_rtl_test(
     if test_module_env is not None:
         test_module = os.getenv(test_module_env, test_module)
 
+    parameters, extra_env = resolve_test_config(
+        config,
+        parameters=parameters,
+        extra_env=extra_env,
+    )
+
     return rtl_test_cocotb(
         project_root=project_root,
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         source_dirs=source_dirs,
+        intel_libraries=intel_libraries,
+        quartus_sim_lib=quartus_sim_lib,
+        apply_simulation_fixes=apply_simulation_fixes,
         debug=debug,
         compile_log=project_root / "logs" / f"{sim}_compile.log",
+        parameters=parameters,
+        extra_env=extra_env,
         **kwargs,
     )

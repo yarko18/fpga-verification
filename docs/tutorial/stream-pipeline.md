@@ -40,9 +40,9 @@ VIPSequence -> source driver -> endianness converter -> sink monitor
 
 [`config.py`](https://github.com/yarko18/fpga-verification/blob/main/examples/stream_pipeline/simulation/vip/config.py)
 declares the 8-bit symbol width, four symbols per beat, and runtime-only frame
-dimensions. The runner passes `cfg.to_parameters()` to the RTL compiler and
-serialises the complete object for cocotb. The running test restores it with
-`load_runtime_config(TestConfig)`.
+dimensions. The runner accepts the resolved object through `config=cfg`, passes
+its HDL fields to the RTL compiler, and serialises the complete object for
+cocotb. The running test restores it with `load_runtime_config(TestConfig)`.
 
 The frame contains 21 bytes, so the test covers both complete beats and a final
 partial beat. Keeping these values in one object prevents the testbench from

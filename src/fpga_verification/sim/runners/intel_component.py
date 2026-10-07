@@ -23,7 +23,12 @@ import xml.etree.ElementTree as ET
 from contextlib import nullcontext
 from pathlib import Path
 
-from ._common import DEFAULT_SIMULATOR, prepare_test_run, resolve_path
+from ._common import (
+    DEFAULT_SIMULATOR,
+    prepare_test_run,
+    resolve_path,
+    resolve_test_config,
+)
 from ._simulation_fixes import prepare_simulation_models
 from .rtl import rtl_test_cocotb
 
@@ -368,35 +373,14 @@ def run_intel_component_test(
         enable_questa_acc=enable_questa_acc,
     )
 
-    if config is None:
-        component_parameters = (
-            {} if component_parameters is None else component_parameters
-        )
-    else:
-        if not hasattr(config, "to_parameters"):
-            raise TypeError("config must inherit ComponentConfig")
-        resolved_parameters = config.to_parameters()
-        if (
-            component_parameters is not None
-            and dict(component_parameters) != resolved_parameters
-        ):
-            raise ValueError(
-                "component_parameters must match the resolved ComponentConfig"
-            )
-        component_parameters = resolved_parameters
-
-    if config is not None:
-        from ..config import runtime_config_environment
-
-        config_environment = runtime_config_environment(config)
-        extra_env = dict(kwargs.pop("extra_env", {}))
-        overlap = set(extra_env) & set(config_environment)
-        if overlap:
-            raise ValueError(
-                "extra_env may not override resolved config: "
-                + ", ".join(sorted(overlap))
-            )
-        extra_env.update(config_environment)
+    component_parameters, extra_env = resolve_test_config(
+        config,
+        parameters=component_parameters,
+        extra_env=kwargs.pop("extra_env", None),
+    )
+    if component_parameters is None:
+        component_parameters = {}
+    if extra_env is not None:
         kwargs["extra_env"] = extra_env
 
     log_dir = project_root / "logs"

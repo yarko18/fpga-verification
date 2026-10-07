@@ -25,7 +25,7 @@ DRAWIO_REFERENCE = re.compile(
 )
 FENCE = re.compile(r"^[ \t]{0,3}(?P<marker>`{3,}|~{3,})")
 PAGE_NUMBER = re.compile(r"(?:page[-_ ]?)?(?P<number>[1-9][0-9]*)", re.IGNORECASE)
-EXPORT_OPTIONS = ("svg", "diagram", "transparent", "theme-auto", "border-0")
+EXPORT_OPTIONS = ("svg", "transparent", "svg-theme-auto", "border-0")
 
 _current_page_source: Path | None = None
 _current_page_uri: str | None = None
@@ -124,10 +124,8 @@ def _export_svg(source: Path, selector: str) -> str:
             "svg",
             "--page-index",
             str(page_index),
-            "--size",
-            "diagram",
             "--transparent",
-            "--theme",
+            "--svg-theme",
             "auto",
             "--border",
             "0",

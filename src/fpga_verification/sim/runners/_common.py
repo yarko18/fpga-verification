@@ -28,6 +28,32 @@ def resolve_path(project_root, path):
     return path if path.is_absolute() else Path(project_root) / path
 
 
+def resolve_test_config(config, parameters=None, extra_env=None):
+    """Resolve one config into matching HDL parameters and cocotb state."""
+    if config is None:
+        return parameters, extra_env
+
+    from ..config import ComponentConfig, runtime_config_environment
+
+    if not isinstance(config, ComponentConfig):
+        raise TypeError("config must inherit ComponentConfig")
+
+    resolved_parameters = config.to_parameters()
+    if parameters is not None and dict(parameters) != resolved_parameters:
+        raise ValueError("parameters must match the resolved ComponentConfig")
+
+    config_environment = runtime_config_environment(config)
+    resolved_environment = dict(extra_env or {})
+    overlap = set(resolved_environment) & set(config_environment)
+    if overlap:
+        raise ValueError(
+            "extra_env may not override resolved config: "
+            + ", ".join(sorted(overlap))
+        )
+    resolved_environment.update(config_environment)
+    return resolved_parameters, resolved_environment
+
+
 def _prepend_python_paths(paths):
     path_strings = [str(Path(path)) for path in paths]
 

@@ -26,6 +26,7 @@ and Quartus System Console access.
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
 [PyPI](https://pypi.org/project/fpga-verification/) ·
 [Video endianness example](examples/stream_pipeline) ·
+[Intel FIFO RTL example](examples/stream_pipeline_fifo) ·
 [Changelog](CHANGELOG.md)
 
 ## Install

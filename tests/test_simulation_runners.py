@@ -16,6 +16,7 @@
 
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
@@ -157,7 +158,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             component_runner.call_args.kwargs["extra_env"],
             {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
         )
-
     def test_intel_component_runner_rejects_parameters_different_from_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),
@@ -235,6 +235,112 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             )
 
         self.assertFalse(rtl_runner.call_args.kwargs["debug"])
+
+    def test_rtl_wrapper_resolves_config_for_build_and_test(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                config=self._Config(width=80, name="matrix"),
+                source_dirs=(),
+                intel_libraries=("altera_mf",),
+                quartus_sim_lib="vendor/models",
+                python_paths=(),
+                argv=(),
+            )
+
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["parameters"],
+            {"WIDTH": 80},
+        )
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["extra_env"],
+            {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
+        )
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["intel_libraries"],
+            ("altera_mf",),
+        )
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["quartus_sim_lib"],
+            "vendor/models",
+        )
+
+    def test_rtl_runner_recursively_combines_relative_and_absolute_source_dirs(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with TemporaryDirectory() as directory:
+            project_root = Path(directory) / "project"
+            relative_dir = project_root / "rtl"
+            absolute_dir = Path(directory) / "shared"
+            (relative_dir / "nested").mkdir(parents=True)
+            absolute_dir.mkdir()
+            first = relative_dir / "dut.v"
+            second = relative_dir / "nested" / "helper.sv"
+            third = absolute_dir / "shared.V"
+            ignored = absolute_dir / "notes.txt"
+            for source in (first, second, third, ignored):
+                source.write_text("")
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("cocotb_tools.runner.get_runner", return_value=runner),
+                patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+            ):
+                rtl.rtl_test_cocotb(
+                    project_root=project_root,
+                    hdl_toplevel="dut",
+                    test_module="test_dut",
+                    source_dirs=("rtl", absolute_dir, relative_dir / "nested"),
+                )
+
+        self.assertEqual(
+            runner.build.call_args.kwargs["sources"],
+            [first, second, third],
+        )
+
+    def test_rtl_runner_compiles_intel_models_before_user_sources(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with TemporaryDirectory() as directory:
+            project_root = Path(directory) / "project"
+            sim_lib = Path(directory) / "quartus" / "eda" / "sim_lib"
+            source_dir = project_root / "rtl"
+            sim_lib.mkdir(parents=True)
+            source_dir.mkdir(parents=True)
+            lpm = sim_lib / "220model.v"
+            altera_mf = sim_lib / "altera_mf.v"
+            dut = source_dir / "dut.sv"
+            for source in (lpm, altera_mf, dut):
+                source.write_text("")
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("cocotb_tools.runner.get_runner", return_value=runner),
+                patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+            ):
+                rtl.rtl_test_cocotb(
+                    project_root=project_root,
+                    hdl_toplevel="dut",
+                    test_module="test_dut",
+                    source_dirs=("rtl",),
+                    intel_libraries=("lpm", "altera_mf"),
+                    quartus_sim_lib=sim_lib,
+                    apply_simulation_fixes=False,
+                )
+
+        self.assertEqual(
+            runner.build.call_args.kwargs["sources"],
+            [lpm.resolve(), altera_mf.resolve(), dut],
+        )
 
     def test_rtl_runner_appends_questa_build_and_test_args(self):
         runner = Mock()

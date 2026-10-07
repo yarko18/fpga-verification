@@ -52,3 +52,9 @@ Use this example to answer practical questions about imports, relative paths,
 phase ordering, reset, and cleanup. The [tutorial](../tutorial/stream-pipeline.md)
 explains why each file exists; [Project style](../guide/testbench-style.md) is the
 short convention reference.
+
+The companion
+[`stream_pipeline_fifo`](https://github.com/yarko18/fpga-verification/tree/main/examples/stream_pipeline_fifo)
+example reuses this verification contract around RTL containing an Intel
+`scfifo`. It demonstrates selecting `altera_mf` directly in the plain RTL
+runner, without a component description or Platform Designer generation.

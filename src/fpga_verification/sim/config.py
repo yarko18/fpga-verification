@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Configuration contract shared by Platform Designer and cocotb tests."""
+"""Configuration contract shared by HDL builds and cocotb tests."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ RUNTIME_CONFIG_ENV = "FPGA_VERIFICATION_TEST_CONFIG_JSON"
 
 
 def hdl_parameter(default: Any = MISSING, *, name: str | None = None, **kwargs):
-    """Declare a dataclass field which is also a Platform Designer parameter.
+    """Declare a dataclass field which is also an HDL build parameter.
 
     ``name`` defaults to the dataclass field name.  All fields remain present in
     the runtime configuration; the metadata only controls ``to_parameters()``.
@@ -47,10 +47,10 @@ def hdl_parameter(default: Any = MISSING, *, name: str | None = None, **kwargs):
 class ComponentConfig:
     """Mixin for a resolved component configuration dataclass.
 
-    A configuration has two deliberately different representations: Platform
-    Designer receives only HDL parameters, while cocotb receives the complete,
-    already-resolved configuration.  Runtime loading is strict so a stale test
-    cannot silently run with defaults different from the generated DUT.
+    A configuration has two deliberately different representations: the HDL
+    build receives only marked parameters, while cocotb receives the complete,
+    already-resolved configuration. Runtime loading is strict so a stale test
+    cannot silently run with defaults different from the compiled DUT.
     """
 
     def to_parameters(self) -> dict[str, Any]:

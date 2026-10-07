@@ -18,6 +18,16 @@ rights and limitations under the RPL.
 
 # Changelog
 
+## Unreleased
+
+- Added recursive multi-directory RTL source discovery for relative and
+  absolute paths.
+- Added simulator-independent Intel library selection to the plain RTL runner,
+  including Quartus model discovery and copied Verilator compatibility fixes.
+- Added resolved `ComponentConfig` support to `run_rtl_test()` and an Intel
+  `scfifo` stream-pipeline example which reuses the existing verification
+  contract.
+
 ## 1.0.5 - 2026-09-24
 
 - Reorganized the documentation into getting-started material, guides, API
