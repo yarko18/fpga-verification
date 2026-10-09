@@ -20,7 +20,7 @@ rights and limitations under the RPL.
 
 Reusable Python tools for FPGA simulation and hardware-in-the-loop
 verification. The library combines protocol codecs, cocotb and pyuvm
-components, Intel simulation runners, DMA modeling, performance measurements,
+components, Altera simulation runners, DMA modeling, performance measurements,
 and Quartus System Console access.
 
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
@@ -36,6 +36,8 @@ Python 3.10 through 3.13 is supported.
 python -m pip install fpga-verification
 ```
 
+The current release is 1.1.0.
+
 For local library development, install a checkout from the repository root in
 editable mode:
 
@@ -46,12 +48,24 @@ python -m pip install -e ".[docs]"
 ## What is included
 
 - Avalon-ST and Avalon-MM cocotb helpers;
-- Intel Avalon-ST Video packets, codecs, agents, and scoreboards;
-- runners for plain RTL, Intel components, and Platform Designer systems;
-- an Intel streaming DMA model and sparse byte memory;
+- Altera Avalon-ST Video packets, codecs, agents, and scoreboards;
+- runners for plain RTL, Altera components, and Platform Designer systems;
+- an Altera streaming DMA model and sparse byte memory;
 - packet latency and throughput analysis;
-- persistent Intel System Console access for hardware tests;
+- persistent Quartus System Console access for hardware tests;
 - video frame and raw numeric data helpers.
+
+Altera-specific functionality has one public root:
+
+```python
+from fpga_verification.altera.video import VideoFormat, VIPFrameCodec
+from fpga_verification.altera.video.uvm import VIPAgent
+from fpga_verification.altera.dma import IntelDMABFM
+from fpga_verification.altera.quartus import run_rtl_test
+```
+
+The vendor-independent RTL runner remains available from
+`fpga_verification.sim.runners`.
 
 Start with the [documentation](https://yarko18.github.io/fpga-verification/)
 or run the [video-packet endianness example](examples/stream_pipeline). It

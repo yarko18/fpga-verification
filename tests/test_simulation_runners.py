@@ -22,9 +22,10 @@ from unittest.mock import Mock, patch
 
 from dataclasses import dataclass
 
+from fpga_verification.altera.quartus import component, platform_designer
+from fpga_verification.altera.quartus import rtl as altera_rtl
 from fpga_verification.sim import ComponentConfig, hdl_parameter
-from fpga_verification.sim import platform_designer
-from fpga_verification.sim.runners import _common, intel_component, rtl
+from fpga_verification.sim.runners import _common, rtl
 
 
 class SimulationRunnerDefaultTests(unittest.TestCase):
@@ -120,17 +121,17 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             {"ENABLED": 1, "BYPASS": 0, "WIDTH": 32},
         )
 
-    def test_intel_component_wrapper_defaults_to_verilator(self):
+    def test_altera_component_wrapper_defaults_to_verilator(self):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build") as clean_sim_build,
             patch.object(
-                intel_component,
-                "intel_component_test_cocotb",
+                component,
+                "component_test_cocotb",
             ) as component_runner,
         ):
-            intel_component.run_intel_component_test(
+            component.run_component_test(
                 project_root=".",
                 component_file="component.tcl",
                 hdl_toplevel="dut",
@@ -156,14 +157,14 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             ["--trace-depth", "8"],
         )
 
-    def test_intel_component_runner_serializes_resolved_config(self):
+    def test_altera_component_runner_serializes_resolved_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(intel_component, "intel_component_test_cocotb") as component_runner,
+            patch.object(component, "component_test_cocotb") as component_runner,
         ):
-            intel_component.run_intel_component_test(
+            component.run_component_test(
                 project_root=".",
                 component_file="component.tcl",
                 hdl_toplevel="dut",
@@ -179,15 +180,15 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             component_runner.call_args.kwargs["extra_env"],
             {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
         )
-    def test_intel_component_runner_rejects_parameters_different_from_config(self):
+    def test_altera_component_runner_rejects_parameters_different_from_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(intel_component, "intel_component_test_cocotb"),
+            patch.object(component, "component_test_cocotb"),
             self.assertRaisesRegex(ValueError, "must match"),
         ):
-            intel_component.run_intel_component_test(
+            component.run_component_test(
                 project_root=".",
                 component_file="component.tcl",
                 hdl_toplevel="dut",
@@ -199,17 +200,17 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 argv=(),
             )
 
-    def test_intel_component_wrapper_g_flag_enables_debug(self):
+    def test_altera_component_wrapper_g_flag_enables_debug(self):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
             patch.object(
-                intel_component,
-                "intel_component_test_cocotb",
+                component,
+                "component_test_cocotb",
             ) as component_runner,
         ):
-            intel_component.run_intel_component_test(
+            component.run_component_test(
                 project_root=".",
                 component_file="component.tcl",
                 hdl_toplevel="dut",
@@ -262,9 +263,9 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+            patch.object(altera_rtl, "rtl_test_cocotb") as rtl_runner,
         ):
-            rtl.run_rtl_test(
+            altera_rtl.run_rtl_test(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -348,7 +349,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 patch("cocotb_tools.runner.get_runner", return_value=runner),
                 patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
             ):
-                rtl.rtl_test_cocotb(
+                altera_rtl.rtl_test_cocotb(
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",

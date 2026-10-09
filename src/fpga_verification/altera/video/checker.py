@@ -14,14 +14,16 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Stateful protocol checks for an Intel Avalon-ST Video packet stream."""
+"""Stateful protocol checks for an Altera Avalon-ST Video packet stream."""
 import logging
-from fpga_verification.video import FrameSize, VideoFormat
+from fpga_verification.video import FrameSize
+
+from .format import VideoFormat
 from .packets import VIPControlPacket, VIPPacket, VIPVideoPacket
 
 
 class VIPProtocolError(ValueError):
-    """Intel VIP packet ordering or declared-frame-size violation."""
+    """Altera VIP packet ordering or declared-frame-size violation."""
 
 
 class VIPProtocolChecker:

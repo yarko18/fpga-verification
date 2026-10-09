@@ -3,15 +3,15 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Intel Avalon-ST Video
+# Altera Avalon-ST Video
 
-The Intel video layer gives packet meaning to an Avalon-ST symbol stream while
+The Altera video layer gives packet meaning to an Avalon-ST symbol stream while
 remaining independent of a simulator. It represents control, user and video
 packets explicitly, converts numpy frames to packet symbols, and validates
 packet-stream order.
 
 ```text
-numpy frame <-> IntelVIPFrameCodec <-> VIP packet objects <-> Avalon-ST frames
+numpy frame <-> VIPFrameCodec <-> VIP packet objects <-> Avalon-ST frames
 ```
 
 ## Packet model
@@ -21,7 +21,7 @@ belonging to one logical frame; individual packet objects remain visible so a
 test can check ordering and sideband traffic.
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPControlPacket,
     VIPFrame,
     VIPInterlacing,
@@ -81,14 +81,14 @@ the test is naturally about a complete frame.
 
 ## Frame codec
 
-`IntelVIPFrameCodec` combines the neutral video representation with packet
+`VIPFrameCodec` combines the neutral video representation with packet
 creation and decoding. Its smaller helpers include `control_packet()`,
 `frame_to_video_packet()`, `video_packet_to_frame()`, `frame_to_vip()` and
 `vip_to_frame()`.
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import IntelVIPFrameCodec
-from fpga_verification.video import (
+from fpga_verification.altera.video import VIPFrameCodec
+from fpga_verification.altera.video import (
     FrameSize,
     ImageGenerator,
     VideoFormat,
@@ -102,7 +102,7 @@ fmt = VideoFormat(
 )
 size = FrameSize(width=5, height=3)
 image = ImageGenerator(fmt, rng=1).horizontal_ramp(size)
-codec = IntelVIPFrameCodec(fmt)
+codec = VIPFrameCodec(fmt)
 
 packets = codec.frame_to_packets(image, size)
 packet_symbols = codec.frame_to_packet_symbols(image, size)
@@ -122,7 +122,7 @@ codec: active control geometry and control-before-video order. It should be
 used by a monitor or scoreboard that sees the complete packet stream.
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPProtocolChecker,
     VIPProtocolError,
 )

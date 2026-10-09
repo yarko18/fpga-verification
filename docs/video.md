@@ -20,24 +20,26 @@ rights and limitations under the RPL.
 
 Recommended reading order:
 
-1. `src/fpga_verification/video/core.py`: simulator-independent `FrameSize`,
-   `VideoFormat`, `ImageGenerator`, `VideoPayloadCodec`, and `compare_frames`.
-2. `src/fpga_verification/protocols/avalon_st/intel_video/packets.py`: Intel
+1. `src/fpga_verification/video/core.py`: vendor-independent `FrameSize` and
+   `compare_frames`.
+2. `src/fpga_verification/altera/video/format.py`: `VideoFormat`,
+   `ImageGenerator`, and Avalon-ST `VideoPayloadCodec`.
+3. `src/fpga_verification/altera/video/packets.py`: Altera
    Avalon-ST Video user, control, and video packet wire format.
-3. `src/fpga_verification/protocols/avalon_st/intel_video/codec.py`: conversion
+4. `src/fpga_verification/altera/video/codec.py`: conversion
    between neutral frames and VIP packets.
-4. `src/fpga_verification/protocols/avalon_st/intel_video/checker.py`:
+5. `src/fpga_verification/altera/video/checker.py`:
    control-before-video checks and active frame-size validation.
-5. `src/fpga_verification/sim/agents/intel_video.py`: pyuvm source, monitor,
+6. `src/fpga_verification/altera/video/uvm/agent.py`: pyuvm source, monitor,
    sink, sequence, and item classes for VIP packet streams.
-6. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
+7. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
    helper that forwards pyuvm analysis writes to a Python callable.
-7. `src/fpga_verification/sim/scoreboards/intel_video.py`: strict ordered
+8. `src/fpga_verification/altera/video/uvm/scoreboard.py`: strict ordered
    protocol scoreboard used underneath IP-specific behavior models.
-8. `src/fpga_verification/sim/agents/frame_source.py`: output-only conduit
+9. `src/fpga_verification/sim/agents/frame_source.py`: output-only conduit
    source contract and pre-drive `FrameTransaction` publication.
-9. `tests/test_video.py`, `tests/test_intel_video.py`, and
-   `tests/test_intel_video_agent.py`: fast regression tests that do not require
+10. `tests/test_video.py`, `tests/test_altera_video.py`, and
+   `tests/test_altera_video_agent.py`: fast regression tests that do not require
    Questa.
 
 The package is installed as one dependency set. A normal install provides the
@@ -52,4 +54,4 @@ For early experiments, change `width`, `height`, color planes, and
 `pixels_in_parallel` in small unit tests first. Run the fast Python tests
 before moving the same scenario into a cocotb or Questa regression. See
 [Video frames](guide/video-frames.md) for the public data API and
-[Intel Avalon-ST Video](guide/intel-video.md) for packet conversion.
+[Altera Avalon-ST Video](guide/altera-video.md) for packet conversion.

@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Cocotb model for Intel read and write DMA Avalon-ST interfaces."""
+"""Cocotb model for Altera read and write DMA Avalon-ST interfaces."""
 
 from dataclasses import dataclass
 import logging
@@ -141,7 +141,7 @@ class DMAAddressRegion:
 
 
 class IntelDMACommandMonitor:
-    """Passive monitor for Intel read/write DMA descriptor streams.
+    """Passive monitor for Altera read/write DMA descriptor streams.
 
     If address regions are provided, every non-control descriptor is checked
     immediately when it appears on the command stream.
@@ -283,7 +283,7 @@ class IntelDMACommandMonitor:
 
 
 class IntelDMABFM:
-    """Avalon-ST stand-in for Intel read and write DMA components.
+    """Avalon-ST stand-in for Altera read and write DMA components.
 
     A read descriptor queues memory contents on ``din`` and schedules a
     successful ``rdma_resp`` independently of data consumption. This models a

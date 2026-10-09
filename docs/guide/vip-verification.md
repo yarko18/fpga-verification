@@ -26,7 +26,7 @@ custom scoreboard consumes them and adds `PacketExpectation` objects to
 
 ## `VIPAgent`: drive, observe, publish
 
-`VIPAgent` is the pyuvm component around one Intel Avalon-ST Video path. It
+`VIPAgent` is the pyuvm component around one Altera Avalon-ST Video path. It
 creates the protocol-specific objects from buses and formats; it does not
 predict DUT behavior. Give it at least one of `source_bus` or `sink_bus`.
 
@@ -44,7 +44,7 @@ and never drives `ready`.
 ```python
 from pyuvm import uvm_active_passive_enum
 from cocotbext.avalon import AvalonSTBus
-from fpga_verification.sim.agents import VIPAgent
+from fpga_verification.altera.video.uvm import VIPAgent
 
 
 active_agent = VIPAgent(
@@ -86,7 +86,7 @@ converts an ordered packet list into items; the active agent's `VIPDriver`
 serialises each packet to an `AvalonSTFrame`.
 
 ```python
-from fpga_verification.sim.agents import VIPSequence
+from fpga_verification.altera.video.uvm import VIPSequence
 
 packets = [
     input_codec.control_packet(frame_size),

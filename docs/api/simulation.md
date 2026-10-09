@@ -28,6 +28,20 @@ SPDX-License-Identifier: RPL-1.5
       show_root_heading: true
       members_order: source
 
+## Altera Avalon components
+
+::: fpga_verification.altera.avalon
+    options:
+      show_root_heading: true
+      members_order: source
+
+## Altera Video UVM components
+
+::: fpga_verification.altera.video.uvm
+    options:
+      show_root_heading: true
+      members_order: source
+
 ## Performance metrics
 
 ::: fpga_verification.sim.stream_metrics

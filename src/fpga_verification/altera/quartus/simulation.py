@@ -14,14 +14,15 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Resolve simulator-independent Intel library names to simulation models."""
+"""Resolve simulator-independent Altera library names to simulation models."""
 
 import os
 import shutil
 from pathlib import Path
 
-from ._common import resolve_path
-from ._simulation_fixes import prepare_simulation_models
+from fpga_verification.sim.runners._common import resolve_path
+
+from .simulation_fixes import prepare_simulation_models
 
 
 _INTEL_LIBRARY_FILES = {
@@ -93,7 +94,7 @@ def prepare_intel_libraries(
     output_dir,
     apply_simulation_fixes=True,
 ):
-    """Return requested Intel models in caller order, ready for compilation."""
+    """Return requested Altera models in caller order, ready for compilation."""
     if libraries is None:
         return []
     if isinstance(libraries, str):
@@ -107,7 +108,7 @@ def prepare_intel_libraries(
     if unknown:
         supported = ", ".join(sorted(_INTEL_LIBRARY_FILES))
         raise ValueError(
-            f"Unknown Intel simulation library {unknown[0]!r}; supported libraries: "
+            f"Unknown Altera simulation library {unknown[0]!r}; supported libraries: "
             f"{supported}"
         )
 

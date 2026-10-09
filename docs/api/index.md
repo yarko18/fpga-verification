@@ -20,7 +20,7 @@ behavior.
 
 ## Simulation runners
 
-- [Runners](runners.md) contains the API for plain RTL, generated Intel
+- [Runners](runners.md) contains the API for plain RTL, generated Altera
   components and Platform Designer systems.
 
 For task-oriented examples, see the

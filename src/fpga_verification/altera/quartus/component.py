@@ -23,14 +23,15 @@ import xml.etree.ElementTree as ET
 from contextlib import nullcontext
 from pathlib import Path
 
-from ._common import (
+from fpga_verification.sim.runners._common import (
     DEFAULT_SIMULATOR,
     prepare_test_run,
     resolve_path,
     resolve_test_config,
 )
-from ._simulation_fixes import prepare_simulation_models
-from .rtl import rtl_test_cocotb
+from fpga_verification.sim.runners.rtl import rtl_test_cocotb
+
+from .simulation_fixes import prepare_simulation_models
 
 
 def _resolve_path(project_root, path):
@@ -175,7 +176,7 @@ def _make_ipx(project_root, source_dirs, output_dir, log_path=None, append_log=F
     return ipx_path
 
 
-def intel_component_test_cocotb(
+def component_test_cocotb(
     project_root,
     component_file,
     hdl_toplevel,
@@ -198,7 +199,7 @@ def intel_component_test_cocotb(
     extra_env=None,
     apply_simulation_fixes=True,
 ):
-    """Generate an Intel component composition and simulate against original RTL.
+    """Generate an Altera component composition and simulate original RTL.
 
     Generated HDL files that are byte-identical to source files in ``source_dirs``
     are replaced by those source paths before invoking ``rtl_test_cocotb``. Any
@@ -342,7 +343,7 @@ def intel_component_test_cocotb(
         )
 
 
-def run_intel_component_test(
+def run_component_test(
     *,
     project_root,
     component_file,
@@ -362,7 +363,7 @@ def run_intel_component_test(
     enable_questa_acc=False,
     **kwargs,
 ):
-    """Run a standard Intel component cocotb simulation from a small script."""
+    """Run a standard Altera component cocotb simulation from a small script."""
     project_root = Path(project_root)
     debug, sim = prepare_test_run(
         project_root=project_root,
@@ -388,7 +389,7 @@ def run_intel_component_test(
     if test_module_env is not None:
         test_module = os.getenv(test_module_env, test_module)
 
-    return intel_component_test_cocotb(
+    return component_test_cocotb(
         project_root=project_root,
         component_file=component_file,
         hdl_toplevel=hdl_toplevel,

@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-from .runners.rtl import DEFAULT_SIMULATOR
+from fpga_verification.sim.runners.rtl import DEFAULT_SIMULATOR
 
 
 def _check_results(results_xml):

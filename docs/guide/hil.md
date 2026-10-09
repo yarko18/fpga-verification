@@ -22,7 +22,7 @@ a backward-compatible alias.
 ```python
 import numpy as np
 
-from fpga_verification.hil.intel import IntelSystemConsoleSession
+from fpga_verification.altera.quartus.hil import IntelSystemConsoleSession
 
 source = np.arange(64, dtype=np.uint16).reshape(8, 8)
 

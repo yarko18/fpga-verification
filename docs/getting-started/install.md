@@ -36,7 +36,7 @@ FPGA_DOCS_PYTHON=python3 ./docs/mkdoc.sh build
 ## Simulator requirements
 
 Plain RTL tests require a cocotb-supported simulator. The project runners use
-Verilator by default and use Questa when `SIM=questa` is set. Generated Intel
+Verilator by default and use Questa when `SIM=questa` is set. Generated Altera
 components additionally require the matching Quartus command-line tools.
 
 The Python-only video, numeric-format, packet-codec, and model tests do not

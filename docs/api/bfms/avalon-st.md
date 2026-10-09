@@ -9,7 +9,7 @@ SPDX-License-Identifier: RPL-1.5
 `AvalonSTSink` owns `ready`, captures accepted transfers and returns complete
 frames or individual beats. Both classes are provided by the installed
 `cocotbext.avalon` dependency and are the stream BFMs used by
-`fpga-verification` agents and the Intel DMA model.
+`fpga-verification` agents and the Altera DMA model.
 
 ![](./media/schema.drawio::Page-1)
 

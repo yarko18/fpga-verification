@@ -16,16 +16,16 @@ ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 rights and limitations under the RPL.
 -->
 
-# Intel Avalon-ST Video Protocol
+# Altera Avalon-ST Video Protocol
 
 Reference documentation: [Video and Image Processing Suite](https://docs.altera.com/r/docs/683416/22.1/video-and-image-processing-suite-user-guide/about-the-video-and-image-processing-suite)
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import (
-    IntelVIPFrameCodec,
+from fpga_verification.altera.video import (
+    VIPFrameCodec,
     VIPControlPacket,
 )
-from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
+from fpga_verification.altera.video import FrameSize, ImageGenerator, VideoFormat
 
 fmt = VideoFormat(
     bits_per_color=10,
@@ -33,7 +33,7 @@ fmt = VideoFormat(
 )
 size = FrameSize(width=640, height=480)
 frame = ImageGenerator(fmt, rng=1).random(size)
-codec = IntelVIPFrameCodec(fmt)
+codec = VIPFrameCodec(fmt)
 
 packet_symbols = codec.frame_to_packet_symbols(frame, size)
 decoded = codec.packet_symbols_to_frame(packet_symbols, size)
@@ -45,7 +45,7 @@ because the control payload has a fixed nine-symbol format. Video and user
 packets do not add payload padding to `to_symbols()`; a final partial wire beat
 is represented by Avalon-ST `empty` when driven through the bus helpers.
 
-Intel VIP video payload is a continuous raster stream. It is not padded at the
+Altera VIP video payload is a continuous raster stream. It is not padded at the
 end of every row. For a frame of size `width × height` with `planes` color
 planes, the valid video payload contains exactly `width * height * planes`
 symbols.
@@ -67,7 +67,7 @@ The simulation extra provides a source/sink agent with the same topology as
 a conventional streaming data agent:
 
 ```python
-from fpga_verification.sim.agents import VIPAgent, VIPSequence
+from fpga_verification.altera.video.uvm import VIPAgent, VIPSequence
 
 vip_agent = VIPAgent(
     "vip_agent",
@@ -114,11 +114,11 @@ mode a mismatch is logged as a warning. Set
 in that strict mode a frame-size change with a different wire payload length
 requires a new control packet before the video packet.
 
-The state belongs to `VIPProtocolChecker`, not to `IntelVIPFrameCodec`. It can
+The state belongs to `VIPProtocolChecker`, not to `VIPFrameCodec`. It can
 also be used directly:
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPProtocolChecker,
 )
 
@@ -127,7 +127,7 @@ for packet in observed_packets:
     checker.observe(packet)
 ```
 
-Intel VIP video packets carry samples but no width or height. Consequently,
+Altera VIP video packets carry samples but no width or height. Consequently,
 two different geometries that produce exactly the same number of valid payload
 symbols cannot be distinguished by a passive monitor. This includes equal-area
 resolutions. Such a change can only be checked where the intended `FrameSize`
@@ -145,12 +145,12 @@ generic predictor API in v1.0.0. See the public
 for the responsibility boundaries.
 
 ```python
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPControlPacket,
     VIPUserPacket,
     VIPVideoPacket,
 )
-from fpga_verification.sim.scoreboards import (
+from fpga_verification.altera.video.uvm import (
     BaseVIPScoreboard,
     CheckMode,
     PacketExpectation,

@@ -17,14 +17,16 @@
 import numpy as np
 import pytest
 
-from fpga_verification.protocols.avalon_st.intel_video import (
-    IntelVIPFrameCodec,
+from fpga_verification.altera.video import (
+    FrameSize,
+    ImageGenerator,
+    VIPFrameCodec,
     VIPControlPacket,
     VIPUserPacket,
     VIPVideoPacket,
+    VideoFormat,
     vip_packet_from_symbols,
 )
-from fpga_verification.video import FrameSize, ImageGenerator, VideoFormat
 
 
 @pytest.mark.parametrize("symbols_per_beat", [1, 2, 3, 4])
@@ -80,7 +82,7 @@ def test_control_packet_keeps_fixed_payload_padding():
 )
 def test_vip_frame_packet_stream_round_trip(fmt, size):
     frame = ImageGenerator(fmt, rng=7).random(size)
-    codec = IntelVIPFrameCodec(fmt)
+    codec = VIPFrameCodec(fmt)
     packet_symbols = codec.frame_to_packet_symbols(
         frame,
         size,
@@ -97,7 +99,7 @@ def test_video_decode_uses_explicit_size_not_control_packet():
     fmt = VideoFormat(8)
     size = FrameSize(4, 2)
     frame = ImageGenerator(fmt).constant(size, 1)
-    codec = IntelVIPFrameCodec(fmt)
+    codec = VIPFrameCodec(fmt)
     video_packet = codec.frame_to_video_packet(frame, size)
     wrong_control = VIPControlPacket(99, 77)
 
@@ -113,7 +115,7 @@ def test_video_decode_uses_explicit_size_not_control_packet():
 
 def test_adapters_are_stateless_and_packet_roles_are_explicit():
     fmt = VideoFormat(8, pixels_in_parallel=2)
-    codec = IntelVIPFrameCodec(fmt)
+    codec = VIPFrameCodec(fmt)
     first_size = FrameSize(3, 2)
     second_size = FrameSize(7, 4)
     generator = ImageGenerator(fmt, rng=4)
@@ -133,7 +135,7 @@ def test_vip_video_payload_is_continuous_raster_not_row_padded():
     fmt = VideoFormat(8, pixels_in_parallel=4)
     size = FrameSize(3, 2)
     frame = np.arange(1, 7, dtype=np.uint8).reshape(2, 3)
-    codec = IntelVIPFrameCodec(fmt)
+    codec = VIPFrameCodec(fmt)
     packet = codec.frame_to_video_packet(frame, size)
 
     assert packet.payload == [1, 2, 3, 4, 5, 6]
@@ -148,7 +150,7 @@ def test_vip_video_payload_is_continuous_raster_not_row_padded():
 def test_packets_to_frame_requires_exactly_one_video_packet():
     fmt = VideoFormat(8)
     size = FrameSize(2, 2)
-    codec = IntelVIPFrameCodec(fmt)
+    codec = VIPFrameCodec(fmt)
     frame = ImageGenerator(fmt).constant(size, 1)
     video = codec.frame_to_video_packet(frame, size)
 

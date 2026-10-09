@@ -25,12 +25,12 @@ in fast unit tests, cocotb simulations, and hardware-in-the-loop tests.
 It includes:
 
 - cocotb helpers for Avalon-ST and Avalon-MM interfaces;
-- Intel Avalon-ST Video packet codecs and pyuvm verification components;
-- simulation runners for plain RTL, Intel components, and Platform Designer;
-- a black-box Intel DMA model and sparse byte memory;
+- Altera Avalon-ST Video packet codecs and pyuvm verification components;
+- simulation runners for plain RTL, Altera components, and Platform Designer;
+- a black-box Altera DMA model and sparse byte memory;
 - stream latency and throughput measurements;
 - simulator-independent video and numeric data helpers;
-- persistent Intel System Console access for hardware-in-the-loop tests.
+- persistent Quartus System Console access for hardware-in-the-loop tests.
 
 !!! note
     Hardware-in-the-loop functionality is under development.

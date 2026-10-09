@@ -28,17 +28,17 @@ SPDX-License-Identifier: RPL-1.5
       show_root_heading: true
       members_order: source
 
-::: fpga_verification.video.VideoFormat
+::: fpga_verification.altera.video.VideoFormat
     options:
       show_root_heading: true
       members_order: source
 
-::: fpga_verification.video.ImageGenerator
+::: fpga_verification.altera.video.ImageGenerator
     options:
       show_root_heading: true
       members_order: source
 
-::: fpga_verification.video.VideoPayloadCodec
+::: fpga_verification.altera.video.VideoPayloadCodec
     options:
       show_root_heading: true
       members_order: source

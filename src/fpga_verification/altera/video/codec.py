@@ -14,9 +14,11 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Stateless numpy frame adapters for Intel Avalon-ST Video packets."""
+"""Stateless numpy frame adapters for Altera Avalon-ST Video packets."""
 
-from fpga_verification.video import FrameSize, VideoFormat, VideoPayloadCodec
+from fpga_verification.video import FrameSize
+
+from .format import VideoFormat, VideoPayloadCodec
 
 from .packets import (
     VIPControlPacket,
@@ -29,8 +31,8 @@ from .packets import (
 )
 
 
-class IntelVIPFrameCodec:
-    """Pure adapters between explicit frame data and Intel VIP packets."""
+class VIPFrameCodec:
+    """Pure adapters between explicit frame data and Altera VIP packets."""
 
     def __init__(self, fmt):
         if not isinstance(fmt, VideoFormat):

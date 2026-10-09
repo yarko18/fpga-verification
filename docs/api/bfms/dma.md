@@ -5,8 +5,8 @@ SPDX-License-Identifier: RPL-1.5
 
 # DMA BFM
 
-The Intel DMA helpers model the streaming command, response and data boundary
-of Intel read and write DMA components. They do not model the internal FIFO or
+The Altera DMA helpers model the streaming command, response and data boundary
+of Altera read and write DMA components. They do not model the internal FIFO or
 Avalon-MM implementation.
 
 ```text
@@ -19,7 +19,7 @@ WDMA command + write data -> IntelDMABFM -> WDMA response
 All public classes are available from one package:
 
 ```python
-from fpga_verification.sim.bfms import (
+from fpga_verification.altera.dma import (
     DMAAddressRegion,
     IntelDMABFM,
     IntelDMACommandMonitor,
@@ -222,7 +222,7 @@ responses; use `IntelDMABFM` for that behavior.
 
 ## `IntelDMABFM`
 
-`IntelDMABFM` is an active replacement for the exported interfaces of Intel
+`IntelDMABFM` is an active replacement for the exported interfaces of Altera
 read DMA, write DMA or both. It consumes commands from the DUT, moves bytes to
 or from `SparseByteMemory`, and sends completion responses.
 

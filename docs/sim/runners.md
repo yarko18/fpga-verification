@@ -21,10 +21,10 @@ run_test.py -> runner -> compile / generate -> cocotb test module -> pyuvm Env
 | Entry point | Use it for |
 | --- | --- |
 | `rtl_test_cocotb()` | Plain Verilog or SystemVerilog sources. |
-| `intel_component_test_cocotb()` | A component description that must be generated first. |
+| `component_test_cocotb()` | A component description that must be generated first. |
 | `platform_test_cocotb()` | An already generated Platform Designer simulation tree. |
 | `run_rtl_test()` | A concise command-line wrapper around the RTL runner. |
-| `run_intel_component_test()` | A concise command-line wrapper around the component runner. |
+| `run_component_test()` | A concise command-line wrapper around the component runner. |
 
 Low-level functions are useful from pytest or a Python tool. `run_*` wrappers
 are normally the right choice for `simulation/<name>/run_test.py`: they prepare
@@ -75,13 +75,16 @@ project/
 Use explicit sources when source order matters. Otherwise pass source
 directories and let the runner discover HDL files.
 
-### Intel libraries without component generation
+### Quartus libraries without component generation
 
-Plain RTL may instantiate Intel primitives directly. Give `run_rtl_test()`
+Plain RTL may instantiate Altera primitives directly. Give `run_rtl_test()`
 simulator-independent library names and the runner compiles their models before
 the project RTL:
 
 ```python
+from fpga_verification.altera.quartus import run_rtl_test
+
+
 run_rtl_test(
     project_root=project_root,
     source_dirs=("rtl", "/shared/rtl"),
@@ -112,18 +115,18 @@ applied to copied models; installed Quartus files are never modified.
 
 ## Generated component
 
-`intel_component_test_cocotb()` runs `ip-generate`, reads the generated `.spd`
+`component_test_cocotb()` runs `ip-generate`, reads the generated `.spd`
 file, joins generated composition HDL with source HDL, adds selected tool
 models, then calls the RTL runner. The normal generated directory is temporary.
 
 ```python
 from pathlib import Path
 
-from fpga_verification.sim.runners import intel_component_test_cocotb
+from fpga_verification.altera.quartus import component_test_cocotb
 
 
 def run_generated_component(generate_only=False):
-    return intel_component_test_cocotb(
+    return component_test_cocotb(
         project_root=Path("."),
         component_file=Path("src/component_hw.tcl"),
         source_dirs=[Path("src/hw")],
@@ -179,7 +182,7 @@ class TestConfig(ComponentConfig):
 ```python
 # Host side, in run_test.py
 run_rtl_test(..., config=get_test_config())
-run_intel_component_test(..., config=get_test_config())
+run_component_test(..., config=get_test_config())
 
 # Cocotb side, in test_pyuvm.py
 cfg = load_runtime_config(TestConfig)
@@ -198,7 +201,7 @@ libraries. With Verilator it extracts a compatible source list from that setup.
 Other simulator values are rejected.
 
 ```python
-from fpga_verification.sim.platform_designer import platform_test_cocotb
+from fpga_verification.altera.quartus.platform_designer import platform_test_cocotb
 
 
 platform_test_cocotb(
@@ -222,7 +225,7 @@ results or construct agents.
 import os
 from pathlib import Path
 
-from fpga_verification.sim.runners import run_intel_component_test
+from fpga_verification.altera.quartus import run_component_test
 
 from .config import get_test_config
 
@@ -231,7 +234,7 @@ if __name__ == "__main__":
     sim = os.getenv("SIM", "verilator")
     build_args = ["-Wno-PARAMNODEFAULT"] if sim == "verilator" else []
 
-    run_intel_component_test(
+    run_component_test(
         project_root=Path(__file__).resolve().parent,
         component_file="../../src/component_hw.tcl",
         hdl_toplevel="component",

@@ -11,14 +11,14 @@ from cocotbext.avalon import (
     AvalonSTSource,
 )
 
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPControlPacket,
     VIPUserPacket,
     VIPVideoPacket,
+    VideoFormat,
     vip_packet_from_symbols,
 )
 from fpga_verification.sim import load_runtime_config
-from fpga_verification.video import VideoFormat
 
 from .config import TestConfig
 

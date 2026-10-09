@@ -14,25 +14,10 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Reusable pyuvm scoreboards."""
+"""Vendor-independent pyuvm scoreboard utilities."""
 
 from .analysis import AnalysisImp
 
-from .intel_video import (
-    BaseVIPScoreboard,
-    CheckMode,
-    PacketExpectation,
-    UserPacketPolicy,
-    VideoPacketPolicy,
-    VideoPacketResult,
-)
-
 __all__ = [
     "AnalysisImp",
-    "BaseVIPScoreboard",
-    "CheckMode",
-    "PacketExpectation",
-    "UserPacketPolicy",
-    "VideoPacketPolicy",
-    "VideoPacketResult",
 ]

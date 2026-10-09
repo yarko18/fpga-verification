@@ -16,7 +16,7 @@ Runs with `USE_FIFO=False` and does not load vendor libraries.
 SIM=verilator python -m examples.stream_pipeline.simulation.test_1.run_test
 ```
 
-## test_2: Intel FIFO
+## test_2: Altera FIFO
 
 Uses the same RTL with its own testbench, `USE_FIFO=True` and `altera_mf`.
 

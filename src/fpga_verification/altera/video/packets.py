@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Packet codecs for the Intel Avalon-ST Video protocol."""
+"""Packet codecs for the Altera Avalon-ST Video protocol."""
 
 from dataclasses import dataclass, field
 from enum import IntEnum

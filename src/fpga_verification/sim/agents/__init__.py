@@ -14,30 +14,11 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Reusable pyuvm agents."""
+"""Vendor-independent simulation agent interfaces."""
 
-from .intel_video import (
-    VIPAgent,
-    VIPDriver,
-    VIPItem,
-    VIPMonitor,
-    VIPSequence,
-)
-
-from .avalon_mm import (
-    AvalonMMMonitor,
-    AvalonMMAgent,
-)
 from .frame_source import FrameSource, FrameTransaction
 
 __all__ = [
-    "VIPAgent",
-    "VIPDriver",
-    "VIPItem",
-    "VIPMonitor",
-    "VIPSequence",
-    "AvalonMMMonitor",
-    "AvalonMMAgent",
     "FrameSource",
     "FrameTransaction",
 ]

@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Strict ordered scoreboard engine for Intel Avalon-ST Video packets."""
+"""Strict ordered scoreboard engine for Altera Avalon-ST Video packets."""
 
 from __future__ import annotations
 
@@ -34,8 +34,8 @@ from cocotb.triggers import (
 )
 from pyuvm import uvm_scoreboard
 
-from fpga_verification.protocols.avalon_st.intel_video import (
-    IntelVIPFrameCodec,
+from fpga_verification.altera.video import (
+    VIPFrameCodec,
     VIPControlPacket,
     VIPPacket,
     VIPUserPacket,
@@ -171,9 +171,9 @@ class BaseVIPScoreboard(uvm_scoreboard):
         self.log = logging.getLogger(f"cocotb.base_vip_scoreboard.{name}")
 
         self.vip_input_codec = (
-            IntelVIPFrameCodec(source_fmt) if source_fmt is not None else None
+            VIPFrameCodec(source_fmt) if source_fmt is not None else None
         )
-        self.vip_output_codec = IntelVIPFrameCodec(sink_fmt)
+        self.vip_output_codec = VIPFrameCodec(sink_fmt)
         self.clock = clock
         self.reset_signal = reset
         self.reset_active_level = bool(reset_active_level)

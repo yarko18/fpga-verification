@@ -6,7 +6,7 @@ SPDX-License-Identifier: RPL-1.5
 # Tutorial: verify a video-packet endianness converter
 
 The example has one `stream_pipeline.sv`. `USE_FIFO=0` selects its register
-stage; `USE_FIFO=1` selects an Intel `scfifo`.
+stage; `USE_FIFO=1` selects an Altera `scfifo`.
 
 Both preserve CONTROL and USER packets and reverse valid symbols in every
 VIDEO payload beat. With four symbols per beat, `[1, 2, 3, 4, 5]` becomes

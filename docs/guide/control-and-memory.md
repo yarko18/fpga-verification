@@ -84,7 +84,7 @@ capacity semantics.
 
 ```python
 from cocotbext.avalon import AvalonMMMemoryBFM
-from fpga_verification.sim.bfms import SparseByteMemory
+from fpga_verification.altera.dma import SparseByteMemory
 
 
 def make_memory_slave(dut):
@@ -109,7 +109,7 @@ Connect that port to the custom scoreboard so model state changes in exactly
 the order the DUT observed them.
 
 ```python
-from fpga_verification.sim.agents import AvalonMMAgent
+from fpga_verification.altera.avalon import AvalonMMAgent
 
 control_agent = AvalonMMAgent(
     "control_agent", parent,
@@ -120,7 +120,7 @@ control_agent = AvalonMMAgent(
 
 ## DMA model
 
-`IntelDMABFM` is a black-box behavioral replacement for Intel streaming DMA
+`IntelDMABFM` is a black-box behavioral replacement for Altera streaming DMA
 interfaces. It models externally observable transactions, not internal FIFOs
 or Avalon-MM implementation details.
 
@@ -135,7 +135,7 @@ Descriptors are immutable decoded objects. Address regions give the command
 monitor an explicit allowed half-open range `[start, end)`.
 
 ```python
-from fpga_verification.sim.bfms import (
+from fpga_verification.altera.dma import (
     DMAAddressRegion,
     ReadDMADescriptor,
     SparseByteMemory,
@@ -161,7 +161,7 @@ The default prefixes are `rdma_cmd`, `rdma_resp`, `wdma_cmd`, `wdma_resp`,
 `din` and `dout`, but explicit `AvalonSTBus` objects can be supplied.
 
 ```python
-from fpga_verification.sim.bfms.intel_dma import IntelDMABFM, IntelDMACommandMonitor
+from fpga_verification.altera.dma import IntelDMABFM, IntelDMACommandMonitor
 from cocotbext.avalon import AvalonSTBus
 
 memory = SparseByteMemory()

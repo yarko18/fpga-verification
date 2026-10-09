@@ -18,7 +18,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from fpga_verification.sim.runners._simulation_fixes import prepare_simulation_models
+from fpga_verification.altera.quartus.simulation_fixes import (
+    prepare_simulation_models,
+)
 
 
 RAM_MODEL = '\n'.join(

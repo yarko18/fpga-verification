@@ -14,7 +14,7 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Intel Avalon-ST Video pyuvm agent."""
+"""Altera Avalon-ST Video pyuvm agent."""
 
 import logging
 from random import random
@@ -32,7 +32,7 @@ from pyuvm import (
     uvm_sequencer,
 )
 
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
     VIPControlPacket,
     VIPPacket,
     VIPUserPacket,
@@ -46,7 +46,7 @@ from cocotbext.avalon import (
     AvalonSTSink,
     AvalonSTSource,
 )
-from fpga_verification.video import VideoFormat
+from fpga_verification.altera.video import VideoFormat
 
 
 def _random_pause_generator():
@@ -191,7 +191,7 @@ def _make_vip_sink(
 
 
 class VIPItem(uvm_sequence_item):
-    """Sequence item containing one complete Intel VIP packet."""
+    """Sequence item containing one complete Altera VIP packet."""
 
     def __init__(self, packet, name="vip_item"):
         super().__init__(name)
@@ -375,7 +375,7 @@ class VIPMonitor(uvm_monitor):
 
 
 class VIPAgent(uvm_agent):
-    """Source/sink pyuvm agent for Intel Avalon-ST Video packet streams."""
+    """Source/sink pyuvm agent for Altera Avalon-ST Video packet streams."""
 
     def __init__(
         self,
@@ -559,7 +559,7 @@ class VIPAgent(uvm_agent):
 
 
 class VIPSequence(uvm_sequence):
-    """Sequence that sends one or more complete Intel VIP packets."""
+    """Sequence that sends one or more complete Altera VIP packets."""
 
     def __init__(self, items=None, name="vip_sequence"):
         super().__init__(name)

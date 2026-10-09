@@ -14,20 +14,14 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Simulator-independent image generation and video payload codecs."""
+"""Vendor-independent video frame primitives."""
 
 from .core import (
     FrameSize,
-    ImageGenerator,
-    VideoFormat,
-    VideoPayloadCodec,
     compare_frames,
 )
 
 __all__ = [
     "FrameSize",
-    "ImageGenerator",
-    "VideoFormat",
-    "VideoPayloadCodec",
     "compare_frames",
 ]

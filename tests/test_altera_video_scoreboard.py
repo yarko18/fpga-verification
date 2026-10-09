@@ -20,12 +20,14 @@ from itertools import count
 import pytest
 from cocotb.types import Logic
 
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
+    FrameSize,
     VIPControlPacket,
     VIPUserPacket,
     VIPVideoPacket,
+    VideoFormat,
 )
-from fpga_verification.sim.scoreboards import (
+from fpga_verification.altera.video.uvm import (
     BaseVIPScoreboard,
     CheckMode,
     PacketExpectation,
@@ -33,8 +35,7 @@ from fpga_verification.sim.scoreboards import (
     VideoPacketPolicy,
     VideoPacketResult,
 )
-from fpga_verification.sim.scoreboards import intel_video as scoreboard_module
-from fpga_verification.video import FrameSize, VideoFormat
+from fpga_verification.altera.video.uvm import scoreboard as scoreboard_module
 
 
 def _video_packet(fmt, size, value=0):

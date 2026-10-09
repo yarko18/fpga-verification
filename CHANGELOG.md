@@ -20,6 +20,18 @@ rights and limitations under the RPL.
 
 ## Unreleased
 
+## 1.1.0 - 2026-10-09
+
+- Moved Altera-specific APIs under `fpga_verification.altera`, including
+  Avalon-ST Video, Avalon-MM UVM components, DMA models, Quartus runners,
+  Platform Designer, and System Console support.
+- Split vendor-independent `FrameSize` and `compare_frames` from the Altera
+  video format and payload codecs.
+- Separated the vendor-independent RTL runner from the Quartus RTL wrapper;
+  Quartus library selection now comes from `fpga_verification.altera.quartus`.
+- Updated the stream-pipeline examples, documentation, and tests for the new
+  public import structure.
+
 ## 1.0.6 - 2026-10-09
 
 - Added recursive multi-directory RTL source discovery for relative and

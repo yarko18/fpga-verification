@@ -4,7 +4,7 @@
 from pathlib import Path
 import sys
 
-from fpga_verification.sim.runners import run_rtl_test
+from fpga_verification.altera.quartus import run_rtl_test
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

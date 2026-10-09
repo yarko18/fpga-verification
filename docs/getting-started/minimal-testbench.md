@@ -39,7 +39,7 @@ The direct cocotb test sends CONTROL, USER and VIDEO packets through
 `AvalonSTSource`, receives them through `AvalonSTSink` and compares them with
 explicit expected packets.
 
-The Intel FIFO version uses the same test:
+The Altera FIFO version uses the same test:
 
 ```bash
 SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test

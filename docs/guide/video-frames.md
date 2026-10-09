@@ -5,9 +5,9 @@ SPDX-License-Identifier: RPL-1.5
 
 # Video frames and payloads
 
-The video package is independent of cocotb and protocol packets. It gives a
-test one canonical numpy representation before data is packed onto a bus.
-Everything on this page runs as ordinary Python.
+The Altera video package is independent of cocotb simulation and protocol
+packet state. It gives a test one canonical numpy representation before data
+is packed onto Avalon-ST. Everything on this page runs as ordinary Python.
 
 `VideoFormat` describes sample width, plane layout and pixels transferred per
 beat. `FrameSize` holds width and height separately, allowing one static
@@ -27,7 +27,7 @@ of samples and colour planes.
 
 ```python
 from cocotbext.avalon import AvalonFormat
-from fpga_verification.video import VideoFormat
+from fpga_verification.altera.video import VideoFormat
 
 avalon_fmt = AvalonFormat(
     bits_per_symbol=8,
@@ -69,7 +69,7 @@ print(serial_fmt.payload_width)
 maximum geometry in a test configuration.
 
 ```python
-from fpga_verification.video import FrameSize, ImageGenerator
+from fpga_verification.altera.video import FrameSize, ImageGenerator
 
 size = FrameSize(width=5, height=3)
 print(fmt.frame_shape(size))
@@ -97,7 +97,7 @@ pads a row to whole beats; `unpack_row()` requires that those padding symbols
 are zero and removes them.
 
 ```python
-from fpga_verification.video import VideoPayloadCodec
+from fpga_verification.altera.video import VideoPayloadCodec
 
 codec = VideoPayloadCodec(fmt)
 row = ramp[0]

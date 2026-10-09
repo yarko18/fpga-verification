@@ -14,22 +14,6 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
-"""Cocotb bus functional models for simulated components."""
+"""Vendor-independent cocotb bus functional models."""
 
-from .intel_dma import (
-    DMAAddressRegion,
-    IntelDMABFM,
-    IntelDMACommandMonitor,
-    ReadDMADescriptor,
-    SparseByteMemory,
-    WriteDMADescriptor,
-)
-
-__all__ = [
-    "DMAAddressRegion",
-    "IntelDMABFM",
-    "IntelDMACommandMonitor",
-    "ReadDMADescriptor",
-    "SparseByteMemory",
-    "WriteDMADescriptor",
-]
+__all__ = []

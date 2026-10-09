@@ -15,7 +15,7 @@
 - How-to guides
     - [Simulation runners](sim/runners.md)
     - [Avalon-MM and DMA](guide/control-and-memory.md)
-    - [Intel Avalon-ST Video](guide/intel-video.md)
+    - [Altera Avalon-ST Video](guide/altera-video.md)
     - [Video frames](guide/video-frames.md)
     - [Numeric formats](guide/numeric-formats.md)
     - [Stream performance](guide/performance.md)

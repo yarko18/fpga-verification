@@ -18,15 +18,16 @@ import logging
 
 import pytest
 
-from fpga_verification.protocols.avalon_st.intel_video import (
+from fpga_verification.altera.video import (
+    FrameSize,
     VIPControlPacket,
     VIPProtocolChecker,
     VIPProtocolError,
     VIPUserPacket,
     VIPVideoPacket,
+    VideoFormat,
 )
-from fpga_verification.sim.agents import VIPItem, VIPSequence
-from fpga_verification.video import FrameSize, VideoFormat
+from fpga_verification.altera.video.uvm import VIPItem, VIPSequence
 
 
 def _video_packet(fmt, size):

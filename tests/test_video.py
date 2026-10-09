@@ -17,7 +17,7 @@
 import numpy as np
 import pytest
 
-from fpga_verification.video import (
+from fpga_verification.altera.video import (
     FrameSize,
     ImageGenerator,
     VideoFormat,

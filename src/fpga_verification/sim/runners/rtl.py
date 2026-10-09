@@ -23,9 +23,6 @@ from ._common import (
     resolve_path,
     resolve_test_config,
 )
-from ._intel_simulation import prepare_intel_libraries
-
-
 def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
@@ -34,7 +31,7 @@ def _check_results(results_xml):
         raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
 
 
-def _discover_sources(project_root, source_dirs):
+def discover_sources(project_root, source_dirs):
     sources = []
     seen = set()
 
@@ -63,9 +60,6 @@ def rtl_test_cocotb(
     test_module,
     sources=None,
     source_dirs=("src",),
-    intel_libraries=(),
-    quartus_sim_lib=None,
-    apply_simulation_fixes=True,
     parameters=None,
     debug=False,
     compile_log=None,
@@ -73,7 +67,7 @@ def rtl_test_cocotb(
     test_args=None,
     extra_env=None,
 ):
-    """Compile plain RTL plus optional Intel models and run a cocotb test."""
+    """Compile plain RTL and run a cocotb test."""
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
@@ -82,19 +76,9 @@ def rtl_test_cocotb(
     build_dir = project_root / f"sim_build_{sim}"
 
     if sources is None:
-        sources = _discover_sources(project_root, source_dirs)
+        sources = discover_sources(project_root, source_dirs)
     else:
         sources = [Path(source) for source in sources]
-
-    vendor_sources = prepare_intel_libraries(
-        intel_libraries,
-        project_root=project_root,
-        quartus_sim_lib=quartus_sim_lib,
-        simulator=sim,
-        output_dir=project_root / "logs" / "simulation_models",
-        apply_simulation_fixes=apply_simulation_fixes,
-    )
-    sources = vendor_sources + sources
 
     runner = get_runner(sim)
 
@@ -184,9 +168,6 @@ def run_rtl_test(
     parameters=None,
     extra_env=None,
     source_dirs=("src",),
-    intel_libraries=(),
-    quartus_sim_lib=None,
-    apply_simulation_fixes=True,
     python_paths=(".",),
     debug=None,
     argv=None,
@@ -195,12 +176,7 @@ def run_rtl_test(
     test_module_env=None,
     **kwargs,
 ):
-    """Run a standard RTL cocotb simulation from a script or pytest.
-
-    ``intel_libraries`` contains simulator-independent logical names. Their
-    models are loaded from ``quartus_sim_lib`` (or a discovered Quartus
-    installation) and compiled before all project RTL.
-    """
+    """Run a standard vendor-independent RTL cocotb simulation."""
     project_root = Path(project_root)
     debug, sim = prepare_test_run(
         project_root=project_root,
@@ -225,9 +201,6 @@ def run_rtl_test(
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         source_dirs=source_dirs,
-        intel_libraries=intel_libraries,
-        quartus_sim_lib=quartus_sim_lib,
-        apply_simulation_fixes=apply_simulation_fixes,
         debug=debug,
         compile_log=project_root / "logs" / f"{sim}_compile.log",
         parameters=parameters,
