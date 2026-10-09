@@ -3,25 +3,29 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: RPL-1.5
 -->
 
-# Video-packet endianness example
+# Stream pipeline
 
-This example verifies a one-entry Intel Avalon-ST Video pipeline that reverses
-the byte order of each VIDEO payload beat. Packet identifier beats, CONTROL
-packets and USER packets pass through unchanged. The final partial VIDEO beat
-reverses only its valid bytes.
+Both RTL implementations reverse the valid bytes of each Avalon-ST VIDEO
+payload beat and use the same pyuvm testbench:
 
-The testbench demonstrates the recommended `config`, `layout`, functional
-model, behavior model, scoreboard, environment, test and runner boundaries.
+- `rtl/stream_pipeline.sv` — register stage;
+- `rtl/stream_pipeline_fifo.sv` — Intel `scfifo`.
 
 From the `fpga-verification` repository root:
 
 ```bash
 python -m pytest -q examples/stream_pipeline/tests
 SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test
+SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test_fifo
 ```
 
-Use `SIM=questa` for a Questa run. Add `-g` after the module command to request
-the simulator's debug mode.
+Or directly from `examples/stream_pipeline`:
 
-The documentation site contains the complete
-[tutorial](../../docs/tutorial/stream-pipeline.md).
+```bash
+SIM=verilator python simulation/vip/run_test.py
+SIM=verilator python simulation/vip/run_test_fifo.py
+```
+
+Use `SIM=questa` for Questa and `-g` for debug mode. The FIFO runner loads
+`altera_mf`; set `QUARTUS_SIM_LIB` if the Quartus simulation library is not
+discovered automatically.

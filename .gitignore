@@ -25,3 +25,4 @@ sim_build_*/
 *.bin
 *.drawio.bkp
 /generated/
+*logs/
