@@ -85,10 +85,10 @@ the project RTL:
 run_rtl_test(
     project_root=project_root,
     source_dirs=("rtl", "/shared/rtl"),
-    hdl_toplevel="stream_pipeline_fifo",
-    test_module="simulation.vip.test",
-    config=get_test_config(),
-    intel_libraries=("lpm", "altera_mf"),
+    hdl_toplevel="stream_pipeline",
+    test_module="simulation.test_1.test",
+    config=get_test_config(use_fifo=True),
+    intel_libraries=("altera_mf",),
 )
 ```
 

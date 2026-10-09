@@ -20,13 +20,20 @@ rights and limitations under the RPL.
 
 ## Unreleased
 
+## 1.0.6 - 2026-10-09
+
 - Added recursive multi-directory RTL source discovery for relative and
   absolute paths.
 - Added simulator-independent Intel library selection to the plain RTL runner,
   including Quartus model discovery and copied Verilator compatibility fixes.
 - Added resolved `ComponentConfig` support to `run_rtl_test()` and an Intel
-  `scfifo` stream-pipeline example which reuses the existing verification
-  contract.
+  `scfifo` example without requiring a component description or Platform
+  Designer generation.
+- Added Verilog-compatible encoding of boolean HDL parameters.
+- Reworked the stream-pipeline example into two standalone cocotb testbenches
+  around one parameterized RTL source: plain RTL and Intel `scfifo`.
+- Added Linux and Windows wheel builds, including Python 3.12 artifacts for the
+  `develop` branch and all supported Python versions for tagged releases.
 
 ## 1.0.5 - 2026-09-24
 

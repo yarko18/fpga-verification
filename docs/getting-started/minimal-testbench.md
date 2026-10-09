@@ -5,32 +5,34 @@ SPDX-License-Identifier: RPL-1.5
 
 # Run the minimal testbench
 
-Start with the simulator-ready example in `examples/stream_pipeline`. Both RTL
-variants reverse byte order inside VIDEO payload beats while forwarding CONTROL
+Start with the simulator-ready example in `examples/stream_pipeline`. One RTL
+module reverses byte order inside VIDEO payload beats while forwarding CONTROL
 and USER packets unchanged.
 
 ```text
 examples/stream_pipeline/
-  rtl/
-    stream_pipeline.sv
-    stream_pipeline_fifo.sv
-  simulation/vip/
-    config.py
-    test.py
-    run_test.py
-    run_test_fifo.py
+  rtl/stream_pipeline.sv
+  simulation/
+    test_1/
+      config.py
+      test.py
+      run_test.py
+    test_2/
+      config.py
+      test.py
+      run_test.py
 ```
 
 Run it from the repository root:
 
 ```bash
-SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test
+SIM=verilator python -m examples.stream_pipeline.simulation.test_1.run_test
 ```
 
 For Questa:
 
 ```bash
-SIM=questa python -m examples.stream_pipeline.simulation.vip.run_test
+SIM=questa python -m examples.stream_pipeline.simulation.test_1.run_test
 ```
 
 The direct cocotb test sends CONTROL, USER and VIDEO packets through
@@ -40,9 +42,9 @@ explicit expected packets.
 The Intel FIFO version uses the same test:
 
 ```bash
-SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test_fifo
+SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test
 ```
 
-Its runner selects `altera_mf` directly, without a component description or
-Platform Designer generation. See the
+The second testbench enables `USE_FIFO` and selects `altera_mf` directly. No
+component description or Platform Designer generation is needed. See the
 [tutorial](../tutorial/stream-pipeline.md) for the complete flow.
