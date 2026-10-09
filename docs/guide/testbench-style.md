@@ -91,5 +91,5 @@ async def run_phase(self):
 - Test names describe contracts: reset, boundaries, concurrency and timing.
 - The runner contains no stimulus or expected-result calculation.
 
-The complete repository example is described in the
+A simple cocotb example is described in the
 [video-packet endianness tutorial](../tutorial/stream-pipeline.md).

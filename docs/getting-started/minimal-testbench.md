@@ -5,24 +5,20 @@ SPDX-License-Identifier: RPL-1.5
 
 # Run the minimal testbench
 
-The repository contains several verification examples. Start with the complete,
-simulator-ready example in `examples/stream_pipeline`. The component accepts an
-Intel Avalon-ST Video packet stream and stores one beat. It reverses byte order
-inside VIDEO payload beats while forwarding CONTROL and USER packets unchanged.
+Start with the simulator-ready example in `examples/stream_pipeline`. Both RTL
+variants reverse byte order inside VIDEO payload beats while forwarding CONTROL
+and USER packets unchanged.
 
 ```text
 examples/stream_pipeline/
-  rtl/stream_pipeline.sv
+  rtl/
+    stream_pipeline.sv
+    stream_pipeline_fifo.sv
   simulation/vip/
     config.py
-    layout.py
-    functional_model.py
-    behavior_model.py
-    scoreboard.py
-    env.py
-    test_pyuvm.py
+    test.py
     run_test.py
-  tests/test_models.py
+    run_test_fifo.py
 ```
 
 Run it from the repository root:
@@ -37,24 +33,16 @@ For Questa:
 SIM=questa python -m examples.stream_pipeline.simulation.vip.run_test
 ```
 
-The test sends an ordered control, user, and video packet sequence. The source
-monitor creates pass-through expectations for CONTROL and USER packets and
-byte-reversed expectations for VIDEO payloads. The sink monitor checks every
-output packet against the scoreboard FIFO.
+The direct cocotb test sends CONTROL, USER and VIDEO packets through
+`AvalonSTSource`, receives them through `AvalonSTSink` and compares them with
+explicit expected packets.
 
-The two model checks run without a simulator:
+The Intel FIFO version uses the same test:
 
 ```bash
-python -m pytest -q examples/stream_pipeline/tests
+SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test_fifo
 ```
 
-Use this example to answer practical questions about imports, relative paths,
-phase ordering, reset, and cleanup. The [tutorial](../tutorial/stream-pipeline.md)
-explains why each file exists; [Project style](../guide/testbench-style.md) is the
-short convention reference.
-
-The companion
-[`stream_pipeline_fifo`](https://github.com/yarko18/fpga-verification/tree/main/examples/stream_pipeline_fifo)
-example reuses this verification contract around RTL containing an Intel
-`scfifo`. It demonstrates selecting `altera_mf` directly in the plain RTL
-runner, without a component description or Platform Designer generation.
+Its runner selects `altera_mf` directly, without a component description or
+Platform Designer generation. See the
+[tutorial](../tutorial/stream-pipeline.md) for the complete flow.

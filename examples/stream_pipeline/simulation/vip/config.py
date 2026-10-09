@@ -12,8 +12,8 @@ class TestConfig(ComponentConfig):
 
     bits_per_symbol: int = hdl_parameter(8, name="BITS_PER_SYMBOL")
     symbols_per_beat: int = hdl_parameter(4, name="SYMBOLS_PER_BEAT")
-    frame_width: int = 7
-    frame_height: int = 3
+    frame_width: int = 5
+    frame_height: int = 1
 
     def __post_init__(self):
         if self.bits_per_symbol != 8:

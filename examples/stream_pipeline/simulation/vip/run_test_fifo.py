@@ -23,11 +23,12 @@ def main():
     run_rtl_test(
         project_root=PROJECT_ROOT,
         source_dirs=("rtl",),
-        hdl_toplevel="stream_pipeline",
-        test_module="simulation.vip.test_pyuvm",
+        hdl_toplevel="stream_pipeline_fifo",
+        test_module="simulation.vip.test",
         config=cfg,
         intel_libraries=("altera_mf",),
     )
+
 
 if __name__ == "__main__":
     main()

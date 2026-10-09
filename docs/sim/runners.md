@@ -86,7 +86,7 @@ run_rtl_test(
     project_root=project_root,
     source_dirs=("rtl", "/shared/rtl"),
     hdl_toplevel="stream_pipeline_fifo",
-    test_module="simulation.vip.test_pyuvm",
+    test_module="simulation.vip.test",
     config=get_test_config(),
     intel_libraries=("lpm", "altera_mf"),
 )

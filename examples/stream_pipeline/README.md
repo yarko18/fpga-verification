@@ -6,7 +6,7 @@ SPDX-License-Identifier: RPL-1.5
 # Stream pipeline
 
 Both RTL implementations reverse the valid bytes of each Avalon-ST VIDEO
-payload beat and use the same pyuvm testbench:
+payload beat and use the same cocotb test:
 
 - `rtl/stream_pipeline.sv` — register stage;
 - `rtl/stream_pipeline_fifo.sv` — Intel `scfifo`.
@@ -14,7 +14,6 @@ payload beat and use the same pyuvm testbench:
 From the `fpga-verification` repository root:
 
 ```bash
-python -m pytest -q examples/stream_pipeline/tests
 SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test
 SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test_fifo
 ```

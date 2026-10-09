@@ -24,7 +24,7 @@ def main():
         project_root=PROJECT_ROOT,
         source_dirs=("rtl",),
         hdl_toplevel="stream_pipeline",
-        test_module="simulation.vip.test_pyuvm",
+        test_module="simulation.vip.test",
         config=cfg,
     )
 
