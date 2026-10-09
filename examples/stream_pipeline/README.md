@@ -5,26 +5,24 @@ SPDX-License-Identifier: RPL-1.5
 
 # Stream pipeline
 
-Both RTL implementations reverse the valid bytes of each Avalon-ST VIDEO
-payload beat and use the same cocotb test:
+`rtl/stream_pipeline.sv` reverses valid bytes in each Avalon-ST VIDEO payload
+beat. `USE_FIFO` selects its storage implementation.
 
-- `rtl/stream_pipeline.sv` — register stage;
-- `rtl/stream_pipeline_fifo.sv` — Intel `scfifo`.
+## test_1: plain RTL
 
-From the `fpga-verification` repository root:
-
-```bash
-SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test
-SIM=verilator python -m examples.stream_pipeline.simulation.vip.run_test_fifo
-```
-
-Or directly from `examples/stream_pipeline`:
+Runs with `USE_FIFO=False` and does not load vendor libraries.
 
 ```bash
-SIM=verilator python simulation/vip/run_test.py
-SIM=verilator python simulation/vip/run_test_fifo.py
+SIM=verilator python -m examples.stream_pipeline.simulation.test_1.run_test
 ```
 
-Use `SIM=questa` for Questa and `-g` for debug mode. The FIFO runner loads
-`altera_mf`; set `QUARTUS_SIM_LIB` if the Quartus simulation library is not
-discovered automatically.
+## test_2: Intel FIFO
+
+Uses the same RTL with its own testbench, `USE_FIFO=True` and `altera_mf`.
+
+```bash
+SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test
+```
+
+Use `SIM=questa` for Questa and `-g` for debug mode. Set `QUARTUS_SIM_LIB` when
+the Quartus simulation library is not discovered automatically.
