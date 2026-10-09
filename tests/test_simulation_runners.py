@@ -99,6 +99,27 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
 
         self.assertEqual(runner.test.call_args.kwargs["extra_env"], {"TEST_VALUE": "value"})
 
+    def test_rtl_runner_encodes_boolean_parameters_as_verilog_bits(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with (
+            patch("cocotb_tools.runner.get_runner", return_value=runner),
+            patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+        ):
+            rtl.rtl_test_cocotb(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                sources=[],
+                parameters={"ENABLED": True, "BYPASS": False, "WIDTH": 32},
+            )
+
+        self.assertEqual(
+            runner.build.call_args.kwargs["parameters"],
+            {"ENABLED": 1, "BYPASS": 0, "WIDTH": 32},
+        )
+
     def test_intel_component_wrapper_defaults_to_verilator(self):
         with (
             patch.dict(os.environ, {}, clear=True),

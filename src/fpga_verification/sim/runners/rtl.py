@@ -116,6 +116,10 @@ def rtl_test_cocotb(
 
     if parameters is None:
         parameters = {}
+    parameters = {
+        name: int(value) if isinstance(value, bool) else value
+        for name, value in parameters.items()
+    }
 
     build_kwargs = {}
     if compile_log is not None:
