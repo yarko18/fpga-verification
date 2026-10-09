@@ -15,7 +15,7 @@ else:
     # A file executed directly has no package context, so make this example's
     # package importable without depending on the caller's working directory.
     sys.path.insert(0, str(PROJECT_ROOT))
-    from simulation.vip.config import get_test_config
+    from simulation.test_1.config import get_test_config
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
         project_root=PROJECT_ROOT,
         source_dirs=("rtl",),
         hdl_toplevel="stream_pipeline",
-        test_module="simulation.vip.test",
+        test_module="simulation.test_1.test",
         config=cfg,
     )
 

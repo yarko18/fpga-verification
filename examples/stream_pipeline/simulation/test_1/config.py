@@ -12,6 +12,7 @@ class TestConfig(ComponentConfig):
 
     bits_per_symbol: int = hdl_parameter(8, name="BITS_PER_SYMBOL")
     symbols_per_beat: int = hdl_parameter(4, name="SYMBOLS_PER_BEAT")
+    use_fifo: bool = hdl_parameter(False, name="USE_FIFO")
     frame_width: int = 5
     frame_height: int = 1
 
@@ -20,6 +21,8 @@ class TestConfig(ComponentConfig):
             raise ValueError("the endianness example requires 8-bit symbols")
         if self.symbols_per_beat < 2:
             raise ValueError("symbols_per_beat must be at least 2")
+        if type(self.use_fifo) is not bool:
+            raise TypeError("use_fifo must be a bool")
         if self.frame_width <= 0 or self.frame_height <= 0:
             raise ValueError("frame dimensions must be positive")
 
