@@ -5,7 +5,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
-## Unreleased
+## 1.1.1 - 2026-10-12
 
 - Changed the project license for version 1.1.1 to the FPGA Verification
   Commercial Reciprocity License 1.0. Releases through 1.1.0 remain under
