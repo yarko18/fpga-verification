@@ -46,6 +46,27 @@ endmodule'''
 
 MODEL = RAM_MODEL + '\n' + FIFO_MODEL
 
+LPM_OPTIONAL_SUM_BLOCK = '''    // if sum port is not used
+    if (sum === {lpm_widths{1'bz}})
+    begin
+        t_s = {lpm_widths{1'b0}};
+        sign_s = 1'b0;
+    end'''
+
+LPM_MODEL = f'''module unrelated;
+always @* begin
+{LPM_OPTIONAL_SUM_BLOCK}
+end
+endmodule
+module lpm_mult(sum);
+parameter lpm_widths = 1;
+input [lpm_widths-1:0] sum;
+always @* begin
+{LPM_OPTIONAL_SUM_BLOCK}
+end
+endmodule
+'''
+
 
 class SimulationFixTests(unittest.TestCase):
     def test_default_copies_and_preserves_unrelated_pulls(self):
@@ -93,5 +114,36 @@ class SimulationFixTests(unittest.TestCase):
                 prepare_simulation_models([source], simulator='verilator', output_dir=output)
             self.assertFalse(output.exists())
 
+    def test_patches_lpm_mult_optional_sum_for_verilator(self):
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / '220model.v'
+            source.write_text(LPM_MODEL)
+            output = Path(directory) / 'fixed'
+            result = prepare_simulation_models(
+                [source],
+                simulator='verilator',
+                output_dir=output,
+            )
+            self.assertEqual(source.read_text(), LPM_MODEL)
+            fixed = result[0].read_text()
+            self.assertEqual(fixed.count("sum === {lpm_widths{1'bz}}"), 1)
+            self.assertIn(
+                "In two-state simulation, an unconnected sum input is already zero.",
+                fixed,
+            )
+
+    def test_unexpected_lpm_model_fails_without_writing_copy(self):
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / '220model.v'
+            source.write_text(LPM_MODEL.replace("sum ===", "sum ==", 2))
+            output = Path(directory) / 'fixed'
+            with self.assertRaises(ValueError):
+                prepare_simulation_models(
+                    [source],
+                    simulator='verilator',
+                    output_dir=output,
+                )
+            self.assertFalse(output.exists())
+
     def test_unmatched_models_pass_through(self):
-        self.assertEqual(prepare_simulation_models(['220model.v'], simulator='verilator', output_dir='unused'), [Path('220model.v')])
+        self.assertEqual(prepare_simulation_models(['unmatched.v'], simulator='verilator', output_dir='unused'), [Path('unmatched.v')])

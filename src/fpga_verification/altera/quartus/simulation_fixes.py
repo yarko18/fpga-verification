@@ -72,9 +72,36 @@ def _patch2(model):
     return model
 
 
+def _patch_lpm_mult_optional_sum(model):
+    """Remove four-state handling of an unconnected lpm_mult sum input."""
+    module_pattern = r"(?ms)^module\s+lpm_mult\s*\(.*?^endmodule\b"
+    matches = list(re.finditer(module_pattern, model))
+    if len(matches) != 1:
+        raise ValueError("Expected one lpm_mult module in 220model.v")
+
+    match = matches[0]
+    body, count = re.subn(
+        r"""(?mx)
+        ^[ \t]*//[ \t]*if[ \t]+sum[ \t]+port[ \t]+is[ \t]+not[ \t]+used[ \t]*\n
+        ^[ \t]*if[ \t]*\([ \t]*sum[ \t]*===[ \t]*\{lpm_widths\{1'bz\}\}[ \t]*\)[ \t]*\n
+        ^[ \t]*begin[ \t]*\n
+        ^[ \t]*t_s[ \t]*=[ \t]*\{lpm_widths\{1'b0\}\};[ \t]*\n
+        ^[ \t]*sign_s[ \t]*=[ \t]*1'b0;[ \t]*\n
+        ^[ \t]*end[ \t]*$
+        """,
+        "        // In two-state simulation, an unconnected sum input is already zero.",
+        match.group(),
+    )
+    if count != 1:
+        raise ValueError("Expected one optional sum block in lpm_mult")
+
+    return model[:match.start()] + body + model[match.end():]
+
+
 # Add independent compatibility fixes here in application order.
 _MODEL_FIXES = {
     "verilator": {
+        "220model.v": (("lpm_mult_optional_sum", _patch_lpm_mult_optional_sum),),
         "altera_mf.v": (("patch1", _patch1), ("patch2", _patch2)),
     },
 }
