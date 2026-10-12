@@ -31,7 +31,7 @@ from fpga_verification.sim.runners._common import (
 )
 from fpga_verification.sim.runners.rtl import rtl_test_cocotb
 
-from .simulation_fixes import prepare_simulation_models
+from ._simulation_fixes import prepare_simulation_models
 
 
 def _resolve_path(project_root, path):

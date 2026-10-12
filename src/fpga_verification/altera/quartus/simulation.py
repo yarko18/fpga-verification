@@ -22,7 +22,7 @@ from pathlib import Path
 
 from fpga_verification.sim.runners._common import resolve_path
 
-from .simulation_fixes import prepare_simulation_models
+from ._simulation_fixes import prepare_simulation_models
 
 
 _INTEL_LIBRARY_FILES = {

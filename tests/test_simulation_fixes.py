@@ -14,11 +14,13 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from fpga_verification.altera.quartus.simulation_fixes import (
+from fpga_verification.altera.quartus._simulation_fixes import (
     prepare_simulation_models,
 )
 
@@ -74,9 +76,20 @@ class SimulationFixTests(unittest.TestCase):
             source = Path(directory) / 'altera_mf.v'
             source.write_text(MODEL)
             output = Path(directory) / 'fixed'
-            result = prepare_simulation_models([source], simulator='verilator', output_dir=output)
+            log = StringIO()
+            with redirect_stdout(log):
+                result = prepare_simulation_models(
+                    [source],
+                    simulator='verilator',
+                    output_dir=output,
+                )
             self.assertEqual(source.read_text(), MODEL)
             fixed = result[0].read_text()
+            self.assertIn(
+                'Simulation fixes (verilator, altera_mf.v: '
+                'altsyncram_input_pulls, dcfifo_aclr_pull)',
+                log.getvalue(),
+            )
             self.assertNotIn('tri1 clock0;', fixed)
             self.assertNotIn('tri0 wren_a;', fixed)
             self.assertNotIn('tri0 wren_b;', fixed)
@@ -114,18 +127,25 @@ class SimulationFixTests(unittest.TestCase):
                 prepare_simulation_models([source], simulator='verilator', output_dir=output)
             self.assertFalse(output.exists())
 
-    def test_patches_lpm_mult_optional_sum_for_verilator(self):
+    def test_patches_lpm_mult_unconnected_sum_for_verilator(self):
         with TemporaryDirectory() as directory:
             source = Path(directory) / '220model.v'
             source.write_text(LPM_MODEL)
             output = Path(directory) / 'fixed'
-            result = prepare_simulation_models(
-                [source],
-                simulator='verilator',
-                output_dir=output,
-            )
+            log = StringIO()
+            with redirect_stdout(log):
+                result = prepare_simulation_models(
+                    [source],
+                    simulator='verilator',
+                    output_dir=output,
+                )
             self.assertEqual(source.read_text(), LPM_MODEL)
             fixed = result[0].read_text()
+            self.assertIn(
+                'Simulation fixes (verilator, 220model.v: '
+                'lpm_mult_unconnected_sum)',
+                log.getvalue(),
+            )
             self.assertEqual(fixed.count("sum === {lpm_widths{1'bz}}"), 1)
             self.assertIn(
                 "In two-state simulation, an unconnected sum input is already zero.",
