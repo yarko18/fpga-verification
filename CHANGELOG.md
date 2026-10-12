@@ -1,25 +1,15 @@
 <!--
 Copyright 2026 Yaroslav Mariukha
-SPDX-License-Identifier: RPL-1.5
-
-Unless explicitly acquired and licensed from Licensor under another license,
-the contents of this file are subject to the Reciprocal Public License ("RPL")
-Version 1.5, or subsequent versions as allowed by the RPL, and You may not copy
-or use this file in either source code or executable form, except in compliance
-with the terms and conditions of the RPL.
-
-All software distributed under the RPL is provided strictly on an "AS IS"
-basis, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, AND LICENSOR
-HEREBY DISCLAIMS ALL SUCH WARRANTIES, INCLUDING WITHOUT LIMITATION, ANY
-WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, QUIET
-ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
-rights and limitations under the RPL.
+SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 -->
 
 # Changelog
 
 ## Unreleased
 
+- Changed the project license for version 1.1.1 to the FPGA Verification
+  Commercial Reciprocity License 1.0. Releases through 1.1.0 remain under
+  their original licenses.
 - Added dependency-ordered RTL source discovery. `run_rtl_test()` now accepts
   mixed `.v`/`.sv` files and recursively scanned directories in `sources`.
 - Added a one-line project and author banner to runner logs.

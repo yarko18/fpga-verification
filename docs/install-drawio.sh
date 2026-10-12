@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2026 Yaroslav Mariukha
-# SPDX-License-Identifier: RPL-1.5
+# SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Install the Draw.io CLI required by the MkDocs Draw.io hook on Debian CI.
 

@@ -1,167 +1,676 @@
-Reciprocal Public License 1.5 (RPL1.5)
+# FPGA Verification Commercial Reciprocity License 1.0
 
-Version 1.5, July 15, 2007
+Version 1.0 — 9 October 2026
 
-Copyright (C) 2001-2007 Technical Pursuit Inc., All Rights Reserved.
+Copyright © 2026 Yaroslav Mariukha. All rights reserved.
 
-PREAMBLE
+Permission is granted to copy and distribute verbatim copies of this license
+document. Modified versions of this license document must use a different name
+and must not imply approval by Yaroslav Mariukha or the FPGA Verification
+project.
 
-The Reciprocal Public License (RPL) is based on the concept of reciprocity or, if you prefer, fairness.
+This License applies only when the copyright holder expressly applies it to an
+identified version of the Software. Publication of this license text by itself
+does not change the license of any Software version.
 
-In short, this license grew out of a desire to close loopholes in previous open source licenses, loopholes that allowed parties to acquire open source software and derive financial benefit from it without having to release their improvements or derivatives to the community which enabled them. This occurred any time an entity did not release their application to a "third party".
+## 1. Purpose
 
-While there is a certain freedom in this model of licensing, it struck the authors of the RPL as being unfair to the open source community at large and to the original authors of the works in particular. After all, bug fixes, extensions, and meaningful and valuable derivatives were not consistently finding their way back into the community where they could fuel further, and faster, growth and expansion of the overall open source software base.
+This License permits Personal Use without notice. It also permits a person or
+organization to begin using an unmodified Official Release in a commercial,
+academic, charitable, public-interest, or other project immediately, provided
+that a private Notice of Use is sent within thirty days.
 
-While you should clearly read and understand the entire license, the essence of the RPL is found in two definitions: "Deploy" and "Required Components".
+If a person or organization uses a Covered Change in a project, the
+Corresponding Source of that Covered Change must be submitted to the Official
+Project. The obligation cannot be avoided by moving an actual modification or
+extension of the Software into another library, process, package, plugin, or
+online service, or by obtaining it from a supplier.
 
-Regarding deployment, under the RPL your changes, bug fixes, extensions, etc. must be made available to the open source community at large when you Deploy in any form -- either internally or to an outside party. Once you start running the software you have to start sharing the software.
+Independent tests, scripts, and workarounds that merely use the Software
+through its documented public interfaces, without modifying, extending,
+replacing, or altering the Software, are not Covered Changes.
 
-Further, under the RPL all components you author including schemas, scripts, source code, etc. -- regardless of whether they're compiled into a single binary or used as two halves of client/server application -- must be shared. You have to share the whole pie, not an isolated slice of it.
+Selling or otherwise commercially distributing the Software itself, whether
+modified or unmodified, requires a separate written agreement with the
+Licensor.
 
-In addition to these goals, the RPL was authored to meet the requirements of the Open Source Definition as maintained by the Open Source Initiative (OSI).
+## 2. Definitions
 
-The specific terms and conditions of the license are defined in the remainder of this document.
+### 2.1 Licensor
 
-LICENSE TERMS
+“Licensor” means Yaroslav Mariukha, the copyright holder applying this License
+to the Software.
 
-1.0 General; Applicability & Definitions. This Reciprocal Public License Version 1.5 ("License") applies to any programs or other works as well as any and all updates or maintenance releases of said programs or works ("Software") not already covered by this License which the Software copyright holder ("Licensor") makes available containing a License Notice (hereinafter defined) from the Licensor specifying or allowing use or distribution under the terms of this License. As used in this License:
+The Licensor’s contact address for notices and requests under this License is
+`yarko@proton.me`.
 
-     1.1 "Contributor" means any person or entity who created or contributed to the creation of an Extension.
+### 2.2 Official Project
 
-     1.2 "Deploy" means to use, Serve, sublicense or distribute Licensed Software other than for Your internal Research and/or Personal Use, and includes without limitation, any and all internal use or distribution of Licensed Software within Your business or organization other than for Research and/or Personal Use, as well as direct or indirect sublicensing or distribution of Licensed Software by You to any third party in any form or manner.
+“Official Project” means the FPGA Verification project maintained by the
+Licensor. Its “Official Repository” is
+`https://github.com/yarko18/fpga-verification`. A downstream distributor cannot
+change the Official Repository by changing package metadata. No successor
+repository or License Steward is currently designated. The Licensor may
+publicly designate one in the future for later notices and administration, but
+that designation cannot retroactively change the terms applicable to a
+released version.
 
-     1.3 "Derivative Works" as used in this License is defined under U.S. copyright law.
+### 2.3 Software
 
-     1.4 "Electronic Distribution Mechanism" means a mechanism generally accepted in the software development community for the electronic transfer of data such as download from an FTP server or web site, where such mechanism is publicly accessible.
+“Software” means the source code, object code, documentation, and other
+materials to which the Licensor has expressly applied this License.
 
-     1.5 "Extensions" means any Modifications, Derivative Works, or Required Components as those terms are defined in this License.
+### 2.4 Official Release
 
-     1.6 "License" means this Reciprocal Public License.
+“Official Release” means a version, commit, source archive, wheel, or other
+artifact expressly published by the Licensor through the Official Repository
+or the `fpga-verification` project on the Python Package Index, and identifiable
+by an official version, tag, commit, or published artifact checksum. A fork,
+repackaged artifact, or downstream build is not an Official Release merely
+because its metadata points to the Official Repository.
 
-     1.7 "License Notice" means any notice contained in EXHIBIT A.
+### 2.5 Personal Use
 
-     1.8 "Licensed Software" means any Software licensed pursuant to this License. Licensed Software also includes all previous Extensions from any Contributor that You receive.
+“Personal Use” means use by a natural person solely for that person’s private,
+personal, educational, or non-commercial purposes. Use performed as an
+employee, officer, member, contractor, consultant, researcher, student acting
+for an institution, or agent of an organization is not Personal Use.
 
-     1.9 "Licensor" means the copyright holder of any Software previously not covered by this License who releases the Software under the terms of this License.
+### 2.6 Project Use
 
-     1.10 "Modifications" means any additions to or deletions from the substance or structure of (i) a file or other storage containing Licensed Software, or (ii) any new file or storage that contains any part of Licensed Software, or (iii) any file or storage which replaces or otherwise alters the original functionality of Licensed Software at runtime.
+“Project Use” means use of the Software or a Covered Change:
 
-     1.11 "Personal Use" means use of Licensed Software by an individual solely for his or her personal, private and non-commercial purposes. An individual's use of Licensed Software in his or her capacity as an officer, employee, member, independent contractor or agent of a corporation, business or organization (commercial or non-commercial) does not qualify as Personal Use.
+1. by or on behalf of any company, university, school, research institution,
+   non-profit organization, charity, government body, association, organized
+   project, or other organization;
+2. in employment, research, consulting, contract work, continuous integration,
+   continuous delivery, or another organized activity; or
+3. to develop, test, verify, validate, manufacture, deliver, operate, maintain,
+   support, license, sell, or otherwise provide any product, service, design,
+   research result, or project.
 
-     1.12 "Required Components" means any text, programs, scripts, schema, interface definitions, control files, or other works created by You which are required by a third party of average skill to successfully install and run Licensed Software containing Your Modifications, or to install and run Your Derivative Works.
+Project Use includes both Commercial Use and Institutional Non-Commercial Use.
+The subject being developed, tested, verified, or otherwise worked on may be
+hardware, software, a service, a design, research, documentation, or anything
+else.
 
-     1.13 "Research" means investigation or experimentation for the purpose of understanding the nature and limits of the Licensed Software and its potential uses.
+### 2.7 Commercial Product
 
-     1.14 "Serve" means to deliver Licensed Software and/or Your Extensions by means of a computer network to one or more computers for purposes of execution of Licensed Software and/or Your Extensions.
+“Commercial Product” means any hardware, software, service, design, or other
+offering that is developed, tested, manufactured, operated, licensed, sold,
+supported, or otherwise provided for monetary compensation or commercial
+advantage. An offering may be a Commercial Product before it is publicly
+released or generates revenue.
 
-     1.15 "Software" means any computer programs or other works as well as any updates or maintenance releases of those programs or works which are distributed publicly by Licensor.
+### 2.8 Commercial Use
+
+“Commercial Use” means any direct or indirect use of the Software:
 
-     1.16 "Source Code" means the preferred form for making modifications to the Licensed Software and/or Your Extensions, including all modules contained therein, plus any associated text, interface definition files, scripts used to control compilation and installation of an executable program or other components required by a third party of average skill to build a running version of the Licensed Software or Your Extensions.
+1. by or on behalf of a for-profit business, or by another organization in
+   revenue-generating or commercially advantageous activities;
+2. for monetary compensation or commercial advantage;
+3. to develop, test, verify, validate, manufacture, deliver, operate, maintain,
+   support, license, or sell a Commercial Product;
+4. in internal development, continuous integration, continuous delivery,
+   consulting, or contract work relating to a Commercial Product; or
+5. by a contractor, consultant, or service provider for a person or
+   organization engaged in any of the activities above.
 
-     1.17 "User-Visible Attribution Notice" means any notice contained in EXHIBIT B.
+For clarity, using the Software solely as a development, testing, verification,
+validation, automation, or infrastructure tool for any commercial product,
+service, design, or project is Commercial Use.
 
-     1.18 "You" or "Your" means an individual or a legal entity exercising rights under this License. For legal entities, "You" or "Your" includes any entity which controls, is controlled by, or is under common control with, You, where "control" means (a) the power, direct or indirect, to cause the direction or management of such entity, whether by contract or otherwise, or (b) ownership of fifty percent (50%) or more of the outstanding shares or beneficial ownership of such entity.
+### 2.9 Institutional Non-Commercial Use
 
-2.0 Acceptance Of License. You are not required to accept this License since you have not signed it, however nothing else grants you permission to use, copy, distribute, modify, or create derivatives of either the Software or any Extensions created by a Contributor. These actions are prohibited by law if you do not accept this License. Therefore, by performing any of these actions You indicate Your acceptance of this License and Your agreement to be bound by all its terms and conditions. IF YOU DO NOT AGREE WITH ALL THE TERMS AND CONDITIONS OF THIS LICENSE DO NOT USE, MODIFY, CREATE DERIVATIVES, OR DISTRIBUTE THE SOFTWARE. IF IT IS IMPOSSIBLE FOR YOU TO COMPLY WITH ALL THE TERMS AND CONDITIONS OF THIS LICENSE THEN YOU CAN NOT USE, MODIFY, CREATE DERIVATIVES, OR DISTRIBUTE THE SOFTWARE.
+“Institutional Non-Commercial Use” means Project Use by or on behalf of a
+university, school, research institution, non-profit organization, charity,
+government body, public-interest organization, or other organization when that
+use is not Commercial Use.
 
-3.0 Grant of License From Licensor. Subject to the terms and conditions of this License, Licensor hereby grants You a world-wide, royalty-free, non-exclusive license, subject to Licensor's intellectual property rights, and any third party intellectual property claims derived from the Licensed Software under this License, to do the following:
+### 2.10 Unmodified Official Use
 
-     3.1 Use, reproduce, modify, display, perform, sublicense and distribute Licensed Software and Your Extensions in both Source Code form or as an executable program.
+“Unmodified Official Use” means Project Use of an Official Release without a
+Modification or other Covered Change.
 
-     3.2 Create Derivative Works (as that term is defined under U.S. copyright law) of Licensed Software by adding to or deleting from the substance or structure of said Licensed Software.
+Installing the Software, selecting documented parameters, supplying ordinary
+runtime configuration through documented public interfaces, and using
+unmodified generally available dependencies do not by themselves prevent use
+from being Unmodified Official Use.
 
-     3.3 Under claims of patents now or hereafter owned or controlled by Licensor, to make, use, have made, and/or otherwise dispose of Licensed Software or portions thereof, but solely to the extent that any such claim is necessary to enable You to make, use, have made, and/or otherwise dispose of Licensed Software or portions thereof.
+Independent tests, scripts, integration code, and workarounds do not prevent
+use from being Unmodified Official Use when they merely use documented public
+interfaces and do not modify, extend, replace, or alter the Software or its
+runtime behavior.
 
-     3.4 Licensor reserves the right to release new versions of the Software with different features, specifications, capabilities, functions, licensing terms, general availability or other characteristics. Title, ownership rights, and intellectual property rights in and to the Licensed Software shall remain in Licensor and/or its Contributors.
+### 2.11 Modification
 
-4.0 Grant of License From Contributor. By application of the provisions in Section 6 below, each Contributor hereby grants You a world-wide, royalty-free, non-exclusive license, subject to said Contributor's intellectual property rights, and any third party intellectual property claims derived from the Licensed Software under this License, to do the following:
+“Modification” means any addition to, deletion from, replacement of, or change
+to the substance, structure, interfaces, or runtime behavior of the Software.
+It includes a new file containing a material portion of the Software or created
+primarily to extend, replace, or alter the Software’s functionality.
 
-     4.1 Use, reproduce, modify, display, perform, sublicense and distribute any Extensions Deployed by such Contributor or portions thereof, in both Source Code form or as an executable program, either on an unmodified basis or as part of Derivative Works.
+### 2.12 Externalized Component
 
-     4.2 Under claims of patents now or hereafter owned or controlled by Contributor, to make, use, have made, and/or otherwise dispose of Extensions or portions thereof, but solely to the extent that any such claim is necessary to enable You to make, use, have made, and/or otherwise dispose of Licensed Software or portions thereof.
+“Externalized Component” means any library, package, module, plugin,
+executable, process, service, generated artifact, or other component that:
 
-5.0 Exclusions From License Grant. Nothing in this License shall be deemed to grant any rights to trademarks, copyrights, patents, trade secrets or any other intellectual property of Licensor or any Contributor except as expressly stated herein. Except as expressly stated in Sections 3 and 4, no other patent rights, express or implied, are granted herein. Your Extensions may require additional patent licenses from Licensor or Contributors which each may grant in its sole discretion. No right is granted to the trademarks of Licensor or any Contributor even if such marks are included in the Licensed Software. Nothing in this License shall be interpreted to prohibit Licensor from licensing under different terms from this License any code that Licensor otherwise would have a right to license.
+1. is specifically designed or materially adapted to extend, replace, alter,
+   or provide functionality of the Software; and
+2. operates as an extension or replacement of the Software rather than merely
+   as independent user code; and
+3. is invoked by the Software, invokes the Software, replaces part of the
+   Software, or communicates directly or indirectly with the Software through
+   an API, ABI, FFI, command line, subprocess, dynamic load, plugin mechanism,
+   file exchange, IPC, RPC, HTTP, network protocol, code generation,
+   configuration mechanism, shared orchestration, or comparable interface.
 
-     5.1 You expressly acknowledge and agree that although Licensor and each Contributor grants the licenses to their respective portions of the Licensed Software set forth herein, no assurances are provided by Licensor or any Contributor that the Licensed Software does not infringe the patent or other intellectual property rights of any other entity. Licensor and each Contributor disclaim any liability to You for claims brought by any other entity based on infringement of intellectual property rights or otherwise. As a condition to exercising the rights and licenses granted hereunder, You hereby assume sole responsibility to secure any other intellectual property rights needed, if any. For example, if a third party patent license is required to allow You to distribute the Licensed Software, it is Your responsibility to acquire that license before distributing the Licensed Software.
+An Externalized Component includes server-side functionality of an online or
+hosted service when that functionality would be a Modification if implemented
+inside the Software.
 
-6.0 Your Obligations And Grants. In consideration of, and as an express condition to, the licenses granted to You under this License You hereby agree that any Modifications, Derivative Works, or Required Components (collectively Extensions) that You create or to which You contribute are governed by the terms of this License including, without limitation, Section 4. Any Extensions that You create or to which You contribute must be Deployed under the terms of this License or a future version of this License released under Section 7. You hereby grant to Licensor and all third parties a world-wide, non-exclusive, royalty-free license under those intellectual property rights You own or control to use, reproduce, display, perform, modify, create derivatives, sublicense, and distribute Licensed Software, in any form. Any Extensions You make and Deploy must have a distinct title so as to readily tell any subsequent user or Contributor that the Extensions are by You. You must include a copy of this License or directions on how to obtain a copy with every copy of the Extensions You distribute. You agree not to offer or impose any terms on any Source Code or executable version of the Licensed Software, or its Extensions that alter or restrict the applicable version of this License or the recipients' rights hereunder.
+### 2.13 Protected Information
 
-     6.1 Availability of Source Code. You must make available, under the terms of this License, the Source Code of any Extensions that You Deploy, via an Electronic Distribution Mechanism. The Source Code for any version that You Deploy must be made available within one (1) month of when you Deploy and must remain available for no less than twelve (12) months after the date You cease to Deploy. You are responsible for ensuring that the Source Code to each version You Deploy remains available even if the Electronic Distribution Mechanism is maintained by a third party. You may not charge a fee for any copy of the Source Code distributed under this Section in excess of Your actual cost of duplication and distribution of said copy.
+“Protected Information” means private keys, passwords, access tokens, personal
+data, production data, confidential project or customer identifiers,
+confidential specifications, confidential test vectors, confidential portions
+of a product under test, information whose publication would create a material
+security risk, and legally protected trade secrets.
+
+The fact that source code or another work is internally developed,
+commercially valuable, stored in a private repository, or designated
+confidential does not by itself make it Protected Information.
+
+### 2.14 Required Materials
 
-     6.2 Description of Modifications. You must cause any Modifications that You create or to which You contribute to be documented in the Source Code, clearly describing the additions, changes or deletions You made. You must include a prominent statement that the Modifications are derived, directly or indirectly, from the Licensed Software and include the names of the Licensor and any Contributor to the Licensed Software in (i) the Source Code and (ii) in any notice displayed by the Licensed Software You distribute or in related documentation in which You describe the origin or ownership of the Licensed Software. You may not modify or delete any pre-existing copyright notices, change notices or License text in the Licensed Software without written permission of the respective Licensor or Contributor.
+“Required Materials” means all non-secret source code, interface definitions,
+schemas, scripts, configuration, build files, deployment files, and
+documentation that a person of ordinary skill reasonably needs to build,
+install, operate, test, modify, and, where applicable, self-host a Covered
+Change.
+
+Required Materials do not include Protected Information. Protected Information
+must be removed before publication. Where reasonably practical, omitted secret
+values or data must be replaced with non-secret placeholders or synthetic data
+that permit the published materials to be understood and exercised.
 
-     6.3 Intellectual Property Matters.
+### 2.15 Covered Change
 
-          a. Third Party Claims. If You have knowledge that a license to a third party's intellectual property right is required to exercise the rights granted by this License, You must include a human-readable file with Your distribution that describes the claim and the party making the claim in sufficient detail that a recipient will know whom to contact.
+“Covered Change” means:
 
-          b. Contributor APIs. If Your Extensions include an application programming interface ("API") and You have knowledge of patent licenses that are reasonably necessary to implement that API, You must also include this information in a human-readable file supplied with Your distribution.
+1. a Modification;
+2. an Externalized Component; or
+3. Required Materials for a Modification or Externalized Component.
 
-          c. Representations. You represent that, except as disclosed pursuant to 6.3(a) above, You believe that any Extensions You distribute are Your original creations and that You have sufficient rights to grant the rights conveyed by this License.
+Moving functionality out of the Software does not prevent it from being a
+Covered Change.
+
+### 2.16 Corresponding Source
 
-     6.4 Required Notices.
+“Corresponding Source” means the preferred form for making changes to a
+Covered Change, together with its Required Materials and a clear description
+of what was added, removed, or changed. Corresponding Source excludes Protected
+Information as provided by Section 4.
 
-          a. License Text. You must duplicate this License or instructions on how to acquire a copy in any documentation You provide along with the Source Code of any Extensions You create or to which You contribute, wherever You describe recipients' rights relating to Licensed Software.
+### 2.17 Pull Request
+
+“Pull Request” means a publicly accessible proposal to incorporate or reference
+Corresponding Source in the Official Repository, using the contribution
+mechanism provided by the Official Repository.
+
+### 2.18 Qualifying Personal-Use License
+
+“Qualifying Personal-Use License” means a written license that grants every
+natural person, without payment, nondisclosure agreement, or individual
+approval, a worldwide, royalty-free, non-exclusive, and irrevocable right for
+Personal Use to:
+
+1. access the complete source code;
+2. run and use the code;
+3. reproduce the code;
+4. modify the code and create derivative works; and
+5. distribute source code and modified versions for Personal Use.
 
-          b. License Notice. You must duplicate any notice contained in EXHIBIT A (the "License Notice") in each file of the Source Code of any copy You distribute of the Licensed Software and Your Extensions. If You create an Extension, You may add Your name as a Contributor to the Source Code and accompanying documentation along with a description of the contribution. If it is not possible to put the License Notice in a particular Source Code file due to its structure, then You must include such License Notice in a location where a user would be likely to look for such a notice.
+The license may impose attribution, notice, source-availability, and
+same-license requirements. It may impose separate conditions on Commercial
+Use.
 
-          c. Source Code Availability. You must notify the software community of the availability of Source Code to Your Extensions within one (1) month of the date You initially Deploy and include in such notification a description of the Extensions, and instructions on how to acquire the Source Code. Should such instructions change you must notify the software community of revised instructions within one (1) month of the date of change. You must provide notification by posting to appropriate news groups, mailing lists, weblogs, or other sites where a publicly accessible search engine would reasonably be expected to index your post in relationship to queries regarding the Licensed Software and/or Your Extensions.
-
-          d. User-Visible Attribution. You must duplicate any notice contained in EXHIBIT B (the "User-Visible Attribution Notice") in each user-visible display of the Licensed Software and Your Extensions which delineates copyright, ownership, or similar attribution information. If You create an Extension, You may add Your name as a Contributor, and add Your attribution notice, as an equally visible and functional element of any User-Visible Attribution Notice content. To ensure proper attribution, You must also include such User-Visible Attribution Notice in at least one location in the Software documentation where a user would be likely to look for such notice.
-
-     6.5 Additional Terms. You may choose to offer, and charge a fee for, warranty, support, indemnity or liability obligations to one or more recipients of Licensed Software. However, You may do so only on Your own behalf, and not on behalf of the Licensor or any Contributor except as permitted under other agreements between you and Licensor or Contributor. You must make it clear that any such warranty, support, indemnity or liability obligation is offered by You alone, and You hereby agree to indemnify the Licensor and every Contributor for any liability plus attorney fees, costs, and related expenses due to any such action or claim incurred by the Licensor or such Contributor as a result of warranty, support, indemnity or liability terms You offer.
-
-     6.6 Conflicts With Other Licenses. Where any portion of Your Extensions, by virtue of being Derivative Works of another product or similar circumstance, fall under the terms of another license, the terms of that license should be honored however You must also make Your Extensions available under this License. If the terms of this License continue to conflict with the terms of the other license you may write the Licensor for permission to resolve the conflict in a fashion that remains consistent with the intent of this License. Such permission will be granted at the sole discretion of the Licensor.
-
-7.0 Versions of This License. Licensor may publish from time to time revised versions of the License. Once Licensed Software has been published under a particular version of the License, You may always continue to use it under the terms of that version. You may also choose to use such Licensed Software under the terms of any subsequent version of the License published by Licensor. No one other than Licensor has the right to modify the terms applicable to Licensed Software created under this License.
-
-     7.1 If You create or use a modified version of this License, which You may do only in order to apply it to software that is not already Licensed Software under this License, You must rename Your license so that it is not confusingly similar to this License, and must make it clear that Your license contains terms that differ from this License. In so naming Your license, You may not use any trademark of Licensor or of any Contributor. Should Your modifications to this License be limited to alteration of a) Section 13.8 solely to modify the legal Jurisdiction or Venue for disputes, b) EXHIBIT A solely to define License Notice text, or c) to EXHIBIT B solely to define a User-Visible Attribution Notice, You may continue to refer to Your License as the Reciprocal Public License or simply the RPL.
-
-8.0 Disclaimer of Warranty. LICENSED SOFTWARE IS PROVIDED UNDER THIS LICENSE ON AN "AS IS" BASIS, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES THAT THE LICENSED SOFTWARE IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE OR NON-INFRINGING. FURTHER THERE IS NO WARRANTY MADE AND ALL IMPLIED WARRANTIES ARE DISCLAIMED THAT THE LICENSED SOFTWARE MEETS OR COMPLIES WITH ANY DESCRIPTION OF PERFORMANCE OR OPERATION, SAID COMPATIBILITY AND SUITABILITY BEING YOUR RESPONSIBILITY. LICENSOR DISCLAIMS ANY WARRANTY, IMPLIED OR EXPRESSED, THAT ANY CONTRIBUTOR'S EXTENSIONS MEET ANY STANDARD OF COMPATIBILITY OR DESCRIPTION OF PERFORMANCE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE LICENSED SOFTWARE IS WITH YOU. SHOULD LICENSED SOFTWARE PROVE DEFECTIVE IN ANY RESPECT, YOU (AND NOT THE LICENSOR OR ANY OTHER CONTRIBUTOR) ASSUME THE COST OF ANY NECESSARY SERVICING, REPAIR OR CORRECTION. UNDER THE TERMS OF THIS LICENSOR WILL NOT SUPPORT THIS SOFTWARE AND IS UNDER NO OBLIGATION TO ISSUE UPDATES TO THIS SOFTWARE. LICENSOR HAS NO KNOWLEDGE OF ERRANT CODE OR VIRUS IN THIS SOFTWARE, BUT DOES NOT WARRANT THAT THE SOFTWARE IS FREE FROM SUCH ERRORS OR VIRUSES. THIS DISCLAIMER OF WARRANTY CONSTITUTES AN ESSENTIAL PART OF THIS LICENSE. NO USE OF LICENSED SOFTWARE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
-
-9.0 Limitation of Liability. UNDER NO CIRCUMSTANCES AND UNDER NO LEGAL THEORY, WHETHER TORT (INCLUDING NEGLIGENCE), CONTRACT, OR OTHERWISE, SHALL THE LICENSOR, ANY CONTRIBUTOR, OR ANY DISTRIBUTOR OF LICENSED SOFTWARE, OR ANY SUPPLIER OF ANY OF SUCH PARTIES, BE LIABLE TO ANY PERSON FOR ANY INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF GOODWILL, WORK STOPPAGE, COMPUTER FAILURE OR MALFUNCTION, OR ANY AND ALL OTHER COMMERCIAL DAMAGES OR LOSSES, EVEN IF SUCH PARTY SHALL HAVE BEEN INFORMED OF THE POSSIBILITY OF SUCH DAMAGES. THIS LIMITATION OF LIABILITY SHALL NOT APPLY TO LIABILITY FOR DEATH OR PERSONAL INJURY RESULTING FROM SUCH PARTY'S NEGLIGENCE TO THE EXTENT APPLICABLE LAW PROHIBITS SUCH LIMITATION. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THIS EXCLUSION AND LIMITATION MAY NOT APPLY TO YOU.
-
-10.0 High Risk Activities. THE LICENSED SOFTWARE IS NOT FAULT-TOLERANT AND IS NOT DESIGNED, MANUFACTURED, OR INTENDED FOR USE OR DISTRIBUTION AS ON-LINE CONTROL EQUIPMENT IN HAZARDOUS ENVIRONMENTS REQUIRING FAIL-SAFE PERFORMANCE, SUCH AS IN THE OPERATION OF NUCLEAR FACILITIES, AIRCRAFT NAVIGATION OR COMMUNICATIONS SYSTEMS, AIR TRAFFIC CONTROL, DIRECT LIFE SUPPORT MACHINES, OR WEAPONS SYSTEMS, IN WHICH THE FAILURE OF THE LICENSED SOFTWARE COULD LEAD DIRECTLY TO DEATH, PERSONAL INJURY, OR SEVERE PHYSICAL OR ENVIRONMENTAL DAMAGE ("HIGH RISK ACTIVITIES"). LICENSOR AND CONTRIBUTORS SPECIFICALLY DISCLAIM ANY EXPRESS OR IMPLIED WARRANTY OF FITNESS FOR HIGH RISK ACTIVITIES.
-
-11.0 Responsibility for Claims. As between Licensor and Contributors, each party is responsible for claims and damages arising, directly or indirectly, out of its utilization of rights under this License which specifically disclaims warranties and limits any liability of the Licensor. This paragraph is to be used in conjunction with and controlled by the Disclaimer Of Warranties of Section 8, the Limitation Of Damages in Section 9, and the disclaimer against use for High Risk Activities in Section 10. The Licensor has thereby disclaimed all warranties and limited any damages that it is or may be liable for. You agree to work with Licensor and Contributors to distribute such responsibility on an equitable basis consistent with the terms of this License including Sections 8, 9, and 10. Nothing herein is intended or shall be deemed to constitute any admission of liability.
-
-12.0 Termination. This License and all rights granted hereunder will terminate immediately in the event of the circumstances described in Section 13.6 or if applicable law prohibits or restricts You from fully and or specifically complying with Sections 3, 4 and/or 6, or prevents the enforceability of any of those Sections, and You must immediately discontinue any use of Licensed Software.
-
-     12.1 Automatic Termination Upon Breach. This License and the rights granted hereunder will terminate automatically if You fail to comply with the terms herein and fail to cure such breach within thirty (30) days of becoming aware of the breach. All sublicenses to the Licensed Software that are properly granted shall survive any termination of this License. Provisions that, by their nature, must remain in effect beyond the termination of this License, shall survive.
-
-     12.2 Termination Upon Assertion of Patent Infringement. If You initiate litigation by asserting a patent infringement claim (excluding declaratory judgment actions) against Licensor or a Contributor (Licensor or Contributor against whom You file such an action is referred to herein as "Respondent") alleging that Licensed Software directly or indirectly infringes any patent, then any and all rights granted by such Respondent to You under Sections 3 or 4 of this License shall terminate prospectively upon sixty (60) days notice from Respondent (the "Notice Period") unless within that Notice Period You either agree in writing (i) to pay Respondent a mutually agreeable reasonably royalty for Your past or future use of Licensed Software made by such Respondent, or (ii) withdraw Your litigation claim with respect to Licensed Software against such Respondent. If within said Notice Period a reasonable royalty and payment arrangement are not mutually agreed upon in writing by the parties or the litigation claim is not withdrawn, the rights granted by Licensor to You under Sections 3 and 4 automatically terminate at the expiration of said Notice Period.
-
-     12.3 Reasonable Value of This License. If You assert a patent infringement claim against Respondent alleging that Licensed Software directly or indirectly infringes any patent where such claim is resolved (such as by license or settlement) prior to the initiation of patent infringement litigation, then the reasonable value of the licenses granted by said Respondent under Sections 3 and 4 shall be taken into account in determining the amount or value of any payment or license.
-
-     12.4 No Retroactive Effect of Termination. In the event of termination under this Section all end user license agreements (excluding licenses to distributors and resellers) that have been validly granted by You or any distributor hereunder prior to termination shall survive termination.
-
-13.0 Miscellaneous.
-
-     13.1 U.S. Government End Users. The Licensed Software is a "commercial item," as that term is defined in 48 C.F.R. 2.101 (Oct. 1995), consisting of "commercial computer software" and "commercial computer software documentation," as such terms are used in 48 C.F.R. 12.212 (Sept. 1995). Consistent with 48 C.F.R. 12.212 and 48 C.F.R. 227.7202-1 through 227.7202-4 (June 1995), all U.S. Government End Users acquire Licensed Software with only those rights set forth herein.
-
-     13.2 Relationship of Parties. This License will not be construed as creating an agency, partnership, joint venture, or any other form of legal association between or among You, Licensor, or any Contributor, and You will not represent to the contrary, whether expressly, by implication, appearance, or otherwise.
-
-     13.3 Independent Development. Nothing in this License will impair Licensor's right to acquire, license, develop, subcontract, market, or distribute technology or products that perform the same or similar functions as, or otherwise compete with, Extensions that You may develop, produce, market, or distribute.
-
-     13.4 Consent To Breach Not Waiver. Failure by Licensor or Contributor to enforce any provision of this License will not be deemed a waiver of future enforcement of that or any other provision.
-
-     13.5 Severability. This License represents the complete agreement concerning the subject matter hereof. If any provision of this License is held to be unenforceable, such provision shall be reformed only to the extent necessary to make it enforceable.
-
-     13.6 Inability to Comply Due to Statute or Regulation. If it is impossible for You to comply with any of the terms of this License with respect to some or all of the Licensed Software due to statute, judicial order, or regulation, then You cannot use, modify, or distribute the software.
-
-     13.7 Export Restrictions. You may be restricted with respect to downloading or otherwise acquiring, exporting, or reexporting the Licensed Software or any underlying information or technology by United States and other applicable laws and regulations. By downloading or by otherwise obtaining the Licensed Software, You are agreeing to be responsible for compliance with all applicable laws and regulations.
-
-     13.8 Arbitration, Jurisdiction & Venue. This License shall be governed by Colorado law provisions (except to the extent applicable law, if any, provides otherwise), excluding its conflict-of-law provisions. You expressly agree that any dispute relating to this License shall be submitted to binding arbitration under the rules then prevailing of the American Arbitration Association. You further agree that Adams County, Colorado USA is proper venue and grant such arbitration proceeding jurisdiction as may be appropriate for purposes of resolving any dispute under this License. Judgement upon any award made in arbitration may be entered and enforced in any court of competent jurisdiction. The arbitrator shall award attorney's fees and costs of arbitration to the prevailing party. Should either party find it necessary to enforce its arbitration award or seek specific performance of such award in a civil court of competent jurisdiction, the prevailing party shall be entitled to reasonable attorney's fees and costs. The application of the United Nations Convention on Contracts for the International Sale of Goods is expressly excluded. You and Licensor expressly waive any rights to a jury trial in any litigation concerning Licensed Software or this License. Any law or regulation that provides that the language of a contract shall be construed against the drafter shall not apply to this License.
-
-     13.9 Entire Agreement. This License constitutes the entire agreement between the parties with respect to the subject matter hereof.
-
-EXHIBIT A
-
-The License Notice below must appear in each file of the Source Code of any copy You distribute of the Licensed Software or any Extensions thereto:
-
-Unless explicitly acquired and licensed from Licensor under another license, the contents of this file are subject to the Reciprocal Public License ("RPL") Version 1.5, or subsequent versions as allowed by the RPL, and You may not copy or use this file in either source code or executable form, except in compliance with the terms and conditions of the RPL.
-
-All software distributed under the RPL is provided strictly on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, AND LICENSOR HEREBY DISCLAIMS ALL SUCH WARRANTIES, INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing rights and limitations under the RPL.
-
-EXHIBIT B
-
-The User-Visible Attribution Notice below, when provided, must appear in each user-visible display as defined in Section 6.4 (d):
+### 2.19 Public External Project
+
+“Public External Project” means a publicly accessible source repository that:
+
+1. contains the complete Corresponding Source of an Externalized Component;
+2. identifies a specific commit or immutable release containing that source;
+3. applies a Qualifying Personal-Use License to that source;
+4. can be accessed without payment, nondisclosure agreement, or individual
+   approval; and
+5. remains available for the entire period of Project Use of the Externalized
+   Component and for at least three years afterward.
+
+### 2.20 Commercial Distribution
+
+“Commercial Distribution” means selling, offering for sale, licensing,
+sublicensing, renting, leasing, or distributing the Software for monetary
+compensation or commercial advantage, whether modified or unmodified. It also
+includes:
+
+1. including the Software in a paid software development kit, bundle,
+   appliance, container image, marketplace offering, or other paid deliverable;
+   and
+2. providing paid hosted, managed, or online access when access to the Software
+   or its functionality is itself part of what customers receive.
+
+Using the Software internally or as a tool to develop, test, verify, validate,
+manufacture, operate, maintain, or support another product, service, design, or
+project is not by itself Commercial Distribution.
+
+## 3. License Grant
+
+Subject to compliance with this License, the Licensor grants each recipient a
+worldwide, royalty-free, non-exclusive copyright license, revocable only as
+provided by Section 12, to:
+
+1. use and run the Software;
+2. reproduce the Software;
+3. modify the Software and create derivative works;
+4. distribute the Software and permitted derivative works other than through
+   Commercial Distribution; and
+5. make the Software available to others other than through Commercial
+   Distribution.
+
+Personal Use is permitted without a Notice of Use. Project Use may begin
+immediately and is permitted subject to the Notice of Use requirement below
+and, where a Covered Change is involved, Sections 4 through 8.
+
+Unmodified Official Use does not by itself require a Pull Request. Independent
+tests, scripts, integration code, and workarounds described in Section 2.10 do
+not require a Pull Request.
+
+No person or organization is required to accept this License. However, nothing
+else grants permission to copy, install, modify, distribute, or engage in
+Project Use of the Software. By performing any of those acts, the person or
+organization accepts this License and agrees to comply with it.
+
+### 3.1 Notice of Project Use
+
+A natural person or legal entity responsible for beginning Project Use must
+send a private Notice of Use to `yarko@proton.me` no later than thirty calendar
+days after that Project Use begins.
+
+The Notice of Use may use any written format, must contain the following, and
+need contain no additional project details:
+
+1. the name of the natural person, legal entity, or organized project;
+2. the version of the Software initially used;
+3. a general, non-confidential category of the project or activity; and
+4. a contact name or contact address.
+
+The notice must not contain Protected Information. No confidential or internal
+project name, customer name, product design, source code, test data, result,
+architecture, or other secret detail is required. If no legal entity is
+responsible for the project, a generic project identifier is sufficient.
+
+Project Use does not require prior approval and may begin before the notice is
+sent. A Notice of Use is required once for each project or organized activity.
+Employees and other individuals covered by a notice from the responsible legal
+entity do not send separate notices for the same project. No annual or other
+periodic confirmation is required merely because the same use continues.
+Updating the Software within the same project does not require another notice;
+the notice identifies the version with which that Project Use began.
+
+Notice information is handled as described in the privacy notice shipped with
+the applicable release.
+
+Sending a Notice of Use does not replace the contribution obligation for a
+Covered Change and does not authorize Commercial Distribution.
+
+### 3.2 Commercial Distribution Requires a Separate Agreement
+
+This License does not grant permission for Commercial Distribution of the
+Software, whether modified or unmodified.
+
+A person or organization wishing to engage in Commercial Distribution must
+first obtain a separate written agreement from the Licensor. Requests may be
+sent to `yarko@proton.me`. Sending a request or Notice of Use does not itself
+grant permission.
+
+This restriction concerns commercial distribution or commercial provision of
+the Software itself. It does not prohibit permitted Project Use of the Software
+as an internal or supporting tool for any product, service, design, research
+activity, or project, including one that is sold or otherwise commercialized,
+provided that the notice and contribution obligations of this License are met.
+
+For clarity, internal use, consulting in which the Software remains an internal
+tool of the consultant, charging for human support rather than for receipt of
+the Software, and publishing results produced with the Software are not by
+themselves Commercial Distribution. Delivering a copy of the Software to a
+customer as part of a paid deliverable is Commercial Distribution.
+
+### 3.3 Patent Grant from Licensor
+
+To the extent the Licensor controls patent claims necessarily infringed by the
+Software, the Licensor grants each compliant licensee a worldwide,
+royalty-free, non-exclusive patent license to make, have made, use, offer to
+sell, sell, import, and otherwise transfer the Software, but only as necessary
+to exercise the permissions expressly granted by this License and subject to
+its restrictions, including the restriction on Commercial Distribution.
+
+If a licensee institutes patent litigation alleging that the Software or a
+contribution incorporated into the Software infringes a patent, the patent
+licenses granted to that licensee under this License terminate on the date the
+litigation is filed.
+
+## 4. Project Contribution Obligation
+
+A licensee engaging in Project Use of, with, or through a Covered Change must
+submit its Corresponding Source through a Pull Request no later than thirty
+calendar days after that Project Use of the Covered Change first begins.
+
+Later changes may be batched, but while materially updated versions of a
+Covered Change remain in Project Use, updated Corresponding Source must be
+submitted at least once during every thirty consecutive calendar days.
+
+A “Material Update” is an update that affects functionality, public or private
+interfaces, compatibility, observable behavior, a bug fix, or a security fix.
+Comments, formatting, documentation-only changes, and renaming local symbols
+without changing behavior are not Material Updates.
+
+The obligation applies to a licensee that creates, receives, obtains, licenses,
+uses, integrates, deploys, controls, directs, commissions, funds, or arranges
+the creation or provision of the Covered Change. It applies whether the Covered
+Change is supplied by the licensee, an employee, contractor, consultant,
+affiliate, vendor, service provider, or another person.
+
+A licensee may not avoid the obligation by outsourcing work, purchasing or
+licensing a component, using a hosted service, arranging for another person to
+operate the component, or lacking possession of its source code. If the
+licensee does not have the rights and materials necessary to satisfy this
+Section, the licensee may not engage in Project Use of that Covered Change
+under this License.
+
+Protected Information is not required to be published. The licensee must submit
+the non-secret portions of the Covered Change and, where reasonably practical,
+replace omitted secrets with placeholders or synthetic data. If Protected
+Information is inseparable from the Covered Change and prevents submission of
+meaningful Corresponding Source, the licensee must obtain a separate written
+agreement from the Licensor before the contribution deadline in order to
+continue that Project Use.
+
+## 5. Pull Request Requirements
+
+The Pull Request must:
+
+1. be public;
+2. follow the contribution process documented in `CONTRIBUTING.md`;
+3. identify the Software version and Covered Change;
+4. contain the complete non-secret Corresponding Source, or satisfy the Public
+   External Project alternative in Section 6;
+5. include build, test, and self-hosting instructions where applicable;
+6. describe all additions, removals, external dependencies, and material
+   runtime interactions;
+7. identify in general terms any category of Protected Information that was
+   removed, without disclosing that information; and
+8. comply with the contribution format and automated checks reasonably
+   documented by the Official Project.
+
+The Licensor is not required to review, accept, merge, publish a release
+containing, maintain, or support a Pull Request.
+
+The contribution obligation is satisfied when a complete and compliant Pull
+Request is submitted. Rejection or closure by the Licensor does not by itself
+place the submitter in breach. If the Pull Request is not merged, the submitter
+must keep its source branch or linked Public External Project publicly
+available for the period required by Section 6.
+
+### 5.1 Security-Sensitive Changes
+
+When immediate publication would disclose an unremediated security
+vulnerability, the licensee may temporarily satisfy the contribution deadline
+by privately notifying `yarko@proton.me` and providing a sufficient description
+of the issue and affected change without including credentials, personal data,
+or unrelated Protected Information.
+
+The complete public Pull Request must be submitted when the vulnerability is
+remediated or no later than ninety calendar days after the private notice,
+whichever occurs first. A longer embargo requires a separate written agreement
+with the Licensor.
+
+### 5.2 Unavailable Contribution Mechanism
+
+The licensee may satisfy the contribution deadline by publishing the
+Corresponding Source as a Public External Project and attempting to send its
+durable URL and exact commit identifier to `yarko@proton.me` when:
+
+1. the Official Repository has no functioning Pull Request mechanism for seven
+   consecutive days;
+2. the licensee’s account is blocked from using that mechanism;
+3. access to the mechanism is unavailable in the licensee’s country;
+4. the Official Repository is archived, removed, or publicly declared closed;
+   or
+5. the Licensor does not respond to a contribution-mechanism inquiry for thirty
+   consecutive days.
+
+The licensee must submit the Pull Request within thirty days after the
+mechanism becomes reasonably available to it again. If the Official Repository
+has been permanently closed without a designated successor, publication as a
+Public External Project permanently satisfies the Pull Request requirement.
+
+## 6. Public External Project Alternative
+
+An Externalized Component does not have to be copied into the Official
+Repository if the licensee:
+
+1. publishes it as a Public External Project;
+2. submits a Pull Request to the Official Repository containing a durable link
+   to the exact commit or immutable release;
+3. documents how the Software communicates with the Externalized Component;
+4. supplies all non-secret client and server source, API definitions, schemas,
+   build files, deployment files, and instructions needed to operate and
+   self-host the component; and
+5. keeps the linked source available for the period stated in Section 2.19.
+
+Publishing only a client, wrapper, SDK, API description, binary, container
+image, hosted endpoint, or generated artifact is not sufficient when other
+source code is needed to reproduce the functionality.
+
+This alternative does not permit relicensing any portion of the Software that
+is incorporated into the Externalized Component. Such portions remain subject
+to this License.
+
+Merely linking to an independently owned Public External Project does not grant
+the Licensor a right to commercially relicense that project. Its qualifying
+license governs the independent code. Code copied into or directly submitted
+through the Pull Request remains subject to Section 10 and any applicable
+contributor agreement.
+
+## 7. No Externalization, Supplier, or Service Loophole
+
+A licensee may not avoid the obligations of this License by separating an
+actual Modification or extension from the Software, placing it behind an
+interface, or arranging for a different person or organization to provide it.
+The technical location, repository, process boundary, address space, machine,
+network, ownership arrangement, contractual arrangement, supplier relationship,
+or deployment model of a Covered Change does not determine whether it is
+covered.
+
+In particular, the obligations apply when functionality is moved into or
+implemented as:
+
+1. a separately distributed library or package;
+2. a dynamically loaded module or plugin;
+3. a helper executable or subprocess;
+4. generated code or configuration;
+5. a local or remote API;
+6. a hosted or online service;
+7. a component supplied by a contractor, affiliate, vendor, or service
+   provider; or
+8. a component operated for the licensee by another person.
+
+This Section does not turn independent tests, scripts, integration code, or
+workarounds described in Section 2.10 into Covered Changes.
+
+## 8. Exclusions and Boundaries
+
+The following are not Covered Changes solely because they interact with the
+Software:
+
+1. an unmodified, generally available third-party dependency not specifically
+   designed or adapted for the Software;
+2. an operating system, language runtime, compiler, FPGA toolchain, simulator,
+   standard protocol implementation, or system library;
+3. a generally available hosting, source-control, package-index, or continuous
+   integration service;
+4. a product, service, design, research subject, project, or other subject under
+   test, merely because the Software tests, verifies, validates, develops, or
+   otherwise interacts with it;
+5. independent product-specific tests, scripts, test data, integration code,
+   or workarounds that merely use documented public interfaces without
+   modifying, extending, replacing, or altering the Software or its runtime
+   behavior; or
+6. Protected Information removed as permitted by Section 4.
+
+These exclusions do not apply to modifications of those items that are
+specifically designed or materially adapted to externalize a Covered Change.
+
+## 9. Distribution Other Than Commercial Distribution
+
+Commercial Distribution is not permitted without the separate written
+agreement required by Section 3.2.
+
+A person distributing the Software or a Covered Change other than through
+Commercial Distribution must:
+
+1. provide a copy of this License;
+2. preserve copyright, attribution, license, and modification notices;
+3. identify material changes and their authors;
+4. provide the Corresponding Source of any Covered Change required by this
+   License; and
+5. impose no terms that prevent a recipient from exercising the rights granted
+   by this License.
+
+A recipient receives rights directly from the Licensor under this License and
+must independently comply with its conditions.
+
+## 10. Contribution License Grant
+
+Each person or organization intentionally submitting source code or other
+copyrightable material to the Official Project, whether voluntarily or to
+satisfy this License, grants the Licensor a perpetual, irrevocable, worldwide,
+non-exclusive, royalty-free, transferable, and sublicensable license to:
+
+1. use, reproduce, modify, and prepare derivative works of the submission;
+2. publicly display, publicly perform, distribute, and make it available;
+3. combine it with other works;
+4. offer support, warranties, or commercial services relating to it; and
+5. distribute and relicense it, in source or object form, under this License or
+   under different terms, including commercial terms.
+
+The contributor retains ownership of its contribution. The Licensor has no
+obligation to use or include it.
+
+To the extent the contributor controls patent claims necessarily infringed by
+the submitted contribution, the contributor also grants the Licensor and
+recipients of the contribution a perpetual, worldwide, royalty-free patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer the contribution, alone or as part of the Software.
+
+The contributor represents that it has the authority to make these grants and
+will identify any known third-party material or restrictions in the Pull
+Request.
+
+Every contribution is also subject to the individual or corporate contributor
+agreement identified by the Official Project’s contribution process. To the
+extent permitted by applicable law, the contributor authorizes the Licensor to
+enforce the applicable project license with respect to the contribution and
+agrees to provide reasonable assistance with enforcement at the Licensor’s
+expense.
+
+## 11. Attribution and Trademarks
+
+This License grants no right to use the Licensor’s or project’s names, logos,
+or trademarks except as reasonably necessary to identify the origin of the
+Software and comply with attribution requirements.
+
+Modified versions must not imply that they are official, endorsed, or supported
+by the Licensor.
+
+## 12. Termination and Cure
+
+Rights granted by this License terminate automatically upon material breach.
+
+For a first non-willful breach, the rights are automatically and permanently
+reinstated if the licensee cures the breach before receiving written notice or
+within thirty calendar days after receiving written notice from the Licensor.
+
+After a repeated or willful breach, rights are reinstated only by an express
+written statement from the Licensor. An uncured breach remains subject to
+enforcement by the applicable copyright holders.
+
+Termination does not eliminate obligations that arose before termination,
+including source-availability and contribution-license grants.
+
+Termination of one licensee’s rights does not terminate rights that a
+downstream recipient independently received and continues to exercise in
+compliance with this License.
+
+## 13. Disclaimer of Warranty
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, QUIET ENJOYMENT, AND NON-INFRINGEMENT. THE
+ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH THE
+LICENSEE.
+
+## 14. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR AND
+CONTRIBUTORS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, CONSEQUENTIAL, OR OTHER DAMAGES ARISING FROM OR RELATING TO THE
+SOFTWARE OR THIS LICENSE, WHETHER IN CONTRACT, TORT, STRICT LIABILITY, OR
+OTHERWISE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+## 15. Severability and No Waiver
+
+If a provision of this License is held unenforceable, it will be reformed only
+to the minimum extent necessary, and the remaining provisions will continue in
+effect. Failure to enforce a provision is not a waiver of future enforcement.
+
+## 16. Earlier Releases and Effective Scope
+
+This License does not retroactively alter the license of any earlier release,
+commit, or copy of the Software. A version is governed by this License only if
+the Licensor expressly identifies that version as licensed under this License.
+
+Earlier versions remain available under the licenses that applied when those
+versions were released.
+
+Each version of the Software remains governed by the version of this License
+expressly applied to that Software version. A later revision of this License
+does not apply retroactively.
+
+## 17. Governing Law, Venue, Language, and Notices
+
+This License is governed by the laws of the Czech Republic, without regard to
+its conflict-of-law rules. To the maximum extent permitted by mandatory law,
+the courts located in Prague, Czech Republic, have exclusive jurisdiction over
+disputes arising from or relating to this License or the Software.
+
+The Licensor is acting as a natural person, not through a company. A later
+change in the Licensor’s residence does not change the governing law or venue
+for a version of the Software already released under this version of the
+License. A later license version may specify different governing law or venue
+for future Software releases.
+
+The United Nations Convention on Contracts for the International Sale of Goods
+does not apply. Disputes are not subject to mandatory private arbitration under
+this License.
+
+The English text of this License controls. Notices to the Licensor must be sent
+to `yarko@proton.me`, unless the Licensor publicly designates a replacement
+address for future notices.
+
+## 18. License Identifier
+
+Until and unless this License is assigned a standard SPDX identifier, software
+using it should refer to it as:
+
+`LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0`
