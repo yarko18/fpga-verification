@@ -32,12 +32,13 @@ paths and logs, accept `-g`, and ignore unrelated pytest options.
 
 ## Plain RTL
 
-`rtl_test_cocotb()` either receives explicit `sources` or recursively discovers
-`.v` and `.sv` files in every `source_dirs` entry. Directories may be relative
-to `project_root` or absolute; overlapping trees are de-duplicated while the
-declared directory order is retained. The runner creates `sim_build_<SIM>`,
-forwards HDL parameters, runs the cocotb module, and treats a failed results XML
-as a failed Python process.
+`rtl_test_cocotb()` accepts `.v`/`.sv` files and directories together in
+`sources`. Directories are scanned recursively. Relative paths are resolved
+against `project_root`, absolute paths are used unchanged, and overlapping
+entries are de-duplicated. When a directory is present, the resulting files are
+ordered from their HDL dependencies rather than their filenames. An explicit
+file-only list retains its declared order. The older `source_dirs` argument is
+used when `sources` is omitted.
 
 ```python
 import os
@@ -52,7 +53,7 @@ def run_plain_rtl():
         project_root=Path("."),
         hdl_toplevel="stream_component",
         test_module="stream.test_pyuvm",
-        sources=[Path("src/stream_component.sv")],
+        sources=("src/common", "src/stream_component.sv"),
         parameters={"DATA_WIDTH": 32},
         compile_log=Path("logs/verilator_compile.log"),
     )
@@ -72,8 +73,23 @@ project/
       env.py
 ```
 
-Use explicit sources when source order matters. Otherwise pass source
-directories and let the runner discover HDL files.
+For example, a project can combine shared recursive trees with one package
+file without manually maintaining their compilation order:
+
+```python
+run_rtl_test(
+    project_root=project_root,
+    sources=(
+        "../common/wip/common_hdl",
+        "../common/others/hdl/common_sc_fifo",
+        "../common/others/hdl/common_mult",
+        "src/hw/radiometry_core",
+        "src/hw/radiometry_pkg.sv",
+    ),
+    hdl_toplevel="radiometry_core_temp_stabilization_wrp",
+    test_module="simulation.core.test",
+)
+```
 
 ### Quartus libraries without component generation
 

@@ -18,9 +18,23 @@ import argparse
 import os
 import shutil
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 DEFAULT_SIMULATOR = "verilator"
+_DISTRIBUTION_NAME = "fpga-verification"
+_AUTHOR = "Yaroslav Mariukha"
+
+
+def _print_runner_banner():
+    try:
+        package_version = version(_DISTRIBUTION_NAME)
+    except PackageNotFoundError:
+        package_version = "development"
+    print(
+        f"{_DISTRIBUTION_NAME} {package_version} | {_AUTHOR}",
+        flush=True,
+    )
 
 
 def resolve_path(project_root, path):
@@ -111,6 +125,7 @@ def prepare_test_run(
     enable_questa_acc=False,
 ):
     project_root = Path(project_root)
+    _print_runner_banner()
 
     os.environ.setdefault("COCOTB_ANSI_OUTPUT", "1")
     os.environ.pop("NO_COLOR", None)

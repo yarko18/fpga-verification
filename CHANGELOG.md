@@ -20,6 +20,10 @@ rights and limitations under the RPL.
 
 ## Unreleased
 
+- Added dependency-ordered RTL source discovery. `run_rtl_test()` now accepts
+  mixed `.v`/`.sv` files and recursively scanned directories in `sources`.
+- Added a one-line project and author banner to runner logs.
+
 ## 1.1.0 - 2026-10-09
 
 - Moved Altera-specific APIs under `fpga_verification.altera`, including

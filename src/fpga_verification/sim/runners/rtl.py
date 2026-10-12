@@ -23,6 +23,12 @@ from ._common import (
     resolve_path,
     resolve_test_config,
 )
+from ._source_order import order_sources
+
+
+_RTL_SUFFIXES = {".v", ".sv"}
+
+
 def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
@@ -31,27 +37,64 @@ def _check_results(results_xml):
         raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
 
 
-def discover_sources(project_root, source_dirs):
+def _expand_sources(project_root, entries):
     sources = []
     seen = set()
+    contains_directory = False
 
-    for source_dir in source_dirs:
-        source_dir = resolve_path(project_root, source_dir)
-        if not source_dir.is_dir():
-            raise FileNotFoundError(f"RTL source directory does not exist: {source_dir}")
+    for entry in entries:
+        entry = resolve_path(project_root, entry)
+        if not entry.exists():
+            raise FileNotFoundError(f"RTL source path does not exist: {entry}")
 
-        discovered = sorted(
-            source
-            for source in source_dir.rglob("*")
-            if source.is_file() and source.suffix.lower() in {".v", ".sv"}
-        )
+        if entry.is_dir():
+            contains_directory = True
+            discovered = sorted(
+                source
+                for source in entry.rglob("*")
+                if source.is_file() and source.suffix.lower() in _RTL_SUFFIXES
+            )
+        elif entry.is_file() and entry.suffix.lower() in _RTL_SUFFIXES:
+            discovered = (entry,)
+        else:
+            raise ValueError(f"RTL source must be a .v/.sv file or directory: {entry}")
+
         for source in discovered:
             key = source.resolve()
             if key not in seen:
                 seen.add(key)
                 sources.append(source)
 
+    return sources, contains_directory
+
+
+def discover_sources(project_root, source_dirs):
+    sources, _ = _expand_sources(project_root, source_dirs)
     return sources
+
+
+def prepare_sources(
+    project_root,
+    *,
+    sources=None,
+    source_dirs=("src",),
+    includes=(),
+    defines=None,
+):
+    """Expand mixed source paths and order directory-based source sets."""
+    entries = source_dirs if sources is None else sources
+    expanded, contains_directory = _expand_sources(project_root, entries)
+
+    # Preserve the historical meaning of an explicit file-only list: its order
+    # is authoritative. Directory discovery needs dependency ordering because
+    # lexical filesystem order is not a valid SystemVerilog compilation order.
+    if sources is None or contains_directory:
+        return order_sources(
+            expanded,
+            include_dirs=includes,
+            defines=defines,
+        )
+    return expanded
 
 
 def rtl_test_cocotb(
@@ -61,6 +104,8 @@ def rtl_test_cocotb(
     sources=None,
     source_dirs=("src",),
     parameters=None,
+    includes=(),
+    defines=None,
     debug=False,
     compile_log=None,
     build_args=None,
@@ -75,10 +120,14 @@ def rtl_test_cocotb(
 
     build_dir = project_root / f"sim_build_{sim}"
 
-    if sources is None:
-        sources = discover_sources(project_root, source_dirs)
-    else:
-        sources = [Path(source) for source in sources]
+    includes = [resolve_path(project_root, path) for path in includes]
+    sources = prepare_sources(
+        project_root,
+        sources=sources,
+        source_dirs=source_dirs,
+        includes=includes,
+        defines=defines,
+    )
 
     runner = get_runner(sim)
 
@@ -124,6 +173,8 @@ def rtl_test_cocotb(
         waves=debug,
         build_args=build_args,
         parameters=parameters,
+        includes=includes,
+        defines=dict(defines or {}),
         **build_kwargs,
     )
 
@@ -167,6 +218,7 @@ def run_rtl_test(
     config=None,
     parameters=None,
     extra_env=None,
+    sources=None,
     source_dirs=("src",),
     python_paths=(".",),
     debug=None,
@@ -200,6 +252,7 @@ def run_rtl_test(
         project_root=project_root,
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
+        sources=sources,
         source_dirs=source_dirs,
         debug=debug,
         compile_log=project_root / "logs" / f"{sim}_compile.log",

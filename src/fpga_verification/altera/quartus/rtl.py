@@ -9,6 +9,7 @@ from pathlib import Path
 from fpga_verification.sim.runners import rtl as generic_rtl
 from fpga_verification.sim.runners._common import (
     prepare_test_run,
+    resolve_path,
     resolve_test_config,
 )
 
@@ -29,10 +30,19 @@ def rtl_test_cocotb(
     """Compile RTL plus requested Quartus library models and run cocotb."""
 
     project_root = Path(project_root)
-    if sources is None:
-        sources = generic_rtl.discover_sources(project_root, source_dirs)
-    else:
-        sources = [Path(source) for source in sources]
+    includes = [
+        resolve_path(project_root, path)
+        for path in kwargs.get("includes", ())
+    ]
+    if includes:
+        kwargs["includes"] = includes
+    sources = generic_rtl.prepare_sources(
+        project_root,
+        sources=sources,
+        source_dirs=source_dirs,
+        includes=includes,
+        defines=kwargs.get("defines"),
+    )
 
     simulator = os.getenv("SIM", generic_rtl.DEFAULT_SIMULATOR)
     vendor_sources = prepare_intel_libraries(
@@ -61,6 +71,7 @@ def run_rtl_test(
     config=None,
     parameters=None,
     extra_env=None,
+    sources=None,
     source_dirs=("src",),
     intel_libraries=(),
     quartus_sim_lib=None,
@@ -98,6 +109,7 @@ def run_rtl_test(
         project_root=project_root,
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
+        sources=sources,
         source_dirs=source_dirs,
         intel_libraries=intel_libraries,
         quartus_sim_lib=quartus_sim_lib,

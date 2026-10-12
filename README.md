@@ -30,13 +30,11 @@ and Quartus System Console access.
 
 ## Install
 
-Python 3.10 through 3.13 is supported.
+Python 3.10 - 3.13 is supported.
 
 ```bash
 python -m pip install fpga-verification
 ```
-
-The current release is 1.1.0.
 
 For local library development, install a checkout from the repository root in
 editable mode:

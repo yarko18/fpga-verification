@@ -14,13 +14,14 @@
 # ENJOYMENT, OR NON-INFRINGEMENT. See the RPL for specific language governing
 # rights and limitations under the RPL.
 
+from contextlib import redirect_stdout
+from dataclasses import dataclass
+from io import StringIO
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
-
-from dataclasses import dataclass
 
 from fpga_verification.altera.quartus import component, platform_designer
 from fpga_verification.altera.quartus import rtl as altera_rtl
@@ -33,6 +34,26 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
     class _Config(ComponentConfig):
         width: int = hdl_parameter(64, name="WIDTH")
         name: str = "smoke"
+
+    def test_run_wrapper_prints_project_banner(self):
+        output = StringIO()
+
+        with (
+            patch.object(_common, "version", return_value="1.2.3"),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            redirect_stdout(output),
+        ):
+            _common.prepare_test_run(
+                project_root=".",
+                python_paths=(),
+                argv=(),
+            )
+
+        self.assertEqual(
+            output.getvalue(),
+            "fpga-verification 1.2.3 | Yaroslav Mariukha\n",
+        )
 
     def test_rtl_runner_defaults_to_verilator(self):
         runner = Mock()
@@ -326,6 +347,68 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
         self.assertEqual(
             runner.build.call_args.kwargs["sources"],
             [first, second, third],
+        )
+
+    def test_rtl_runner_accepts_mixed_directories_and_files_and_orders_packages(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with TemporaryDirectory() as directory:
+            project_root = Path(directory) / "project"
+            rtl_dir = project_root / "rtl"
+            package = rtl_dir / "z_types_pkg.sv"
+            consumer = rtl_dir / "a_consumer.sv"
+            standalone = project_root / "standalone.v"
+            rtl_dir.mkdir(parents=True)
+            package.write_text("package types_pkg; typedef logic data_t; endpackage")
+            consumer.write_text(
+                "module consumer; import types_pkg::*; data_t data; endmodule"
+            )
+            standalone.write_text("module standalone; endmodule")
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("cocotb_tools.runner.get_runner", return_value=runner),
+                patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+            ):
+                rtl.rtl_test_cocotb(
+                    project_root=project_root,
+                    hdl_toplevel="consumer",
+                    test_module="test_dut",
+                    sources=("rtl", "standalone.v"),
+                )
+
+        self.assertEqual(
+            runner.build.call_args.kwargs["sources"],
+            [package, consumer, standalone],
+        )
+
+    def test_rtl_runner_preserves_explicit_file_order(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            first = project_root / "first.sv"
+            second = project_root / "second.sv"
+            first.write_text("")
+            second.write_text("")
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("cocotb_tools.runner.get_runner", return_value=runner),
+                patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+            ):
+                rtl.rtl_test_cocotb(
+                    project_root=project_root,
+                    hdl_toplevel="dut",
+                    test_module="test_dut",
+                    sources=("second.sv", "first.sv"),
+                )
+
+        self.assertEqual(
+            runner.build.call_args.kwargs["sources"],
+            [second, first],
         )
 
     def test_rtl_runner_compiles_intel_models_before_user_sources(self):
