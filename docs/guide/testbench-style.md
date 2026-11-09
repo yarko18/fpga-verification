@@ -53,14 +53,31 @@ must not import cocotb, pyuvm, agents, a scoreboard or a DUT handle.
 | `test_pyuvm.py` | Contract-focused scenarios and common test lifecycle. |
 | `run_test.py` | DUT, simulator, sources and resolved configuration. |
 
+In every `run_test.py`, `PROJECT_ROOT` is the directory containing that runner:
+
+```python
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+```
+
+Source and component paths are relative to `PROJECT_ROOT`; simulator builds,
+logs and temporary generated files therefore remain with their owning test.
+
 ## Configuration rule
 
 Resolve the configuration once before compiling or generating the DUT. Pass HDL
 fields through `to_parameters()` and the complete resolved object through the
-runtime environment. Restore it in cocotb with `load_runtime_config(TestConfig)`.
+runtime environment. Restore it in cocotb with `load_test_config(TestConfig)`.
 
 Never create a fallback `TestConfig()` in the running testbench. A fallback can
 make Python interpret a different layout from the compiled HDL.
+
+Use `resolve_config_case()` in `config.py` for named host configurations. It
+selects an explicit case or reads `FPGA_VERIFICATION_CONFIG_CASE`; keep the
+project-specific case mapping in the project. Host launchers that set this
+variable should import its public name from `CONFIG_CASE_ENV`.
 
 ## Lifecycle rule
 

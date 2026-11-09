@@ -18,7 +18,7 @@ from fpga_verification.altera.video import (
     VideoFormat,
     vip_packet_from_symbols,
 )
-from fpga_verification.sim import load_runtime_config
+from fpga_verification.sim import load_test_config
 
 from .config import TestConfig
 
@@ -28,7 +28,7 @@ CLOCK_PERIOD_NS = 10
 
 @cocotb.test()
 async def test_stream_pipeline(dut):
-    cfg = load_runtime_config(TestConfig)
+    cfg = load_test_config(TestConfig)
     fmt = VideoFormat(
         bits_per_color=cfg.bits_per_symbol,
         pixels_in_parallel=cfg.symbols_per_beat,

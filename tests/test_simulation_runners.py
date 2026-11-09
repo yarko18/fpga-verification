@@ -144,7 +144,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 component_file="component.tcl",
                 hdl_toplevel="dut",
                 test_module="test_dut",
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=(),
                 build_args=["-Wno-PARAMNODEFAULT"],
@@ -178,7 +178,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 hdl_toplevel="dut",
                 test_module="test_dut",
                 config=self._Config(width=80, name="matrix"),
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=(),
             )
@@ -203,7 +203,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 test_module="test_dut",
                 config=self._Config(width=80),
                 component_parameters={"WIDTH": 64},
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=(),
             )
@@ -223,7 +223,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 component_file="component.tcl",
                 hdl_toplevel="dut",
                 test_module="test_dut",
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=["-g"],
             )
@@ -241,7 +241,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=["-g"],
             )
@@ -259,7 +259,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
-                source_dirs=(),
+                sources=(),
                 python_paths=(),
                 argv=["-q", "tests/test_dut.py"],
             )
@@ -278,7 +278,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 hdl_toplevel="dut",
                 test_module="test_dut",
                 config=self._Config(width=80, name="matrix"),
-                source_dirs=(),
+                sources=(),
                 intel_libraries=("altera_mf",),
                 quartus_sim_lib="vendor/models",
                 python_paths=(),
@@ -302,7 +302,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             "vendor/models",
         )
 
-    def test_rtl_runner_recursively_combines_relative_and_absolute_source_dirs(self):
+    def test_rtl_runner_recursively_combines_relative_and_absolute_sources(self):
         runner = Mock()
         runner.test.return_value = Path("results.xml")
 
@@ -328,7 +328,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",
-                    source_dirs=("rtl", absolute_dir, relative_dir / "nested"),
+                    sources=("rtl", absolute_dir, relative_dir / "nested"),
                 )
 
         self.assertEqual(
@@ -423,7 +423,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",
-                    source_dirs=("rtl",),
+                    sources=("rtl",),
                     intel_libraries=("lpm", "altera_mf"),
                     quartus_sim_lib=sim_lib,
                     apply_simulation_fixes=False,

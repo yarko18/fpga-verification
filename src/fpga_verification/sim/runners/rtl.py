@@ -55,27 +55,25 @@ def _expand_sources(project_root, entries):
     return sources, contains_directory
 
 
-def discover_sources(project_root, source_dirs):
-    sources, _ = _expand_sources(project_root, source_dirs)
+def discover_sources(project_root, sources):
+    sources, _ = _expand_sources(project_root, sources)
     return sources
 
 
 def prepare_sources(
     project_root,
     *,
-    sources=None,
-    source_dirs=("src",),
+    sources=("src",),
     includes=(),
     defines=None,
 ):
     """Expand mixed source paths and order directory-based source sets."""
-    entries = source_dirs if sources is None else sources
-    expanded, contains_directory = _expand_sources(project_root, entries)
+    expanded, contains_directory = _expand_sources(project_root, sources)
 
     # Preserve the historical meaning of an explicit file-only list: its order
     # is authoritative. Directory discovery needs dependency ordering because
     # lexical filesystem order is not a valid SystemVerilog compilation order.
-    if sources is None or contains_directory:
+    if contains_directory:
         return order_sources(
             expanded,
             include_dirs=includes,
@@ -88,8 +86,7 @@ def rtl_test_cocotb(
     project_root,
     hdl_toplevel,
     test_module,
-    sources=None,
-    source_dirs=("src",),
+    sources=("src",),
     parameters=None,
     includes=(),
     defines=None,
@@ -111,7 +108,6 @@ def rtl_test_cocotb(
     sources = prepare_sources(
         project_root,
         sources=sources,
-        source_dirs=source_dirs,
         includes=includes,
         defines=defines,
     )
@@ -205,8 +201,7 @@ def run_rtl_test(
     config=None,
     parameters=None,
     extra_env=None,
-    sources=None,
-    source_dirs=("src",),
+    sources=("src",),
     python_paths=(".",),
     debug=None,
     argv=None,
@@ -240,7 +235,6 @@ def run_rtl_test(
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         sources=sources,
-        source_dirs=source_dirs,
         debug=debug,
         compile_log=project_root / "logs" / f"{sim}_compile.log",
         parameters=parameters,

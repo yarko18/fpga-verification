@@ -3,10 +3,40 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 -->
 
-# Tutorial: verify a video-packet endianness converter
+# Tutorial: verify a video-packet endianity converter
 
-The example has one `stream_pipeline.sv`. `USE_FIFO=0` selects its register
+This example describe IP to swap color plane order in video packet.
+
+- swap color symbols in video packets
+
+- ther packet propagate without changes
+
+The scheme above show simple diagram of proposed IP. Video packet goest through endianity convertor and the rest is just propagated to the output. Also it's possible to insert FIFO for the output stream.
+
+![internal structure](./media/schema.drawio::Page-1)
+
+This is an example how RGB pixels cnverts to BGR format.
+
+![video packet example](./media/schema.drawio::Page-2)
+
+
+Sources:
+
+- `stream_pipeline.sv`
+
+Interfaces:
+
+- `din`: input data stream
+- `dout`: output data stream
+
+
+Parameters:
+
+
+
+ `USE_FIFO=0` selects its register
 stage; `USE_FIFO=1` selects an Altera `scfifo`.
+
 
 Both preserve CONTROL and USER packets and reverse valid symbols in every
 VIDEO payload beat. With four symbols per beat, `[1, 2, 3, 4, 5]` becomes
@@ -17,7 +47,7 @@ VIDEO payload beat. With four symbols per beat, `[1, 2, 3, 4, 5]` becomes
 `simulation/test_1/config.py` defines the HDL symbol width, symbols per beat and
 `USE_FIFO` parameter.
 The runner passes HDL fields to the compiler and serialises the full config for
-the cocotb test, which restores it with `load_runtime_config(TestConfig)`.
+the cocotb test, which restores it with `load_test_config(TestConfig)`.
 
 ## Direct cocotb test
 

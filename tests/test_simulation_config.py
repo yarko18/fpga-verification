@@ -6,10 +6,12 @@ from dataclasses import dataclass
 import pytest
 
 from fpga_verification.sim import (
+    CONFIG_CASE_ENV,
     ComponentConfig,
     RUNTIME_CONFIG_ENV,
     hdl_parameter,
-    load_runtime_config,
+    load_test_config,
+    resolve_config_case,
 )
 from fpga_verification.sim.config import runtime_config_environment
 
@@ -31,7 +33,7 @@ def test_component_config_has_separate_hdl_and_runtime_representations():
 def test_runtime_configuration_json_round_trip():
     config = _TestConfig(width=80, label="matrix")
 
-    loaded = load_runtime_config(_TestConfig, runtime_config_environment(config))
+    loaded = load_test_config(_TestConfig, runtime_config_environment(config))
 
     assert loaded == config
 
@@ -48,7 +50,7 @@ def test_runtime_configuration_json_round_trip():
 )
 def test_runtime_configuration_rejects_missing_malformed_and_unknown_values(environment, error):
     with pytest.raises(error):
-        load_runtime_config(_TestConfig, environment)
+        load_test_config(_TestConfig, environment)
 
 
 @pytest.mark.parametrize(
@@ -61,7 +63,7 @@ def test_runtime_configuration_rejects_missing_malformed_and_unknown_values(envi
 )
 def test_runtime_configuration_rejects_wrong_json_field_types(payload):
     with pytest.raises(ValueError, match="runtime configuration value"):
-        load_runtime_config(_TestConfig, {RUNTIME_CONFIG_ENV: payload})
+        load_test_config(_TestConfig, {RUNTIME_CONFIG_ENV: payload})
 
 
 def test_runtime_configuration_rejects_wrong_in_memory_field_types():
@@ -69,3 +71,40 @@ def test_runtime_configuration_rejects_wrong_in_memory_field_types():
 
     with pytest.raises(ValueError, match="runtime configuration value"):
         config.to_runtime_dict()
+
+
+def test_named_configuration_case_uses_environment_and_is_lazy():
+    constructed = []
+    cases = {
+        "default": lambda: constructed.append("default") or _TestConfig(),
+        "matrix": lambda: constructed.append("matrix") or _TestConfig(width=80),
+    }
+
+    selected = resolve_config_case(
+        cases,
+        environ={CONFIG_CASE_ENV: "matrix"},
+    )
+
+    assert selected == _TestConfig(width=80)
+    assert constructed == ["matrix"]
+
+
+def test_explicit_configuration_case_overrides_environment():
+    selected = resolve_config_case(
+        {
+            "default": _TestConfig(),
+            "matrix": _TestConfig(width=80),
+        },
+        "default",
+        environ={CONFIG_CASE_ENV: "matrix"},
+    )
+
+    assert selected == _TestConfig()
+
+
+def test_unknown_configuration_case_lists_available_cases():
+    with pytest.raises(ValueError, match="available: default, matrix"):
+        resolve_config_case(
+            {"default": _TestConfig(), "matrix": _TestConfig(width=80)},
+            "missing",
+        )

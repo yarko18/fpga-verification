@@ -5,6 +5,17 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
+## Unreleased
+
+- Renamed `load_runtime_config()` to `load_test_config()`.
+- Replaced `source_dirs` with `sources` in RTL and Altera component runners.
+  The old argument is no longer accepted.
+- Defined `PROJECT_ROOT` in runner scripts as the directory containing
+  `run_test.py`; updated examples so simulator build directories and logs are
+  created beside each test rather than at the HDL project root.
+- Added shared host-side named configuration selection through
+  `CONFIG_CASE_ENV` and `resolve_config_case()`.
+
 ## 1.1.1 - 2026-10-12
 
 - Changed the project license for version 1.1.1 to the FPGA Verification

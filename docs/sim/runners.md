@@ -30,6 +30,24 @@ Low-level functions are useful from pytest or a Python tool. `run_*` wrappers
 are normally the right choice for `simulation/<name>/run_test.py`: they prepare
 paths and logs, accept `-g`, and ignore unrelated pytest options.
 
+In a `run_test.py`, use the directory containing that file as `PROJECT_ROOT`:
+
+```python
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+```
+
+All relative source and component paths are resolved from this directory. Build
+directories, generation output and logs consequently stay beside the test that
+owns them.
+
+The current API uses `sources` in both RTL and Intel component runners and
+`load_test_config()` on the cocotb side. The former `source_dirs` and
+`load_runtime_config()` names are not compatibility aliases; update callers
+when moving to this version.
+
 ## Plain RTL
 
 `rtl_test_cocotb()` accepts `.v`/`.sv` files and directories together in
@@ -37,8 +55,7 @@ paths and logs, accept `-g`, and ignore unrelated pytest options.
 against `project_root`, absolute paths are used unchanged, and overlapping
 entries are de-duplicated. When a directory is present, the resulting files are
 ordered from their HDL dependencies rather than their filenames. An explicit
-file-only list retains its declared order. The older `source_dirs` argument is
-used when `sources` is omitted.
+file-only list retains its declared order.
 
 ```python
 import os
@@ -50,12 +67,12 @@ from fpga_verification.sim.runners import rtl_test_cocotb
 def run_plain_rtl():
     os.environ["SIM"] = "verilator"
     rtl_test_cocotb(
-        project_root=Path("."),
+        project_root=Path(__file__).resolve().parent,
         hdl_toplevel="stream_component",
         test_module="stream.test_pyuvm",
-        sources=("src/common", "src/stream_component.sv"),
+        sources=("../../src/common", "../../src/stream_component.sv"),
         parameters={"DATA_WIDTH": 32},
-        compile_log=Path("logs/verilator_compile.log"),
+        compile_log=Path(__file__).resolve().parent / "logs/verilator_compile.log",
     )
 ```
 
@@ -78,13 +95,13 @@ file without manually maintaining their compilation order:
 
 ```python
 run_rtl_test(
-    project_root=project_root,
+    project_root=PROJECT_ROOT,
     sources=(
-        "../common/wip/common_hdl",
-        "../common/others/hdl/common_sc_fifo",
-        "../common/others/hdl/common_mult",
-        "src/hw/radiometry_core",
-        "src/hw/radiometry_pkg.sv",
+        "../../../common/wip/common_hdl",
+        "../../../common/others/hdl/common_sc_fifo",
+        "../../../common/others/hdl/common_mult",
+        "../../src/hw/radiometry_core",
+        "../../src/hw/radiometry_pkg.sv",
     ),
     hdl_toplevel="radiometry_core_temp_stabilization_wrp",
     test_module="simulation.core.test",
@@ -102,8 +119,8 @@ from fpga_verification.altera.quartus import run_rtl_test
 
 
 run_rtl_test(
-    project_root=project_root,
-    source_dirs=("rtl", "/shared/rtl"),
+    project_root=PROJECT_ROOT,
+    sources=("../../rtl", "/shared/rtl"),
     hdl_toplevel="stream_pipeline",
     test_module="simulation.test_1.test",
     config=get_test_config(use_fifo=True),
@@ -135,6 +152,10 @@ applied to copied models; installed Quartus files are never modified.
 file, joins generated composition HDL with source HDL, adds selected tool
 models, then calls the RTL runner. The normal generated directory is temporary.
 
+Its `sources` argument has the same public name as the RTL runner argument, but
+component generation uses it as a set of source-tree directories for IP
+catalogue generation and matching generated HDL back to the original files.
+
 ```python
 from pathlib import Path
 
@@ -143,16 +164,16 @@ from fpga_verification.altera.quartus import component_test_cocotb
 
 def run_generated_component(generate_only=False):
     return component_test_cocotb(
-        project_root=Path("."),
-        component_file=Path("src/component_hw.tcl"),
-        source_dirs=[Path("src/hw")],
+        project_root=Path(__file__).resolve().parent,
+        component_file=Path("../../src/component_hw.tcl"),
+        sources=[Path("../../src/hw")],
         hdl_toplevel="component",
         test_module="stream.test_pyuvm",
         component_parameters={"DATA_WIDTH": 32},
         build_args=["-Wno-PARAMNODEFAULT"],
         generate_only=generate_only,
-        ip_generate_log=Path("logs/ip_generate.log"),
-        compile_log=Path("logs/verilator_compile.log"),
+        ip_generate_log=Path(__file__).resolve().parent / "logs/ip_generate.log",
+        compile_log=Path(__file__).resolve().parent / "logs/verilator_compile.log",
     )
 ```
 
@@ -164,7 +185,7 @@ not source files: they depend on the selected tool version and simulator.
 The generation flow is:
 
 ```text
-source_dirs
+sources
   -> ip-make-ipx --thorough-descent
   -> generated components catalogue
   -> ip-generate
@@ -180,7 +201,7 @@ Useful component options include `part`, `project_directory`,
 For a plain or generated DUT, use one resolved `ComponentConfig`. Fields marked
 with `hdl_parameter()` are passed to RTL compilation or component generation;
 the same resolved object is serialised into the cocotb environment. The
-testbench restores it with `load_runtime_config()`.
+testbench restores it with `load_test_config()`.
 
 ```python
 from dataclasses import dataclass
@@ -201,13 +222,34 @@ run_rtl_test(..., config=get_test_config())
 run_component_test(..., config=get_test_config())
 
 # Cocotb side, in test_pyuvm.py
-cfg = load_runtime_config(TestConfig)
+cfg = load_test_config(TestConfig)
 ```
 
 Do not also pass a conflicting `component_parameters` mapping. A missing,
 stale or malformed runtime configuration is an error by design: creating a
 new default config in cocotb would hide a mismatch with generated HDL. See
 [Project style](../guide/testbench-style.md) for the ownership rule.
+
+Host-side named configurations can share the standard selector:
+
+```python
+from fpga_verification.sim import resolve_config_case
+
+
+def get_test_config(case=None):
+    return resolve_config_case(
+        {
+            "default": TestConfig,
+            "wide": lambda: TestConfig(data_width=64),
+        },
+        case,
+    )
+```
+
+With no explicit `case`, the helper reads `FPGA_VERIFICATION_CONFIG_CASE` and
+falls back to `default`. The public `CONFIG_CASE_ENV` constant provides that
+environment-variable name to matrix launchers and other host-side tooling.
+Factories are evaluated only for the selected case.
 
 ## Platform Designer system
 

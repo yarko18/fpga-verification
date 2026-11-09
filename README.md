@@ -52,6 +52,32 @@ from fpga_verification.altera.quartus import run_rtl_test
 The vendor-independent RTL runner remains available from
 `fpga_verification.sim.runners`.
 
+## Runner conventions
+
+Each `run_test.py` should use its own directory as the project root, so build
+trees, logs and generated files remain beside the test that owns them:
+
+```python
+from pathlib import Path
+
+from fpga_verification.altera.quartus import run_rtl_test
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+
+run_rtl_test(
+    project_root=PROJECT_ROOT,
+    sources=("../../rtl",),
+    hdl_toplevel="dut",
+    test_module="test",
+)
+```
+
+RTL and Intel component runners use `sources` for their source input. Cocotb
+tests restore the resolved HDL/test configuration with `load_test_config()`,
+and host-side named cases can use `resolve_config_case()`. See
+[Simulation runners](docs/sim/runners.md) for the complete contracts.
+
 Start with the [documentation](https://yarko18.github.io/fpga-verification/)
 or run the [video-packet endianness example](examples/stream_pipeline). It
 preserves CONTROL and USER packets while reversing byte order in VIDEO payload

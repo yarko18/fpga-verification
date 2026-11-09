@@ -4,10 +4,12 @@
 """Simulation helpers for FPGA verification."""
 
 from .config import (
+    CONFIG_CASE_ENV,
     ComponentConfig,
     RUNTIME_CONFIG_ENV,
     hdl_parameter,
-    load_runtime_config,
+    load_test_config,
+    resolve_config_case,
 )
 from .stream_metrics import (
     PacketMetrics,
@@ -17,6 +19,7 @@ from .stream_metrics import (
 )
 
 __all__ = [
+    "CONFIG_CASE_ENV",
     "ComponentConfig",
     "PacketMetrics",
     "PacketObservation",
@@ -24,5 +27,6 @@ __all__ = [
     "RUNTIME_CONFIG_ENV",
     "StreamPerformanceAnalyzer",
     "hdl_parameter",
-    "load_runtime_config",
+    "load_test_config",
+    "resolve_config_case",
 ]

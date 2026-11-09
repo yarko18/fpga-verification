@@ -33,10 +33,10 @@ def _hash_file(path):
     return digest.digest()
 
 
-def _original_source_index(project_root, source_dirs):
+def _original_source_index(project_root, sources):
     originals = {}
 
-    for source_dir in source_dirs:
+    for source_dir in sources:
         source_dir = _resolve_path(project_root, source_dir)
         for extension in ("*.v", "*.sv"):
             for source in sorted(source_dir.rglob(extension)):
@@ -55,8 +55,8 @@ def _spd_hdl_sources(spd_path):
     ]
 
 
-def _use_original_sources(project_root, source_dirs, generated_sources):
-    originals = _original_source_index(project_root, source_dirs)
+def _use_original_sources(project_root, sources, generated_sources):
+    originals = _original_source_index(project_root, sources)
     sources = []
     retained_generated = []
     seen_sources = set()
@@ -134,8 +134,8 @@ def _run_command(command, cwd, log_path=None, append_log=False):
             raise
 
 
-def _make_ipx(project_root, source_dirs, output_dir, log_path=None, append_log=False):
-    if not source_dirs:
+def _make_ipx(project_root, sources, output_dir, log_path=None, append_log=False):
+    if not sources:
         return None
 
     ip_make_ipx = shutil.which("ip-make-ipx") or shutil.which("ip-make-ipx.exe")
@@ -145,7 +145,7 @@ def _make_ipx(project_root, source_dirs, output_dir, log_path=None, append_log=F
     ipx_path = Path(output_dir) / "components.ipx"
     source_directory = ",".join(
         str(_resolve_path(project_root, source_dir))
-        for source_dir in source_dirs
+        for source_dir in sources
     )
 
     _run_command(
@@ -168,7 +168,7 @@ def component_test_cocotb(
     component_file,
     hdl_toplevel,
     test_module,
-    source_dirs=(),
+    sources=(),
     component_parameters=None,
     project_directory=None,
     part=None,
@@ -188,12 +188,12 @@ def component_test_cocotb(
 ):
     """Generate an Altera component composition and simulate original RTL.
 
-    Generated HDL files that are byte-identical to source files in ``source_dirs``
+    Generated HDL files that are byte-identical to source files in ``sources``
     are replaced by those source paths before invoking ``rtl_test_cocotb``. Any
     remaining generated HDL implements Platform Designer composition wiring. By
     default it exists only for this call; with ``generate_only=True`` its
     directory is retained and returned for inspection. By default a temporary
-    Platform Designer IP index is generated from ``source_dirs`` and passed to
+    Platform Designer IP index is generated from ``sources`` and passed to
     ``ip-generate`` as a search path.
     Simulator-specific model fixes are enabled by default; disable them with
     ``apply_simulation_fixes=False``. Installed Quartus files remain unchanged.
@@ -242,7 +242,7 @@ def component_test_cocotb(
         if make_ipx:
             ipx_path = _make_ipx(
                 project_root,
-                source_dirs if ipx_source_dirs is None else ipx_source_dirs,
+                sources if ipx_source_dirs is None else ipx_source_dirs,
                 output_dir,
                 log_path=ip_generate_log,
                 append_log=log_has_content,
@@ -284,7 +284,7 @@ def component_test_cocotb(
         spd_path.unlink()
         sources, retained_generated = _use_original_sources(
             project_root,
-            source_dirs,
+            sources,
             generated_sources,
         )
         _remove_empty_directories(output_dir)
@@ -338,7 +338,7 @@ def run_component_test(
     test_module,
     config=None,
     component_parameters=None,
-    source_dirs=("../../src", "../../../common"),
+    sources=("../../src", "../../../common"),
     project_directory="../../..",
     test_module_env=None,
     python_paths=("..", "../../../common"),
@@ -381,7 +381,7 @@ def run_component_test(
         component_file=component_file,
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
-        source_dirs=source_dirs,
+        sources=sources,
         component_parameters=component_parameters,
         project_directory=project_directory,
         debug=debug,

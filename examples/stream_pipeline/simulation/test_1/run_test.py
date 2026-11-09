@@ -7,14 +7,15 @@ import sys
 from fpga_verification.sim.runners import run_rtl_test
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 if __package__:
     from .config import get_test_config
 else:
     # A file executed directly has no package context, so make this example's
     # package importable without depending on the caller's working directory.
-    sys.path.insert(0, str(PROJECT_ROOT))
+    sys.path.insert(0, str(PACKAGE_ROOT))
     from simulation.test_1.config import get_test_config
 
 
@@ -22,10 +23,11 @@ def main():
     cfg = get_test_config()
     run_rtl_test(
         project_root=PROJECT_ROOT,
-        source_dirs=("rtl",),
+        sources=("../../rtl",),
         hdl_toplevel="stream_pipeline",
         test_module="simulation.test_1.test",
         config=cfg,
+        python_paths=("../..",),
     )
 
 

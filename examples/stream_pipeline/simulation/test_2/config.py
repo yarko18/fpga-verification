@@ -3,18 +3,18 @@
 
 from dataclasses import dataclass
 
-from fpga_verification.sim import ComponentConfig, hdl_parameter
+from fpga_verification.sim import ComponentConfig, hdl_parameter, resolve_config_case
 
 
 @dataclass(frozen=True)
 class TestConfig(ComponentConfig):
     """Values shared by the RTL build and the running testbench."""
 
-    bits_per_symbol: int = hdl_parameter(8, name="BITS_PER_SYMBOL")
-    symbols_per_beat: int = hdl_parameter(4, name="SYMBOLS_PER_BEAT")
-    use_fifo: bool = hdl_parameter(True, name="USE_FIFO")
-    frame_width: int = 5
-    frame_height: int = 1
+    bits_per_symbol:    int = hdl_parameter(8, name="BITS_PER_SYMBOL")
+    symbols_per_beat:   int = hdl_parameter(4, name="SYMBOLS_PER_BEAT")
+    use_fifo:           bool = hdl_parameter(True, name="USE_FIFO")
+    frame_width:        int = 5
+    frame_height:       int = 1
 
     def __post_init__(self):
         if self.bits_per_symbol != 8:
@@ -27,5 +27,16 @@ class TestConfig(ComponentConfig):
             raise ValueError("frame dimensions must be positive")
 
 
-def get_test_config():
-    return TestConfig()
+def get_test_config(case=None):
+    cases = {
+        "default": TestConfig,
+        "preset1": lambda: TestConfig(
+            frame_height=100,
+            frame_width=200
+        ),
+        "preset2": lambda: TestConfig(
+            bits_per_symbol=8,
+            symbols_per_beat=3
+        ),
+    }
+    return resolve_config_case(cases, case)
