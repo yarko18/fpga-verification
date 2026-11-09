@@ -15,6 +15,9 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   created beside each test rather than at the HDL project root.
 - Added shared host-side named configuration selection through
   `CONFIG_CASE_ENV` and `resolve_config_case()`.
+- Intel component simulations now add Verilator's `-Wno-PARAMNODEFAULT`
+  automatically; project runners no longer need the broad `--bbox-unsup`
+  workaround.
 
 ## 1.1.1 - 2026-10-12
 

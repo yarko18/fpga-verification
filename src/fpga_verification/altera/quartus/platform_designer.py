@@ -313,7 +313,6 @@ def run_verilator(project_root, hdl_toplevel, test_module, debug=False):
         build_args=[
             "-Wno-fatal",
             "-Wno-PARAMNODEFAULT",
-            "--bbox-unsup",
             "--timescale", "1ps/1ps",
             "-CFLAGS", "-std=c++20",
             *["-I" + str(include_dir) for include_dir in include_dirs],

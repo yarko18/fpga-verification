@@ -155,6 +155,8 @@ models, then calls the RTL runner. The normal generated directory is temporary.
 Its `sources` argument has the same public name as the RTL runner argument, but
 component generation uses it as a set of source-tree directories for IP
 catalogue generation and matching generated HDL back to the original files.
+For Verilator, the component runner adds `-Wno-PARAMNODEFAULT` automatically;
+explicit `build_args` are reserved for design-specific options.
 
 ```python
 from pathlib import Path
@@ -170,7 +172,6 @@ def run_generated_component(generate_only=False):
         hdl_toplevel="component",
         test_module="stream.test_pyuvm",
         component_parameters={"DATA_WIDTH": 32},
-        build_args=["-Wno-PARAMNODEFAULT"],
         generate_only=generate_only,
         ip_generate_log=Path(__file__).resolve().parent / "logs/ip_generate.log",
         compile_log=Path(__file__).resolve().parent / "logs/verilator_compile.log",
@@ -280,7 +281,6 @@ may contain documented simulator workarounds; it must not calculate expected
 results or construct agents.
 
 ```python
-import os
 from pathlib import Path
 
 from fpga_verification.altera.quartus import run_component_test
@@ -289,9 +289,6 @@ from .config import get_test_config
 
 
 if __name__ == "__main__":
-    sim = os.getenv("SIM", "verilator")
-    build_args = ["-Wno-PARAMNODEFAULT"] if sim == "verilator" else []
-
     run_component_test(
         project_root=Path(__file__).resolve().parent,
         component_file="../../src/component_hw.tcl",
@@ -299,7 +296,6 @@ if __name__ == "__main__":
         test_module="stream.test_pyuvm",
         config=get_test_config(),
         enable_questa_acc=True,
-        build_args=build_args,
     )
 ```
 

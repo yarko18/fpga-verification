@@ -165,6 +165,29 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             ["--trace-depth", "8"],
         )
 
+    def test_altera_component_adds_verilator_parameter_warning_default(self):
+        self.assertEqual(
+            component._component_build_args("verilator", None),
+            ["-Wno-PARAMNODEFAULT"],
+        )
+        self.assertEqual(
+            component._component_build_args("verilator", ["--timing"]),
+            ["-Wno-PARAMNODEFAULT", "--timing"],
+        )
+
+    def test_altera_component_does_not_duplicate_or_apply_default_to_questa(self):
+        self.assertEqual(
+            component._component_build_args(
+                "verilator",
+                ["-Wno-PARAMNODEFAULT", "--timing"],
+            ),
+            ["-Wno-PARAMNODEFAULT", "--timing"],
+        )
+        self.assertEqual(
+            component._component_build_args("questa", ["+define+SIMULATION"]),
+            ["+define+SIMULATION"],
+        )
+
     def test_altera_component_runner_serializes_resolved_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),

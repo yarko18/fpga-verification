@@ -25,6 +25,14 @@ def _resolve_path(project_root, path):
     return resolve_path(project_root, path)
 
 
+def _component_build_args(simulator, build_args):
+    """Return caller arguments plus safe simulator defaults for Intel IP."""
+    build_args = list(build_args or ())
+    if simulator == "verilator" and "-Wno-PARAMNODEFAULT" not in build_args:
+        build_args.insert(0, "-Wno-PARAMNODEFAULT")
+    return build_args
+
+
 def _hash_file(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
@@ -195,10 +203,16 @@ def component_test_cocotb(
     directory is retained and returned for inspection. By default a temporary
     Platform Designer IP index is generated from ``sources`` and passed to
     ``ip-generate`` as a search path.
+    Verilator's ``PARAMNODEFAULT`` warning is disabled automatically for
+    generated Intel IP; caller-provided ``build_args`` are appended.
     Simulator-specific model fixes are enabled by default; disable them with
     ``apply_simulation_fixes=False``. Installed Quartus files remain unchanged.
     """
     project_root = Path(project_root)
+    build_args = _component_build_args(
+        os.getenv("SIM", DEFAULT_SIMULATOR),
+        build_args,
+    )
     component_file = _resolve_path(project_root, component_file)
     if project_directory is None:
         project_directory = project_root
