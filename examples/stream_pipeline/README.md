@@ -8,6 +8,11 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 `rtl/stream_pipeline.sv` reverses valid bytes in each Avalon-ST VIDEO payload
 beat. `USE_FIFO` selects its storage implementation.
 
+Both runners reuse one `StreamPipelineTest` base class. Its constructor creates
+the clock and Avalon-ST BFMs, while three independent cocotb tests check
+CONTROL, USER, and VIDEO packets. The packet-specific subclasses inherit the
+common constructor and lifecycle unchanged.
+
 ## test_1: plain RTL
 
 Runs with `USE_FIFO=False` and use pure RTL sources.
@@ -18,8 +23,9 @@ SIM=verilator python -m examples.stream_pipeline.simulation.test_1.run_test
 
 ## test_2: Altera FIFO
 
-Same test with RTL sources but with included FIFO. FIFO IP is provided by vendor
-so we need to use `altera_mf` library to support `USE_FIFO=True` parameter.
+Same three tests with RTL sources but with included FIFO. FIFO IP is provided by
+vendor so we need to use `altera_mf` library to support `USE_FIFO=True`
+parameter.
 
 ```bash
 SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test
