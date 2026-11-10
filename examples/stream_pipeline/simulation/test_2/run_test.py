@@ -6,14 +6,17 @@ import sys
 
 from fpga_verification.altera.quartus import run_rtl_test
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+from config import get_test_config
 
-from .config import get_test_config
+sources = (
+    "../../rtl",
+)
 
 def main():
+    
     run_rtl_test(
-        project_root=PROJECT_ROOT,
-        sources=("../../rtl",),
+        project_root=Path(__file__).resolve().parent,
+        sources=sources,
         hdl_toplevel="stream_pipeline",
         test_module="simulation.test_2.test",
         config=get_test_config(),
