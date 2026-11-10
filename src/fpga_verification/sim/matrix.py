@@ -11,6 +11,7 @@ import importlib
 import itertools
 import json
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -43,6 +44,8 @@ class MatrixStrategy:
     """Selection rule applied after invalid configurations are removed."""
 
     name: str
+    count: int | None = None
+    seed: int | None = None
 
 
 def exhaustive() -> MatrixStrategy:
@@ -53,6 +56,13 @@ def exhaustive() -> MatrixStrategy:
 def balance() -> MatrixStrategy:
     """Cover every reachable value while balancing value frequencies."""
     return MatrixStrategy("balance")
+
+
+def random_subset(*, count: int, seed: int) -> MatrixStrategy:
+    """Select a bounded reproducible sample of legal configurations."""
+    if count <= 0:
+        raise ValueError("random matrix count must be positive")
+    return MatrixStrategy("random", count=count, seed=seed)
 
 
 @dataclass(frozen=True)
@@ -341,6 +351,11 @@ def _select_configs(
         return configs
     if strategy.name == "balance":
         return _balanced_cover(baseline, configs, names)
+    if strategy.name == "random":
+        count = min(strategy.count or 0, len(configs))
+        generator = random.Random(strategy.seed)
+        indexes = generator.sample(range(len(configs)), count)
+        return [configs[index] for index in indexes]
     raise ValueError(f"Unknown matrix strategy: {strategy.name}")
 
 
@@ -757,9 +772,17 @@ def _write_results(project_root: Path, plan: MatrixPlan, elapsed: float) -> Path
                         "fullname": test.fullname,
                         "vary": list(test.matrix.vary) if test.matrix else [],
                         "strategy": (
-                            {"name": test.matrix.strategy.name}
+                            {
+                                "name": test.matrix.strategy.name,
+                                "count": test.matrix.strategy.count,
+                                "seed": test.matrix.strategy.seed,
+                            }
                             if test.matrix
-                            else {"name": "baseline"}
+                            else {
+                                "name": "baseline",
+                                "count": None,
+                                "seed": None,
+                            }
                         ),
                     }
                     for test in plan.tests

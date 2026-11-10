@@ -26,6 +26,8 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added explicit `exhaustive()` and `balance()` matrix strategies. Balanced
   selection includes the legal baseline, covers every reachable parameter
   value, and prefers less-used values when equally compact choices exist.
+- Added reproducible `random_subset(count, seed)` matrix sampling for bounded
+  supplementary runs without a parameter-coverage guarantee.
 - Matrix execution now filters cocotb by full test name, isolates child
   simulations from pytest's `PYTEST_CURRENT_TEST`, and reports configurations,
   test cases, and test runs as distinct quantities.

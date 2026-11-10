@@ -232,6 +232,12 @@ prefers values that have occurred less often. This keeps small categorical
 domains from collapsing onto their first value while preserving a compact
 cover. It does not promise pairwise or higher-order interaction coverage.
 
+`random_subset(count=N, seed=S)` selects at most `N` legal configurations.
+The explicit seed makes the sample reproducible and is stored in
+`matrix-results.json`. Random selection provides no value or interaction
+coverage guarantee, so use it as a bounded supplement rather than as a
+replacement for `balance()`.
+
 Always run `--plan` after changing domains, legality rules or strategy. There is
 no silent maximum and no automatic downgrade from exhaustive to another rule.
 

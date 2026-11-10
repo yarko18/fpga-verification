@@ -16,6 +16,7 @@ from .matrix import (
     balance,
     exhaustive,
     parameter_matrix,
+    random_subset,
 )
 from .stream_metrics import (
     PacketMetrics,
@@ -38,5 +39,6 @@ __all__ = [
     "balance",
     "exhaustive",
     "parameter_matrix",
+    "random_subset",
     "resolve_config_case",
 ]

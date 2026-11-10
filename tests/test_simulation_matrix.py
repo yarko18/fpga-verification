@@ -16,6 +16,7 @@ from fpga_verification.sim import (
     exhaustive,
     hdl_parameter,
     matrix_parameter,
+    random_subset,
 )
 from fpga_verification.sim.matrix import (
     MATRIX_ARTIFACT_ROOT_ENV,
@@ -120,6 +121,27 @@ def test_balance_distributes_small_domain_values_evenly():
     assert len(plan.jobs) == 8
     assert set(counts) == {"A", "B", "C", "D"}
     assert max(counts.values()) - min(counts.values()) <= 1
+
+
+def test_random_subset_is_bounded_and_reproducible():
+    test = _matrix_test(
+        "test_random",
+        ("width", "lanes", "operation"),
+        random_subset(count=4, seed=1234),
+    )
+
+    first = build_matrix_plan(_Config(), [test])
+    second = build_matrix_plan(_Config(), [test])
+
+    assert len(first.jobs) == 4
+    assert [job.config_id for job in first.jobs] == [
+        job.config_id for job in second.jobs
+    ]
+
+
+def test_random_subset_requires_a_positive_count():
+    with pytest.raises(ValueError, match="count must be positive"):
+        random_subset(count=0, seed=1234)
 
 
 def test_tests_with_matching_configs_share_one_job():
