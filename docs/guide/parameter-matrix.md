@@ -234,7 +234,7 @@ cover. It does not promise pairwise or higher-order interaction coverage.
 
 `random_subset(count=N, seed=S)` selects at most `N` legal configurations.
 The explicit seed makes the sample reproducible and is stored in
-`matrix-results.json`. Random selection provides no value or interaction
+`logs/matrix-results.json`. Random selection provides no value or interaction
 coverage guarantee, so use it as a bounded supplement rather than as a
 replacement for `balance()`.
 
@@ -276,10 +276,10 @@ configurations.
 
 Each job writes into a disposable `.matrix_work/<config-id>` directory.
 Successful logs and builds are removed. A failed job is moved to
-`matrix_failures/<config-id>` with its simulator build and `simulation.log`.
-The small `matrix-results.json` manifest is always retained; it contains
-resolved configurations, strategies, test results and timings and can later
-feed parameter coverage reporting.
+`logs/matrix_failures/<config-id>` with its simulator build and
+`simulation.log`. The small `logs/matrix-results.json` manifest is always
+retained; it contains resolved configurations, strategies, test results and
+timings and can later feed parameter coverage reporting.
 
 Pytest is an internal job orchestrator. It supplies isolation, result handling
 and a standard process exit status, but project tests do not need a separate

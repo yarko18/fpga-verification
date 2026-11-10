@@ -31,6 +31,8 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Matrix execution now filters cocotb by full test name, isolates child
   simulations from pytest's `PYTEST_CURRENT_TEST`, and reports configurations,
   test cases, and test runs as distinct quantities.
+- Matrix manifests and preserved failed jobs are stored under `logs/` beside
+  the other persistent simulation diagnostics.
 
 ## 1.1.1 - 2026-10-12
 

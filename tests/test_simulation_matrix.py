@@ -231,7 +231,7 @@ def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
     assert job.status == "PASS"
     assert job.log_path is None
     assert not (tmp_path / ".matrix_work").exists()
-    assert not (tmp_path / "matrix_failures").exists()
+    assert not (tmp_path / "logs" / "matrix_failures").exists()
 
 
 def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path):
@@ -248,7 +248,7 @@ def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path)
         _ExecutionContext(tmp_path, script, "verilator"),
     )
 
-    failure = tmp_path / "matrix_failures" / job.config_id
+    failure = tmp_path / "logs" / "matrix_failures" / job.config_id
     assert job.status == "ERROR"
-    assert job.log_path == "matrix_failures/12345678/simulation.log"
+    assert job.log_path == "logs/matrix_failures/12345678/simulation.log"
     assert (failure / "simulation.log").is_file()

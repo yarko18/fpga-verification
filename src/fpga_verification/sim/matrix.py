@@ -572,8 +572,8 @@ def _execute_job(job: MatrixJob, context: _ExecutionContext) -> None:
         shutil.rmtree(work_dir)
         job.log_path = None
     else:
-        failure_root = context.project_root / "matrix_failures"
-        failure_root.mkdir(exist_ok=True)
+        failure_root = context.project_root / "logs" / "matrix_failures"
+        failure_root.mkdir(parents=True, exist_ok=True)
         failure_dir = failure_root / job.config_id
         if failure_dir.exists():
             shutil.rmtree(failure_dir)
@@ -758,7 +758,8 @@ def _write_results(project_root: Path, plan: MatrixPlan, elapsed: float) -> Path
             }
         )
 
-    path = project_root / "matrix-results.json"
+    path = project_root / "logs" / "matrix-results.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
             {
