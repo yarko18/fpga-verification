@@ -8,10 +8,10 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 `rtl/stream_pipeline.sv` reverses valid bytes in each Avalon-ST VIDEO payload
 beat. `USE_FIFO` selects its storage implementation.
 
-Both runners reuse one `StreamPipelineTest` base class. Its constructor creates
-the clock and Avalon-ST BFMs, while three independent cocotb tests check
-CONTROL, USER, and VIDEO packets. The packet-specific subclasses inherit the
-common constructor and lifecycle unchanged.
+`test_1` and `test_2` are independent teaching projects. Each keeps its own
+local `StreamPipelineTest` base class and three cocotb tests for CONTROL, USER,
+and VIDEO packets. Their duplication is intentional: neither testbench imports
+implementation from the other.
 
 ## test_1: plain RTL
 

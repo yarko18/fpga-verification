@@ -83,11 +83,14 @@ def prepare_sources(
     return expanded
 
 
-def rtl_test_cocotb(
+def _rtl_test_cocotb(
     project_root,
     hdl_toplevel,
     test_module,
     sources=("src",),
+    intel_libraries=(),
+    quartus_sim_lib=None,
+    apply_simulation_fixes=True,
     parameters=None,
     includes=(),
     defines=None,
@@ -98,7 +101,7 @@ def rtl_test_cocotb(
     extra_env=None,
     build_dir=None,
 ):
-    """Compile plain RTL and run a cocotb test."""
+    """Compile RTL with optional prepared Intel models and run cocotb."""
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
@@ -116,6 +119,21 @@ def rtl_test_cocotb(
         includes=includes,
         defines=defines,
     )
+    vendor_sources = []
+    if intel_libraries:
+        from fpga_verification.altera.quartus.simulation import (
+            prepare_intel_libraries,
+        )
+
+        vendor_sources = prepare_intel_libraries(
+            intel_libraries,
+            project_root=project_root,
+            quartus_sim_lib=quartus_sim_lib,
+            simulator=sim,
+            output_dir=project_root / "logs" / "simulation_models",
+            apply_simulation_fixes=apply_simulation_fixes,
+        )
+    sources = vendor_sources + sources
 
     runner = get_runner(sim)
 
@@ -207,6 +225,9 @@ def run_rtl_test(
     parameters=None,
     extra_env=None,
     sources=("src",),
+    intel_libraries=(),
+    quartus_sim_lib=None,
+    apply_simulation_fixes=True,
     python_paths=(".",),
     debug=None,
     argv=None,
@@ -215,7 +236,7 @@ def run_rtl_test(
     test_module_env=None,
     **kwargs,
 ):
-    """Run a standard vendor-independent RTL cocotb simulation."""
+    """Run RTL with optional prepared Intel simulation libraries."""
     if _parse_run_args(argv).matrix:
         raise NotImplementedError(
             "parameter matrix execution is currently supported by run_component_test()"
@@ -239,11 +260,14 @@ def run_rtl_test(
         extra_env=extra_env,
     )
 
-    return rtl_test_cocotb(
+    return _rtl_test_cocotb(
         project_root=project_root,
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
         sources=sources,
+        intel_libraries=intel_libraries,
+        quartus_sim_lib=quartus_sim_lib,
+        apply_simulation_fixes=apply_simulation_fixes,
         debug=debug,
         compile_log=project_root / "logs" / f"{sim}_compile.log",
         parameters=parameters,

@@ -10,10 +10,8 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
-from fpga_verification.altera.quartus import component, platform_designer
-from fpga_verification.altera.quartus import rtl as altera_rtl
 from fpga_verification.sim import ComponentConfig, hdl_parameter
-from fpga_verification.sim.runners import _common, rtl
+from fpga_verification.sim.runners import _common, component, rtl
 
 
 class SimulationRunnerDefaultTests(unittest.TestCase):
@@ -51,7 +49,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch("cocotb_tools.runner.get_runner", return_value=runner) as get_runner,
             patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
         ):
-            rtl.rtl_test_cocotb(
+            rtl._rtl_test_cocotb(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -78,7 +76,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch("cocotb_tools.runner.get_runner", return_value=runner),
             patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
         ):
-            rtl.rtl_test_cocotb(
+            rtl._rtl_test_cocotb(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -98,7 +96,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch("cocotb_tools.runner.get_runner", return_value=runner),
             patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
         ):
-            rtl.rtl_test_cocotb(
+            rtl._rtl_test_cocotb(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -116,7 +114,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch("cocotb_tools.runner.get_runner", return_value=runner),
             patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
         ):
-            rtl.rtl_test_cocotb(
+            rtl._rtl_test_cocotb(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -136,7 +134,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.object(_common, "_clean_sim_build") as clean_sim_build,
             patch.object(
                 component,
-                "component_test_cocotb",
+                "_component_test_cocotb",
             ) as component_runner,
         ):
             component.run_component_test(
@@ -188,12 +186,40 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             ["+define+SIMULATION"],
         )
 
+    def test_component_runner_delegates_quartus_preparation_to_rtl_backend(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(
+                component,
+                "prepare_component_simulation",
+            ) as prepare_component,
+        ):
+            component._component_test_cocotb(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+            )
+
+        self.assertIs(
+            prepare_component.call_args.kwargs["rtl_backend"],
+            component._rtl_test_cocotb,
+        )
+        self.assertEqual(
+            prepare_component.call_args.kwargs["build_args"],
+            ["-Wno-PARAMNODEFAULT"],
+        )
+        self.assertEqual(
+            prepare_component.call_args.kwargs["simulator"],
+            "verilator",
+        )
+
     def test_altera_component_runner_serializes_resolved_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(component, "component_test_cocotb") as component_runner,
+            patch.object(component, "_component_test_cocotb") as component_runner,
         ):
             component.run_component_test(
                 project_root=".",
@@ -217,7 +243,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(component, "component_test_cocotb") as component_runner,
+            patch.object(component, "_component_test_cocotb") as component_runner,
         ):
             component.run_component_test(
                 project_root=".",
@@ -240,7 +266,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
-            patch.object(component, "component_test_cocotb") as component_runner,
+            patch.object(component, "_component_test_cocotb") as component_runner,
             patch("fpga_verification.sim.matrix.run_matrix") as run_matrix,
         ):
             component.run_component_test(
@@ -268,7 +294,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(component, "component_test_cocotb"),
+            patch.object(component, "_component_test_cocotb"),
             self.assertRaisesRegex(ValueError, "must match"),
         ):
             component.run_component_test(
@@ -290,7 +316,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.object(_common, "_clean_sim_build"),
             patch.object(
                 component,
-                "component_test_cocotb",
+                "_component_test_cocotb",
             ) as component_runner,
         ):
             component.run_component_test(
@@ -310,7 +336,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
         ):
             rtl.run_rtl_test(
                 project_root=".",
@@ -328,7 +354,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(rtl, "rtl_test_cocotb") as rtl_runner,
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
         ):
             rtl.run_rtl_test(
                 project_root=".",
@@ -346,9 +372,9 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
-            patch.object(altera_rtl, "rtl_test_cocotb") as rtl_runner,
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
         ):
-            altera_rtl.run_rtl_test(
+            rtl.run_rtl_test(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -399,7 +425,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 patch("cocotb_tools.runner.get_runner", return_value=runner),
                 patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
             ):
-                rtl.rtl_test_cocotb(
+                rtl._rtl_test_cocotb(
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",
@@ -433,7 +459,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 patch("cocotb_tools.runner.get_runner", return_value=runner),
                 patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
             ):
-                rtl.rtl_test_cocotb(
+                rtl._rtl_test_cocotb(
                     project_root=project_root,
                     hdl_toplevel="consumer",
                     test_module="test_dut",
@@ -461,7 +487,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 patch("cocotb_tools.runner.get_runner", return_value=runner),
                 patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
             ):
-                rtl.rtl_test_cocotb(
+                rtl._rtl_test_cocotb(
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",
@@ -494,7 +520,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 patch("cocotb_tools.runner.get_runner", return_value=runner),
                 patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
             ):
-                altera_rtl.rtl_test_cocotb(
+                rtl._rtl_test_cocotb(
                     project_root=project_root,
                     hdl_toplevel="dut",
                     test_module="test_dut",
@@ -518,7 +544,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch("cocotb_tools.runner.get_runner", return_value=runner),
             patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
         ):
-            rtl.rtl_test_cocotb(
+            rtl._rtl_test_cocotb(
                 project_root=".",
                 hdl_toplevel="dut",
                 test_module="test_dut",
@@ -535,22 +561,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             runner.test.call_args.kwargs["test_args"],
             ["-no_autoacc", "-suppress", "12110"],
         )
-
-    def test_platform_runner_defaults_to_verilator(self):
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch.object(platform_designer, "run_verilator") as run_verilator,
-            patch.object(platform_designer, "run_questa") as run_questa,
-        ):
-            platform_designer.platform_test_cocotb(
-                project_root=".",
-                hdl_toplevel="dut",
-                test_module="test_dut",
-            )
-
-        run_verilator.assert_called_once_with(".", "dut", "test_dut", False)
-        run_questa.assert_not_called()
-
 
 if __name__ == "__main__":
     unittest.main()

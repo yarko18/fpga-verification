@@ -34,7 +34,7 @@ python -m pip install -e ".[docs]"
 
 - Avalon-ST and Avalon-MM cocotb helpers;
 - Altera Avalon-ST Video packets, codecs, agents, and scoreboards;
-- runners for plain RTL, Altera components, and Platform Designer systems;
+- runners for plain RTL and generated Altera components;
 - an Altera streaming DMA model and sparse byte memory;
 - packet latency and throughput analysis;
 - persistent Quartus System Console access for hardware tests;
@@ -46,11 +46,14 @@ Altera-specific functionality has one public root:
 from fpga_verification.altera.video import VideoFormat, VIPFrameCodec
 from fpga_verification.altera.video.uvm import VIPAgent
 from fpga_verification.altera.dma import IntelDMABFM
-from fpga_verification.altera.quartus import run_rtl_test
+from fpga_verification.altera.quartus import resolve_quartus_sim_lib
 ```
 
-The vendor-independent RTL runner remains available from
-`fpga_verification.sim.runners`.
+Simulation runners have one public root:
+
+```python
+from fpga_verification.sim.runners import run_component_test, run_rtl_test
+```
 
 ## Runner conventions
 
@@ -60,7 +63,7 @@ trees, logs and generated files remain beside the test that owns them:
 ```python
 from pathlib import Path
 
-from fpga_verification.altera.quartus import run_rtl_test
+from fpga_verification.sim.runners import run_rtl_test
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent

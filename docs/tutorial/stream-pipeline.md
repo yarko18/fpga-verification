@@ -51,10 +51,11 @@ the cocotb test, which restores it with `load_test_config(TestConfig)`.
 
 ## Direct cocotb tests
 
-`simulation/testbench.py` defines the common `StreamPipelineTest` base class.
-Its only constructor restores the resolved configuration and creates the clock,
-`AvalonSTSource`, and `AvalonSTSink` using one `VideoFormat`. It also owns reset,
-cleanup, and the common send/receive comparison.
+Each test project's local `test.py` defines its own `StreamPipelineTest` base
+class. Its only constructor restores the resolved configuration and creates the
+clock, `AvalonSTSource`, and `AvalonSTSink` using one `VideoFormat`. It also owns
+reset, cleanup, and the common send/receive comparison. The duplicated base
+class keeps `test_1` and `test_2` independent teaching projects.
 
 Three subclasses contain only packet-specific stimulus and expectations:
 

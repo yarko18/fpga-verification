@@ -1,9 +1,10 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
-from .rtl import rtl_test_cocotb, run_rtl_test
+from .component import run_component_test
+from .rtl import run_rtl_test
 
 __all__ = [
+    "run_component_test",
     "run_rtl_test",
-    "rtl_test_cocotb",
 ]

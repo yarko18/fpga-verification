@@ -18,10 +18,9 @@ The ordinary single-configuration workflow remains the starting point. Add a
 matrix after the DUT model and tests work for one configuration; matrix metadata
 is optional and does not change a normal run.
 
-The first implementation is integrated with the Intel component
-`run_component_test()` wrapper. The planning model is vendor-independent, but
-plain RTL and pre-generated Platform Designer entry points do not yet expose
-the matrix command-line mode.
+The first implementation is integrated with `run_component_test()`. The
+planning model is vendor-independent, but the plain RTL runner does not yet
+expose the matrix command-line mode.
 
 ## Single and matrix runs
 

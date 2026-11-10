@@ -13,7 +13,6 @@ and USER packets unchanged.
 examples/stream_pipeline/
   rtl/stream_pipeline.sv
   simulation/
-    testbench.py
     test_1/
       config.py
       test.py
@@ -36,11 +35,11 @@ For Questa:
 SIM=questa python -m examples.stream_pipeline.simulation.test_1.run_test
 ```
 
-The shared `StreamPipelineTest` base class creates `AvalonSTSource` and
-`AvalonSTSink` once per cocotb test. Three small subclasses independently check
-CONTROL, USER and VIDEO packets against explicit expected packets. Only the
-base class defines a constructor; packet-specific tests inherit its setup and
-lifecycle.
+Each teaching project has its own `StreamPipelineTest` base class, which creates
+`AvalonSTSource` and `AvalonSTSink` once per cocotb test. Three small subclasses
+independently check CONTROL, USER and VIDEO packets against explicit expected
+packets. The two projects intentionally duplicate this testbench code so they
+remain standalone examples.
 
 The Altera FIFO version uses the same three tests:
 

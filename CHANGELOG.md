@@ -34,8 +34,13 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Matrix manifests and preserved failed jobs are stored under `logs/` beside
   the other persistent simulation diagnostics.
 - Fixed Cython compilation of the matrix summary for binary wheel builds.
-- Split the stream-pipeline example into independent CONTROL, USER, and VIDEO
-  tests which share one reusable base-class constructor and lifecycle.
+- Split each standalone stream-pipeline example into independent CONTROL, USER,
+  and VIDEO tests with its own local base-class constructor and lifecycle.
+- Consolidated the public simulation API under `fpga_verification.sim.runners`:
+  `run_rtl_test()` now prepares optional Intel libraries itself and
+  `run_component_test()` owns component generation. Removed the duplicate
+  Quartus RTL runner, low-level public runner functions, and the unused
+  pre-generated Platform Designer runner.
 
 ## 1.1.1 - 2026-10-12
 

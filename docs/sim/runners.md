@@ -20,15 +20,12 @@ run_test.py -> runner -> compile / generate -> cocotb test module -> pyuvm Env
 
 | Entry point | Use it for |
 | --- | --- |
-| `rtl_test_cocotb()` | Plain Verilog or SystemVerilog sources. |
-| `component_test_cocotb()` | A component description that must be generated first. |
-| `platform_test_cocotb()` | An already generated Platform Designer simulation tree. |
-| `run_rtl_test()` | A concise command-line wrapper around the RTL runner. |
-| `run_component_test()` | A concise command-line wrapper around the component runner. |
+| `run_rtl_test()` | Verilog/SystemVerilog sources, with optional prepared Intel libraries. |
+| `run_component_test()` | An Altera component description that must be generated first. |
 
-Low-level functions are useful from pytest or a Python tool. `run_*` wrappers
-are normally the right choice for `simulation/<name>/run_test.py`: they prepare
-paths and logs, accept `-g`, and ignore unrelated pytest options.
+Both functions are imported from `fpga_verification.sim.runners`. They prepare
+paths and logs, accept `-g`, and ignore unrelated pytest options. Compilation
+and component-generation helpers are internal implementation details.
 
 In a `run_test.py`, use the directory containing that file as `PROJECT_ROOT`:
 
@@ -50,7 +47,7 @@ when moving to this version.
 
 ## Plain RTL
 
-`rtl_test_cocotb()` accepts `.v`/`.sv` files and directories together in
+`run_rtl_test()` accepts `.v`/`.sv` files and directories together in
 `sources`. Directories are scanned recursively. Relative paths are resolved
 against `project_root`, absolute paths are used unchanged, and overlapping
 entries are de-duplicated. When a directory is present, the resulting files are
@@ -61,18 +58,17 @@ file-only list retains its declared order.
 import os
 from pathlib import Path
 
-from fpga_verification.sim.runners import rtl_test_cocotb
+from fpga_verification.sim.runners import run_rtl_test
 
 
 def run_plain_rtl():
     os.environ["SIM"] = "verilator"
-    rtl_test_cocotb(
+    run_rtl_test(
         project_root=Path(__file__).resolve().parent,
         hdl_toplevel="stream_component",
         test_module="stream.test_pyuvm",
         sources=("../../src/common", "../../src/stream_component.sv"),
         parameters={"DATA_WIDTH": 32},
-        compile_log=Path(__file__).resolve().parent / "logs/verilator_compile.log",
     )
 ```
 
@@ -115,7 +111,7 @@ simulator-independent library names and the runner compiles their models before
 the project RTL:
 
 ```python
-from fpga_verification.altera.quartus import run_rtl_test
+from fpga_verification.sim.runners import run_rtl_test
 
 
 run_rtl_test(
@@ -148,9 +144,10 @@ applied to copied models; installed Quartus files are never modified.
 
 ## Generated component
 
-`component_test_cocotb()` runs `ip-generate`, reads the generated `.spd`
-file, joins generated composition HDL with source HDL, adds selected tool
-models, then calls the RTL runner. The normal generated directory is temporary.
+`run_component_test()` runs `ip-generate`, reads the generated `.spd` file,
+joins generated composition HDL with source HDL, adds selected tool models,
+then calls the internal RTL backend. The normal generated directory is
+temporary.
 
 Its `sources` argument has the same public name as the RTL runner argument, but
 component generation uses it as a set of source-tree directories for IP
@@ -161,11 +158,11 @@ explicit `build_args` are reserved for design-specific options.
 ```python
 from pathlib import Path
 
-from fpga_verification.altera.quartus import component_test_cocotb
+from fpga_verification.sim.runners import run_component_test
 
 
 def run_generated_component(generate_only=False):
-    return component_test_cocotb(
+    return run_component_test(
         project_root=Path(__file__).resolve().parent,
         component_file=Path("../../src/component_hw.tcl"),
         sources=[Path("../../src/hw")],
@@ -173,8 +170,6 @@ def run_generated_component(generate_only=False):
         test_module="stream.test_pyuvm",
         component_parameters={"DATA_WIDTH": 32},
         generate_only=generate_only,
-        ip_generate_log=Path(__file__).resolve().parent / "logs/ip_generate.log",
-        compile_log=Path(__file__).resolve().parent / "logs/verilator_compile.log",
     )
 ```
 
@@ -191,7 +186,7 @@ sources
   -> generated components catalogue
   -> ip-generate
   -> generated composition HDL + original source HDL
-  -> rtl_test_cocotb
+  -> internal RTL backend
 ```
 
 Useful component options include `part`, `project_directory`,
@@ -257,28 +252,6 @@ When the same tests must cover several elaborated parameter sets, use the
 optional metadata, relevance is declared beside each cocotb/pyuvm test, and
 illegal `TestConfig` combinations are removed before a simulator starts.
 
-## Platform Designer system
-
-`platform_test_cocotb()` targets an existing generated simulation tree.
-With Questa it compiles through `msim_setup.tcl` and uses the generated
-libraries. With Verilator it extracts a compatible source list from that setup.
-Other simulator values are rejected.
-
-```python
-from fpga_verification.altera.quartus.platform_designer import platform_test_cocotb
-
-
-platform_test_cocotb(
-    project_root="platforms/system/sim",
-    hdl_toplevel="system",
-    test_module="system.test_pyuvm",
-    debug=False,
-)
-```
-
-Keep the project root, top-level name, selected simulator and installed tool
-version consistent with the generated tree.
-
 ## A human-readable `run_test.py`
 
 A command-line runner should be readable without opening the environment. It
@@ -288,7 +261,7 @@ results or construct agents.
 ```python
 from pathlib import Path
 
-from fpga_verification.altera.quartus import run_component_test
+from fpga_verification.sim.runners import run_component_test
 
 from .config import get_test_config
 
@@ -321,4 +294,4 @@ SIM=questa python -m simulation.stream.run_test -g
 | Questa | Starts the GUI, enables signal access, writes waves and runs `wave.do` when present. |
 
 For Questa without the GUI, set `QUESTA_ACC=1` to retain signal visibility.
-`compile_log` and `ip_generate_log` keep tool output outside the source tree.
+Compile and IP-generation output is written under the test's `logs/` directory.

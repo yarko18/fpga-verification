@@ -7,8 +7,6 @@ import os
 import shutil
 from pathlib import Path
 
-from fpga_verification.sim.runners._common import resolve_path
-
 from ._simulation_fixes import prepare_simulation_models
 
 
@@ -18,6 +16,11 @@ _INTEL_LIBRARY_FILES = {
     "altera_lnsim": "altera_lnsim.sv",
     "altera_primitives": "altera_primitives.v",
 }
+
+
+def _resolve_path(project_root, path):
+    path = Path(path)
+    return path if path.is_absolute() else Path(project_root) / path
 
 
 def _validate_sim_lib(path, *, source):
@@ -43,7 +46,7 @@ def resolve_quartus_sim_lib(project_root, quartus_sim_lib=None):
     """Resolve an explicit, configured, or PATH-discovered Quartus model tree."""
     if quartus_sim_lib is not None:
         return _validate_sim_lib(
-            resolve_path(project_root, quartus_sim_lib),
+            _resolve_path(project_root, quartus_sim_lib),
             source="quartus_sim_lib",
         )
 
