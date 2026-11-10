@@ -211,6 +211,58 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             component_runner.call_args.kwargs["extra_env"],
             {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
         )
+
+    def test_altera_component_runner_merges_derived_parameters_after_config(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(component, "component_test_cocotb") as component_runner,
+        ):
+            component.run_component_test(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                config=self._Config(width=80),
+                derived_parameters=lambda cfg: {"DOUBLE_WIDTH": cfg.width * 2},
+                sources=(),
+                python_paths=(),
+                argv=(),
+            )
+
+        self.assertEqual(
+            component_runner.call_args.kwargs["component_parameters"],
+            {"WIDTH": 80, "DOUBLE_WIDTH": 160},
+        )
+
+    def test_altera_component_matrix_plan_dispatches_without_running_component(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(component, "component_test_cocotb") as component_runner,
+            patch("fpga_verification.sim.matrix.run_matrix") as run_matrix,
+        ):
+            component.run_component_test(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                config=self._Config(),
+                sources=(),
+                python_paths=(),
+                argv=["--matrix", "--plan", "--test", "Video*"],
+            )
+
+        component_runner.assert_not_called()
+        run_matrix.assert_called_once_with(
+            project_root=Path("."),
+            baseline=self._Config(),
+            test_module="test_dut",
+            test_patterns=["Video*"],
+            plan_only=True,
+        )
+
     def test_altera_component_runner_rejects_parameters_different_from_config(self):
         with (
             patch.dict(os.environ, {}, clear=True),

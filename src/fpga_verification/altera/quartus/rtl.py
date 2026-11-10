@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fpga_verification.sim.runners import rtl as generic_rtl
 from fpga_verification.sim.runners._common import (
+    _parse_run_args,
     prepare_test_run,
     resolve_path,
     resolve_test_config,
@@ -82,6 +83,11 @@ def run_rtl_test(
     **kwargs,
 ):
     """Run an RTL cocotb test with optional Quartus simulation libraries."""
+
+    if _parse_run_args(argv).matrix:
+        raise NotImplementedError(
+            "parameter matrix execution is currently supported by run_component_test()"
+        )
 
     project_root = Path(project_root)
     debug, simulator = prepare_test_run(

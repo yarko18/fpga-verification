@@ -77,6 +77,9 @@ RTL and Intel component runners use `sources` for their source input. Cocotb
 tests restore the resolved HDL/test configuration with `load_test_config()`,
 and host-side named cases can use `resolve_config_case()`. See
 [Simulation runners](docs/sim/runners.md) for the complete contracts.
+Parameterized component regressions can declare test-local matrix axes and run
+them with `python run_test.py --matrix`; see
+[Parameter matrix simulations](docs/guide/parameter-matrix.md).
 
 Start with the [documentation](https://yarko18.github.io/fpga-verification/)
 or run the [video-packet endianness example](examples/stream_pipeline). It

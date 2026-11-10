@@ -13,3 +13,6 @@ sim_build_*/
 *.drawio.bkp
 /generated/
 *logs/
+.matrix_work/
+matrix_failures/
+matrix-results.json

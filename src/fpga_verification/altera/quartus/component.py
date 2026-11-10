@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fpga_verification.sim.runners._common import (
     DEFAULT_SIMULATOR,
+    _parse_run_args,
     prepare_test_run,
     resolve_path,
     resolve_test_config,
@@ -193,6 +194,7 @@ def component_test_cocotb(
     test_args=None,
     extra_env=None,
     apply_simulation_fixes=True,
+    artifacts_root=None,
 ):
     """Generate an Altera component composition and simulate original RTL.
 
@@ -209,6 +211,8 @@ def component_test_cocotb(
     ``apply_simulation_fixes=False``. Installed Quartus files remain unchanged.
     """
     project_root = Path(project_root)
+    artifacts_root = project_root if artifacts_root is None else Path(artifacts_root)
+    artifacts_root.mkdir(parents=True, exist_ok=True)
     build_args = _component_build_args(
         os.getenv("SIM", DEFAULT_SIMULATOR),
         build_args,
@@ -229,13 +233,13 @@ def component_test_cocotb(
     keep_generated = generate_only or retain_generated
 
     if keep_generated:
-        fixed_output_dir = project_root / f".ip_generate_{hdl_toplevel}"
+        fixed_output_dir = artifacts_root / f".ip_generate_{hdl_toplevel}"
         _clean_directory(fixed_output_dir)
         generation_context = nullcontext(fixed_output_dir)
     else:
         generation_context = tempfile.TemporaryDirectory(
             prefix=f".ip_generate_{hdl_toplevel}_",
-            dir=project_root,
+            dir=artifacts_root,
         )
 
     with generation_context as temporary_dir:
@@ -305,7 +309,7 @@ def component_test_cocotb(
         model_sources = prepare_simulation_models(
             _quartus_sim_sources(ip_generate, quartus_model_files),
             simulator=os.getenv("SIM", DEFAULT_SIMULATOR),
-            output_dir=project_root / "logs" / "simulation_models",
+            output_dir=artifacts_root / "logs" / "simulation_models",
             enabled=apply_simulation_fixes,
         )
         sources = model_sources + sources
@@ -341,6 +345,10 @@ def component_test_cocotb(
             build_args=build_args,
             test_args=test_args,
             extra_env=extra_env,
+            build_dir=(
+                artifacts_root
+                / f"sim_build_{os.getenv('SIM', DEFAULT_SIMULATOR)}"
+            ),
         )
 
 
@@ -352,6 +360,7 @@ def run_component_test(
     test_module,
     config=None,
     component_parameters=None,
+    derived_parameters=None,
     sources=("../../src", "../../../common"),
     project_directory="../../..",
     test_module_env=None,
@@ -362,12 +371,60 @@ def run_component_test(
     retain_generated=False,
     clean_build=True,
     enable_questa_acc=False,
+    artifacts_root=None,
     **kwargs,
 ):
-    """Run a standard Altera component cocotb simulation from a small script."""
+    """Run a standard Altera component cocotb simulation from a small script.
+
+    ``derived_parameters`` may be a mapping or a callable receiving the final
+    resolved ``config``. Use it for lower-level HDL parameters calculated from
+    independent configuration fields; do not duplicate those values in the
+    ``ComponentConfig`` dataclass.
+    """
     project_root = Path(project_root)
+    if test_module_env is not None:
+        test_module = os.getenv(test_module_env, test_module)
+
+    run_args = _parse_run_args(argv)
+    if run_args.plan and not run_args.matrix:
+        raise ValueError("--plan requires --matrix")
+    if run_args.matrix:
+        if generate_only:
+            raise ValueError("generate_only cannot be combined with --matrix")
+        if debug is True or run_args.debug:
+            raise ValueError("GUI/debug mode cannot be combined with --matrix")
+        prepare_test_run(
+            project_root=project_root,
+            python_paths=python_paths,
+            debug=False,
+            argv=(),
+            clean_build=False,
+            enable_questa_acc=enable_questa_acc,
+        )
+        from fpga_verification.sim.matrix import run_matrix
+
+        return run_matrix(
+            project_root=project_root,
+            baseline=config,
+            test_module=test_module,
+            test_patterns=run_args.matrix_tests,
+            plan_only=run_args.plan,
+        )
+
+    from fpga_verification.sim.matrix import (
+        matrix_artifact_root,
+        resolve_matrix_config,
+    )
+
+    config = resolve_matrix_config(config)
+    artifacts_root = (
+        matrix_artifact_root(project_root)
+        if artifacts_root is None
+        else Path(artifacts_root)
+    )
     debug, sim = prepare_test_run(
         project_root=project_root,
+        artifacts_root=artifacts_root,
         python_paths=python_paths,
         debug=debug,
         argv=argv,
@@ -382,13 +439,24 @@ def run_component_test(
     )
     if component_parameters is None:
         component_parameters = {}
+    if derived_parameters is not None:
+        resolved_derived = (
+            derived_parameters(config)
+            if callable(derived_parameters)
+            else derived_parameters
+        )
+        resolved_derived = dict(resolved_derived)
+        overlap = set(component_parameters) & set(resolved_derived)
+        if overlap:
+            raise ValueError(
+                "derived_parameters may not override independent HDL parameters: "
+                + ", ".join(sorted(overlap))
+            )
+        component_parameters.update(resolved_derived)
     if extra_env is not None:
         kwargs["extra_env"] = extra_env
 
-    log_dir = project_root / "logs"
-
-    if test_module_env is not None:
-        test_module = os.getenv(test_module_env, test_module)
+    log_dir = artifacts_root / "logs"
 
     return component_test_cocotb(
         project_root=project_root,
@@ -403,5 +471,6 @@ def run_component_test(
         ip_generate_log=log_dir / "ip_generate.log",
         compile_log=log_dir / f"{sim}_compile.log",
         retain_generated=retain_generated,
+        artifacts_root=artifacts_root,
         **kwargs,
     )

@@ -9,7 +9,13 @@ from .config import (
     RUNTIME_CONFIG_ENV,
     hdl_parameter,
     load_test_config,
+    matrix_parameter,
     resolve_config_case,
+)
+from .matrix import (
+    balance,
+    exhaustive,
+    parameter_matrix,
 )
 from .stream_metrics import (
     PacketMetrics,
@@ -28,5 +34,9 @@ __all__ = [
     "StreamPerformanceAnalyzer",
     "hdl_parameter",
     "load_test_config",
+    "matrix_parameter",
+    "balance",
+    "exhaustive",
+    "parameter_matrix",
     "resolve_config_case",
 ]

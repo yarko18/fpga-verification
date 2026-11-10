@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ._common import (
     DEFAULT_SIMULATOR,
+    _parse_run_args,
     prepare_test_run,
     resolve_path,
     resolve_test_config,
@@ -95,6 +96,7 @@ def rtl_test_cocotb(
     build_args=None,
     test_args=None,
     extra_env=None,
+    build_dir=None,
 ):
     """Compile plain RTL and run a cocotb test."""
     from cocotb_tools.runner import get_runner
@@ -102,7 +104,10 @@ def rtl_test_cocotb(
     project_root = Path(project_root)
     sim = os.getenv("SIM", DEFAULT_SIMULATOR)
 
-    build_dir = project_root / f"sim_build_{sim}"
+    if build_dir is None:
+        build_dir = project_root / f"sim_build_{sim}"
+    else:
+        build_dir = Path(build_dir)
 
     includes = [resolve_path(project_root, path) for path in includes]
     sources = prepare_sources(
@@ -211,6 +216,10 @@ def run_rtl_test(
     **kwargs,
 ):
     """Run a standard vendor-independent RTL cocotb simulation."""
+    if _parse_run_args(argv).matrix:
+        raise NotImplementedError(
+            "parameter matrix execution is currently supported by run_component_test()"
+        )
     project_root = Path(project_root)
     debug, sim = prepare_test_run(
         project_root=project_root,

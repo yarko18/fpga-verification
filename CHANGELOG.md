@@ -5,7 +5,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-11-10
 
 - Renamed `load_runtime_config()` to `load_test_config()`.
 - Replaced `source_dirs` with `sources` in RTL and Altera component runners.
@@ -18,6 +18,17 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Intel component simulations now add Verilator's `-Wno-PARAMNODEFAULT`
   automatically; project runners no longer need the broad `--bbox-unsup`
   workaround.
+- Added parameter-matrix planning for cocotb and pyuvm component tests. Matrix
+  domains are optional `hdl_parameter()`/`matrix_parameter()` metadata, test
+  relevance and strategy are declared beside each test, invalid `TestConfig`
+  combinations are filtered before simulation, matching tests share one HDL
+  build, and only failed-job logs are retained.
+- Added explicit `exhaustive()` and `balance()` matrix strategies. Balanced
+  selection includes the legal baseline, covers every reachable parameter
+  value, and prefers less-used values when equally compact choices exist.
+- Matrix execution now filters cocotb by full test name, isolates child
+  simulations from pytest's `PYTEST_CURRENT_TEST`, and reports configurations,
+  test cases, and test runs as distinct quantities.
 
 ## 1.1.1 - 2026-10-12
 

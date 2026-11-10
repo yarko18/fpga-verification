@@ -252,6 +252,11 @@ falls back to `default`. The public `CONFIG_CASE_ENV` constant provides that
 environment-variable name to matrix launchers and other host-side tooling.
 Factories are evaluated only for the selected case.
 
+When the same tests must cover several elaborated parameter sets, use the
+[parameter matrix guide](../guide/parameter-matrix.md). Matrix domains are
+optional metadata, relevance is declared beside each cocotb/pyuvm test, and
+illegal `TestConfig` combinations are removed before a simulator starts.
+
 ## Platform Designer system
 
 `platform_test_cocotb()` targets an existing generated simulation tree.

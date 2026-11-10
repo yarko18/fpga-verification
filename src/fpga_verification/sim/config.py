@@ -30,20 +30,61 @@ RUNTIME_CONFIG_ENV = "FPGA_VERIFICATION_TEST_CONFIG_JSON"
 
 _ConfigT = TypeVar("_ConfigT")
 
+MATRIX_VALUES_METADATA = "fpga_verification.matrix_values"
+"""Dataclass metadata key containing an optional matrix domain."""
 
-def hdl_parameter(default: Any = MISSING, *, name: str | None = None, **kwargs):
-    """Declare a dataclass field which is also an HDL build parameter.
 
-    ``name`` defaults to the dataclass field name.  All fields remain present in
-    the runtime configuration; the metadata only controls ``to_parameters()``.
-    """
+def _parameter_field(default, *, values=None, metadata=None, **kwargs):
     from dataclasses import field
 
-    metadata = dict(kwargs.pop("metadata", {}))
-    metadata["fpga_verification.hdl_parameter"] = name or True
+    metadata = dict(metadata or {})
+    if values is not None:
+        values = tuple(values)
+        if not values:
+            raise ValueError("matrix parameter values must not be empty")
+        metadata[MATRIX_VALUES_METADATA] = values
     if default is MISSING:
         return field(metadata=metadata, **kwargs)
     return field(default=default, metadata=metadata, **kwargs)
+
+
+def hdl_parameter(
+    default: Any = MISSING,
+    *,
+    name: str | None = None,
+    values=None,
+    **kwargs,
+):
+    """Declare a dataclass field which is also an HDL build parameter.
+
+    ``name`` defaults to the dataclass field name.  All fields remain present in
+    the runtime configuration; the HDL metadata only controls
+    ``to_parameters()``. ``values`` is an optional matrix domain. Ordinary tests
+    do not need to declare it; it is required only when a matrix test chooses
+    this field in its ``vary`` list.
+
+    Declare independent public parameters here. Parameters derived from other
+    configuration values belong at the component/runner boundary, not in the
+    configuration dataclass.
+    """
+    metadata = dict(kwargs.pop("metadata", {}))
+    metadata["fpga_verification.hdl_parameter"] = name or True
+    return _parameter_field(
+        default,
+        values=values,
+        metadata=metadata,
+        **kwargs,
+    )
+
+
+def matrix_parameter(default: Any = MISSING, *, values=None, **kwargs):
+    """Declare a runtime-only configuration field with an optional matrix domain.
+
+    Use this for an independent test/build choice that is not passed directly as
+    an HDL parameter. As with :func:`hdl_parameter`, ``values`` remains optional
+    until a matrix test varies the field.
+    """
+    return _parameter_field(default, values=values, **kwargs)
 
 
 class ComponentConfig:
@@ -53,6 +94,10 @@ class ComponentConfig:
     build receives only marked parameters, while cocotb receives the complete,
     already-resolved configuration. Runtime loading is strict so a stale test
     cannot silently run with defaults different from the compiled DUT.
+
+    Keep only independent public choices in the dataclass. HDL values derived
+    from those choices are resolved by the component or runner and must not
+    become duplicate configuration fields.
     """
 
     def to_parameters(self) -> dict[str, Any]:

@@ -96,6 +96,24 @@ def _parse_run_args(argv=None):
         action="store_true",
         help="run simulator in GUI/debug mode",
     )
+    parser.add_argument(
+        "--matrix",
+        action="store_true",
+        help="run the parameter matrix declared by cocotb/pyuvm tests",
+    )
+    parser.add_argument(
+        "--plan",
+        action="store_true",
+        help="print the matrix plan without compiling or simulating",
+    )
+    parser.add_argument(
+        "--test",
+        dest="matrix_tests",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="include matching cocotb/pyuvm tests in a matrix run",
+    )
     # A runner can also be called by pytest, whose arguments must not be
     # interpreted as errors by this small command-line compatibility layer.
     args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
@@ -105,6 +123,7 @@ def _parse_run_args(argv=None):
 def prepare_test_run(
     *,
     project_root,
+    artifacts_root=None,
     python_paths=(),
     debug=None,
     argv=None,
@@ -112,6 +131,7 @@ def prepare_test_run(
     enable_questa_acc=False,
 ):
     project_root = Path(project_root)
+    artifacts_root = project_root if artifacts_root is None else Path(artifacts_root)
     _print_runner_banner()
 
     os.environ.setdefault("COCOTB_ANSI_OUTPUT", "1")
@@ -132,6 +152,6 @@ def prepare_test_run(
 
     sim = os.getenv("SIM", DEFAULT_SIMULATOR)
     if clean_build:
-        _clean_sim_build(project_root, sim)
+        _clean_sim_build(artifacts_root, sim)
 
     return debug, sim

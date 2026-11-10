@@ -14,6 +14,15 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
       filters:
         - "!^_"
 
+## Parameter matrix
+
+::: fpga_verification.sim.matrix
+    options:
+      show_root_heading: true
+      members_order: source
+      filters:
+        - "!^_"
+
 ## Agents
 
 ::: fpga_verification.sim.agents
