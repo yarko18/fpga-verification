@@ -691,7 +691,7 @@ def _result_summary(plan: MatrixPlan):
 def _print_summary(plan: MatrixPlan, elapsed: float) -> None:
     by_test, real_time, sim_time = _result_summary(plan)
     names = [test.fullname for test in plan.tests]
-    name_width = max([len("TEST"), *(len(name) for name in names)])
+    name_width = max([len("TEST")] + [len(name) for name in names])
     separator = "*" * (name_width + 75)
     print(separator)
     print(

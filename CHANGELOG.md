@@ -33,6 +33,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   test cases, and test runs as distinct quantities.
 - Matrix manifests and preserved failed jobs are stored under `logs/` beside
   the other persistent simulation diagnostics.
+- Fixed Cython compilation of the matrix summary for binary wheel builds.
 
 ## 1.1.1 - 2026-10-12
 
