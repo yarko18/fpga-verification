@@ -51,6 +51,9 @@ where = ["src"]
 [tool.setuptools.package-data]
 "fpga_verification.altera.quartus.hil" = ["resources/*.tcl"]
 
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-win32 *-manylinux_i686 *-musllinux_*"

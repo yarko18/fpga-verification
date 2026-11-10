@@ -578,7 +578,9 @@ def _execute_job(job: MatrixJob, context: _ExecutionContext) -> None:
         if failure_dir.exists():
             shutil.rmtree(failure_dir)
         shutil.move(str(work_dir), failure_dir)
-        job.log_path = str((failure_dir / "simulation.log").relative_to(context.project_root))
+        job.log_path = (
+            failure_dir / "simulation.log"
+        ).relative_to(context.project_root).as_posix()
 
     if work_root.exists() and not any(work_root.iterdir()):
         work_root.rmdir()
