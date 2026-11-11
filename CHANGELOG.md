@@ -7,45 +7,28 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 ## 1.2.0 - 2026-11-10
 
-- Renamed `load_runtime_config()` to `load_test_config()`.
-- Replaced `source_dirs` with `sources` in RTL and Altera component runners.
-  The old argument is no longer accepted.
-- Defined `PROJECT_ROOT` in runner scripts as the directory containing
-  `run_test.py`; updated examples so simulator build directories and logs are
-  created beside each test rather than at the HDL project root.
-- Added shared host-side named configuration selection through
-  `CONFIG_CASE_ENV` and `resolve_config_case()`.
-- Intel component simulations now add Verilator's `-Wno-PARAMNODEFAULT`
-  automatically; project runners no longer need the broad `--bbox-unsup`
-  workaround.
-- Added parameter-matrix planning for cocotb and pyuvm component tests. Matrix
-  domains are optional `hdl_parameter()`/`matrix_parameter()` metadata, test
-  relevance and strategy are declared beside each test, invalid `TestConfig`
-  combinations are filtered before simulation, matching tests share one HDL
-  build, and only failed-job logs are retained.
-- Added explicit `exhaustive()` and `balance()` matrix strategies. Balanced
-  selection includes the legal baseline, covers every reachable parameter
-  value, and prefers less-used values when equally compact choices exist.
-- Added reproducible `random_subset(count, seed)` matrix sampling for bounded
-  supplementary runs without a parameter-coverage guarantee.
-- Matrix execution now filters cocotb by full test name, isolates child
-  simulations from pytest's `PYTEST_CURRENT_TEST`, and reports configurations,
-  test cases, and test runs as distinct quantities.
-- Matrix manifests and preserved failed jobs are stored under `logs/` beside
-  the other persistent simulation diagnostics.
-- Reduced each matrix results entry to configuration ID, status, failure log
-  path, aggregate simulation/test time and resolved configuration values; saved
-  matrix logs no longer contain terminal color control sequences.
-- Fixed Cython compilation of the matrix summary for binary wheel builds.
-- Fixed Windows matrix failure-log paths and restricted pytest discovery to
-  `test_*.py`, so standalone `run_test.py` scripts are not collected by CI.
-- Split each standalone stream-pipeline example into independent CONTROL, USER,
-  and VIDEO tests with its own local base-class constructor and lifecycle.
 - Consolidated the public simulation API under `fpga_verification.sim.runners`:
   `run_rtl_test()` now prepares optional Intel libraries itself and
   `run_component_test()` owns component generation. Removed the duplicate
   Quartus RTL runner, low-level public runner functions, and the unused
   pre-generated Platform Designer runner.
+- Renamed `load_runtime_config()` to `load_test_config()`.
+- Replaced `source_dirs` with `sources` in RTL and Altera component runners.
+  The old argument is no longer accepted.
+- Added shared host-side named configuration selection through
+  `CONFIG_CASE_ENV` and `resolve_config_case()`.
+- Intel component simulations now add Verilator's `-Wno-PARAMNODEFAULT` automatically
+- Added parameter-matrix planning for cocotb and pyuvm component tests. Matrix
+  domains are optional `hdl_parameter()`/`matrix_parameter()`.
+  Use `--matrix` flag to run matrix tests.
+- Added explicit `exhaustive()` and `balance()` matrix strategies. 
+- Matrix manifests and preserved failed jobs are stored under `logs/` beside
+  the other persistent simulation diagnostics.
+- Fixed Cython compilation of the matrix summary for binary wheel builds.
+- Fixed Windows matrix failure-log paths and restricted pytest discovery to
+  `test_*.py`, so standalone `run_test.py` scripts are not collected by CI.
+- Split each standalone stream-pipeline example into independent CONTROL, USER,
+  and VIDEO tests with its own local base-class constructor and lifecycle.
 
 ## 1.1.1 - 2026-10-12
 
