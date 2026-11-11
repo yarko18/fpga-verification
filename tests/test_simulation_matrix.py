@@ -22,11 +22,13 @@ from fpga_verification.sim.matrix import (
     MATRIX_ARTIFACT_ROOT_ENV,
     MATRIX_CONFIG_ENV,
     MatrixTest,
+    MatrixTestResult,
     ParameterMatrix,
     MatrixJob,
     _ExecutionContext,
     _execute_job,
     _test_filter,
+    _write_results,
     build_matrix_plan,
     matrix_artifact_root,
     resolve_matrix_config,
@@ -208,6 +210,7 @@ def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
 
     def fake_subprocess_run(command, *, env, **kwargs):
         assert "PYTEST_CURRENT_TEST" not in env
+        assert env["COCOTB_ANSI_OUTPUT"] == "0"
         assert env["COCOTB_TEST_FILTER"] == "^(?:matrix_tests\\.test_smoke)$"
         artifact_root = Path(env[MATRIX_ARTIFACT_ROOT_ENV])
         build_dir = artifact_root / "sim_build_verilator"
@@ -252,3 +255,46 @@ def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path)
     assert job.status == "ERROR"
     assert job.log_path == "logs/matrix_failures/12345678/simulation.log"
     assert (failure / "simulation.log").is_file()
+
+
+def test_matrix_results_contain_only_compact_configuration_summaries(tmp_path):
+    plan = build_matrix_plan(
+        _Config(),
+        [MatrixTest("matrix_tests.test_smoke")],
+    )
+    job = plan.jobs[0]
+    job.status = "FAIL"
+    job.log_path = "logs/matrix_failures/12345678/simulation.log"
+    job.results = [
+        MatrixTestResult(
+            "matrix_tests.test_a",
+            "PASS",
+            real_time_s=0.125,
+            sim_time_ns=10.0,
+        ),
+        MatrixTestResult(
+            "matrix_tests.test_b",
+            "FAIL",
+            real_time_s=0.375,
+            sim_time_ns=20.0,
+        ),
+    ]
+
+    result = json.loads(_write_results(tmp_path, plan).read_text(encoding="utf-8"))
+
+    assert result == [
+        {
+            "id": job.config_id,
+            "status": "FAIL",
+            "log": "logs/matrix_failures/12345678/simulation.log",
+            "sim_time_ns": 30.0,
+            "real_time_s": 0.5,
+        }
+    ]
+    assert list(result[0]) == [
+        "id",
+        "status",
+        "log",
+        "sim_time_ns",
+        "real_time_s",
+    ]

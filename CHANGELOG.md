@@ -33,6 +33,9 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   test cases, and test runs as distinct quantities.
 - Matrix manifests and preserved failed jobs are stored under `logs/` beside
   the other persistent simulation diagnostics.
+- Reduced the matrix results manifest to configuration ID, status, failure log
+  path and aggregate simulation/test time; saved matrix logs no longer contain
+  terminal color control sequences.
 - Fixed Cython compilation of the matrix summary for binary wheel builds.
 - Fixed Windows matrix failure-log paths and restricted pytest discovery to
   `test_*.py`, so standalone `run_test.py` scripts are not collected by CI.

@@ -507,6 +507,9 @@ def _execute_job(job: MatrixJob, context: _ExecutionContext) -> None:
     environment[RUNTIME_CONFIG_ENV] = _runtime_key(job.config)
     environment["COCOTB_TEST_FILTER"] = _test_filter(job.tests)
     environment["PYTHONUNBUFFERED"] = "1"
+    # Matrix output is persisted in simulation.log rather than displayed in a
+    # terminal. Keep ANSI control sequences out of that plain-text artifact.
+    environment["COCOTB_ANSI_OUTPUT"] = "0"
     # The full anonymous config is authoritative. A host-side preset selected
     # for the parent may no longer exist in a child or may construct unrelated
     # state before the runner can apply the matrix override.
@@ -737,26 +740,16 @@ def _print_summary(plan: MatrixPlan, elapsed: float) -> None:
                 print(f"    log: {job.log_path}")
 
 
-def _write_results(project_root: Path, plan: MatrixPlan, elapsed: float) -> Path:
+def _write_results(project_root: Path, plan: MatrixPlan) -> Path:
     configurations = []
     for job in plan.jobs:
         configurations.append(
             {
                 "id": job.config_id,
-                "config": job.config.to_runtime_dict(),
                 "status": job.status,
-                "wall_time_s": job.wall_time_s,
                 "log": job.log_path,
-                "tests": [
-                    {
-                        "fullname": result.fullname,
-                        "status": result.status,
-                        "real_time_s": result.real_time_s,
-                        "sim_time_ns": result.sim_time_ns,
-                        "ratio_ns_s": result.ratio_ns_s,
-                    }
-                    for result in job.results
-                ],
+                "sim_time_ns": sum(result.sim_time_ns for result in job.results),
+                "real_time_s": sum(result.real_time_s for result in job.results),
             }
         )
 
@@ -764,36 +757,9 @@ def _write_results(project_root: Path, plan: MatrixPlan, elapsed: float) -> Path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
-            {
-                "schema_version": 1,
-                "elapsed_s": elapsed,
-                "candidates": plan.candidates,
-                "legal": plan.legal,
-                "selected": plan.selected,
-                "tests": [
-                    {
-                        "fullname": test.fullname,
-                        "vary": list(test.matrix.vary) if test.matrix else [],
-                        "strategy": (
-                            {
-                                "name": test.matrix.strategy.name,
-                                "count": test.matrix.strategy.count,
-                                "seed": test.matrix.strategy.seed,
-                            }
-                            if test.matrix
-                            else {
-                                "name": "baseline",
-                                "count": None,
-                                "seed": None,
-                            }
-                        ),
-                    }
-                    for test in plan.tests
-                ],
-                "configurations": configurations,
-            },
+            configurations,
             indent=2,
-            sort_keys=True,
+            allow_nan=False,
         )
         + "\n",
         encoding="utf-8",
@@ -831,7 +797,7 @@ def run_matrix(
     start = time.monotonic()
     pytest_status = _run_with_pytest(plan)
     elapsed = time.monotonic() - start
-    results_path = _write_results(project_root, plan, elapsed)
+    results_path = _write_results(project_root, plan)
     _print_summary(plan, elapsed)
     print(f"Matrix results: {results_path}", flush=True)
 
