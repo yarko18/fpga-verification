@@ -750,6 +750,7 @@ def _write_results(project_root: Path, plan: MatrixPlan) -> Path:
                 "log": job.log_path,
                 "sim_time_ns": sum(result.sim_time_ns for result in job.results),
                 "real_time_s": sum(result.real_time_s for result in job.results),
+                "config": job.config.to_runtime_dict(),
             }
         )
 

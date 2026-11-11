@@ -289,6 +289,12 @@ def test_matrix_results_contain_only_compact_configuration_summaries(tmp_path):
             "log": "logs/matrix_failures/12345678/simulation.log",
             "sim_time_ns": 30.0,
             "real_time_s": 0.5,
+            "config": {
+                "lanes": 1,
+                "note": "baseline",
+                "operation": "PAD",
+                "width": 8,
+            },
         }
     ]
     assert list(result[0]) == [
@@ -297,4 +303,5 @@ def test_matrix_results_contain_only_compact_configuration_summaries(tmp_path):
         "log",
         "sim_time_ns",
         "real_time_s",
+        "config",
     ]

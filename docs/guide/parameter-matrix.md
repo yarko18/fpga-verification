@@ -278,8 +278,9 @@ Successful logs and builds are removed. A failed job is moved to
 `logs/matrix_failures/<config-id>` with its simulator build and
 `simulation.log`. The small `logs/matrix-results.json` manifest is always
 retained. It contains one compact entry per configuration: ID, status, saved
-log path, total simulation time and total test real time. Matrix logs are plain
-text without terminal color control sequences.
+log path, total simulation time, total test real time and the resolved
+configuration values. Matrix logs are plain text without terminal color
+control sequences.
 
 Pytest is an internal job orchestrator. It supplies isolation, result handling
 and a standard process exit status, but project tests do not need a separate
