@@ -74,6 +74,7 @@ def _run_component_matrix(
         test_module=test_module,
         test_patterns=run_args.matrix_tests,
         plan_only=run_args.plan,
+        jobs=run_args.jobs,
     )
 
 

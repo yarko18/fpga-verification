@@ -5,12 +5,12 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
-## Unreleased
+## 1.2.1 - 2026-11-10
 
+- Added `-j/--jobs N|max` multithread matrix execution with isolated `MatrixJob` workers
 - Refactored parameter-matrix planning, child-process execution, and reporting
   into separate layers. Matrix jobs are now plain data objects and the
-  sequential scheduler has an explicit execution boundary suitable for a
-  future parallel worker pool; the internal pytest orchestration was removed.
+  internal pytest orchestration was removed.
 - Added focused matrix tests for discovery, XML result parsing, interruption,
   artifact retention, and terminal/JSON reporting.
 

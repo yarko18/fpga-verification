@@ -45,6 +45,20 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             _common._parse_run_args(["--plan"])
         with self.assertRaisesRegex(ValueError, "--test requires --matrix"):
             _common._parse_run_args(["--test", "Video*"])
+        with self.assertRaisesRegex(ValueError, "--jobs requires --matrix"):
+            _common._parse_run_args(["--jobs", "2"])
+
+    def test_matrix_jobs_support_number_short_option_and_max(self):
+        self.assertEqual(
+            _common._parse_run_args(["--matrix", "-j", "4"]).jobs,
+            4,
+        )
+        with patch.object(_common, "_available_cpu_count", return_value=64):
+            self.assertEqual(
+                _common._parse_run_args(["--matrix", "--jobs", "max"]).jobs,
+                64,
+            )
+        self.assertEqual(_common._parse_run_args(["--matrix"]).jobs, 1)
 
     def test_rtl_runner_defaults_to_verilator(self):
         runner = Mock()
@@ -293,6 +307,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             test_module="test_dut",
             test_patterns=("Video*",),
             plan_only=True,
+            jobs=1,
         )
 
     def test_altera_component_runner_rejects_parameters_different_from_config(self):

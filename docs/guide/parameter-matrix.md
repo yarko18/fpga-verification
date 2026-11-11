@@ -36,6 +36,26 @@ Request the declarations attached to the test module with:
 python run_test.py --matrix
 ```
 
+Matrix configurations run sequentially by default. Run several independent
+HDL configurations at once with either spelling:
+
+```bash
+python run_test.py --matrix --jobs 4
+python run_test.py --matrix -j 4
+```
+
+Use `max` to select the full number of CPUs available to the process:
+
+```bash
+python run_test.py --matrix --jobs max
+python run_test.py --matrix -j max
+```
+
+A worker owns one complete `MatrixJob`: one unique HDL configuration, its
+component generation and simulator build, and all cocotb or pyuvm tests grouped
+under that configuration. Individual tests sharing a build are never split
+between workers. A failed job does not stop the remaining jobs.
+
 Before committing to a large number of HDL builds, inspect the plan:
 
 ```bash
@@ -283,12 +303,16 @@ log path, total simulation time, total test real time and the resolved
 configuration values. Matrix logs are plain text without terminal color
 control sequences.
 
-The host process currently schedules matrix jobs sequentially. Planning,
-child-process execution, and reporting are separate internal layers: each job
-is a plain data object, receives its own environment and work directory, and
-the final manifest is written once by the host. This isolation is the basis
-for a future parallel worker pool; it does not change the public command,
-which remains `python run_test.py --matrix`.
+The host process schedules matrix jobs through a thread pool. Threads only
+manage independent external processes, so Python's GIL does not serialize HDL
+generation or simulation. Progress rows appear in actual job completion order,
+which may differ from plan order. Only the parent process writes the final
+manifest after all workers finish.
+
+Each simulation starts in a separate process group. On `Ctrl+C`, the parent
+cancels jobs that have not started and terminates the complete process trees of
+active Verilator, Questa or Quartus jobs. Interrupted configurations are
+reported as errors rather than leaving active simulator processes behind.
 
 Parameter coverage and coverage-driven selection are intentionally separate
 future features. A matrix strategy states what was scheduled now; it must not

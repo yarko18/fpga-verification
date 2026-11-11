@@ -3,9 +3,9 @@
 
 import json
 import re
+import threading
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 
 from fpga_verification.sim import ComponentConfig, hdl_parameter
 from fpga_verification.sim._matrix_execution import (
@@ -19,11 +19,13 @@ from fpga_verification.sim._matrix_execution import (
     matrix_artifact_root,
     resolve_matrix_config,
 )
+from fpga_verification.sim._matrix_processes import ProcessRegistry
 from fpga_verification.sim._matrix_planning import (
     MatrixJob,
     MatrixPlan,
     MatrixStatus,
     MatrixTest,
+    MatrixTestResult,
 )
 
 
@@ -36,6 +38,53 @@ def _context(tmp_path):
     script = tmp_path / "run_test.py"
     script.write_text("# fake runner\n", encoding="utf-8")
     return ExecutionContext(tmp_path, script, "verilator")
+
+
+class _FakeProcess:
+    pid = 12345
+
+    def __init__(self, returncode=0):
+        self._planned_returncode = returncode
+        self.returncode = None
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        self.returncode = self._planned_returncode
+        return self.returncode
+
+    def terminate(self):
+        self.returncode = -15
+
+    def kill(self):
+        self.returncode = -9
+
+
+def _pass_job(job):
+    job.status = MatrixStatus.PASS
+    job.results = [
+        MatrixTestResult(name, MatrixStatus.PASS)
+        for name in job.tests
+    ]
+
+
+def _plan(job_count):
+    jobs = tuple(
+        MatrixJob(
+            _Config(width=index + 1),
+            [f"matrix_tests.test_{index}"],
+            f"{index:08d}",
+        )
+        for index in range(job_count)
+    )
+    return MatrixPlan(
+        jobs=jobs,
+        tests=tuple(MatrixTest(job.tests[0]) for job in jobs),
+        candidates=job_count,
+        legal=job_count,
+        selected=job_count,
+    )
 
 
 def test_cocotb_filter_matches_only_planned_fullnames():
@@ -91,7 +140,7 @@ def test_xml_results_restore_full_names_and_missing_tests_are_errors(tmp_path):
 def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
     job = MatrixJob(_Config(), ["matrix_tests.test_smoke"], "12345678")
 
-    def fake_subprocess_run(command, *, env, **kwargs):
+    def fake_subprocess_popen(command, *, env, **kwargs):
         assert "PYTEST_CURRENT_TEST" not in env
         assert env["COCOTB_ANSI_OUTPUT"] == "0"
         assert env["COCOTB_TEST_FILTER"] == "^(?:matrix_tests\\.test_smoke)$"
@@ -104,16 +153,15 @@ def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
             """ratio_time="100" /></testsuite></testsuites>""",
             encoding="utf-8",
         )
-        return SimpleNamespace(returncode=0)
+        return _FakeProcess(returncode=0)
 
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "parent.py::test_job (call)")
     monkeypatch.setattr(
-        "fpga_verification.sim._matrix_execution.subprocess.run",
-        fake_subprocess_run,
+        "fpga_verification.sim._matrix_execution.subprocess.Popen",
+        fake_subprocess_popen,
     )
-    interrupted = execute_job(job, _context(tmp_path))
+    execute_job(job, _context(tmp_path))
 
-    assert not interrupted
     assert job.status is MatrixStatus.PASS
     assert job.log_path is None
     assert not (tmp_path / ".matrix_work").exists()
@@ -122,8 +170,8 @@ def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
 def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path):
     job = MatrixJob(_Config(), ["matrix_tests.test_smoke"], "12345678")
     monkeypatch.setattr(
-        "fpga_verification.sim._matrix_execution.subprocess.run",
-        lambda *args, **kwargs: SimpleNamespace(returncode=2),
+        "fpga_verification.sim._matrix_execution.subprocess.Popen",
+        lambda *args, **kwargs: _FakeProcess(returncode=2),
     )
 
     execute_job(job, _context(tmp_path))
@@ -134,31 +182,149 @@ def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path)
     assert (failure / "simulation.log").is_file()
 
 
-def test_interruption_is_recorded_and_stops_the_sequential_orchestrator(
+def test_worker_pool_runs_matrix_jobs_concurrently(monkeypatch, tmp_path):
+    plan = _plan(3)
+    barrier = threading.Barrier(2)
+    lock = threading.Lock()
+    active = 0
+    maximum_active = 0
+
+    def fake_execute(job, context):
+        nonlocal active, maximum_active
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        try:
+            if job in plan.jobs[:2]:
+                barrier.wait(timeout=1.0)
+            _pass_job(job)
+        finally:
+            with lock:
+                active -= 1
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.execute_job",
+        fake_execute,
+    )
+
+    assert not _run_jobs(plan, _context(tmp_path), jobs=2)
+    assert maximum_active == 2
+    assert all(job.status is MatrixStatus.PASS for job in plan.jobs)
+
+
+def test_worker_pool_reports_effective_worker_count(monkeypatch, tmp_path, capsys):
+    plan = _plan(2)
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.execute_job",
+        lambda job, context: _pass_job(job),
+    )
+
+    assert not _run_jobs(plan, _context(tmp_path), jobs=8)
+    assert "Matrix execution\n  workers:         2\n" in capsys.readouterr().out
+
+
+def test_worker_failure_does_not_stop_remaining_jobs(monkeypatch, tmp_path):
+    plan = _plan(3)
+    completed = []
+
+    def fake_execute(job, context):
+        completed.append(job.config_id)
+        if job is plan.jobs[0]:
+            raise RuntimeError("worker failure")
+        _pass_job(job)
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.execute_job",
+        fake_execute,
+    )
+
+    assert not _run_jobs(plan, _context(tmp_path), jobs=2)
+    assert set(completed) == {job.config_id for job in plan.jobs}
+    assert plan.jobs[0].status is MatrixStatus.ERROR
+    assert all(job.status is MatrixStatus.PASS for job in plan.jobs[1:])
+
+
+def test_progress_follows_worker_completion_order(monkeypatch, tmp_path):
+    plan = _plan(3)
+    reported = []
+
+    def fake_execute(job, context):
+        _pass_job(job)
+
+    def reverse_completion_order(futures):
+        return iter(reversed(tuple(futures)))
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.execute_job",
+        fake_execute,
+    )
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.as_completed",
+        reverse_completion_order,
+    )
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.ProgressReporter.report",
+        lambda self, job: reported.append(job.config_id),
+    )
+
+    assert not _run_jobs(plan, _context(tmp_path), jobs=2)
+    assert reported == [job.config_id for job in reversed(plan.jobs)]
+
+
+def test_ctrl_c_stops_processes_and_marks_pending_jobs_as_errors(
     monkeypatch,
     tmp_path,
 ):
-    first = MatrixJob(_Config(), ["matrix_tests.test_a"], "11111111")
-    second = MatrixJob(_Config(), ["matrix_tests.test_b"], "22222222")
-    plan = MatrixPlan(
-        jobs=(first, second),
-        tests=(MatrixTest("matrix_tests.test_a"), MatrixTest("matrix_tests.test_b")),
-        candidates=2,
-        legal=2,
-        selected=2,
-    )
-    calls = []
+    plan = _plan(3)
+    context = _context(tmp_path)
+    released = threading.Event()
+    terminate_calls = []
+    original_terminate_all = context.processes.terminate_all
 
-    def interrupt_once(*args, **kwargs):
-        calls.append("called")
+    def fake_execute(job, current_context):
+        released.wait(timeout=1.0)
+
+    def terminate_all():
+        terminate_calls.append(True)
+        original_terminate_all()
+        released.set()
+
+    def interrupt_completion(futures):
         raise KeyboardInterrupt
+        yield
 
     monkeypatch.setattr(
-        "fpga_verification.sim._matrix_execution.subprocess.run",
-        interrupt_once,
+        "fpga_verification.sim._matrix_execution.execute_job",
+        fake_execute,
+    )
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.as_completed",
+        interrupt_completion,
+    )
+    monkeypatch.setattr(context.processes, "terminate_all", terminate_all)
+
+    assert _run_jobs(plan, context, jobs=2)
+    assert terminate_calls == [True]
+    assert all(job.status is MatrixStatus.ERROR for job in plan.jobs)
+
+
+def test_process_registry_stops_current_and_late_processes(monkeypatch):
+    registry = ProcessRegistry()
+    first = object()
+    second = object()
+    late = object()
+    terminated = []
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_processes._terminate_processes",
+        lambda processes: terminated.append(processes),
     )
 
-    assert _run_jobs(plan, _context(tmp_path))
-    assert calls == ["called"]
-    assert first.status is MatrixStatus.ERROR
-    assert second.status is MatrixStatus.PENDING
+    registry.register(first)
+    registry.register(second)
+    registry.terminate_all()
+    registry.register(late)
+
+    assert set(terminated[0]) == {first, second}
+    assert terminated[1] == (late,)

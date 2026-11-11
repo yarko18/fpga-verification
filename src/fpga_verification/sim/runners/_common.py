@@ -94,6 +94,31 @@ class RunArguments:
     matrix: bool
     plan: bool
     matrix_tests: tuple[str, ...]
+    jobs: int
+
+
+def _available_cpu_count() -> int:
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except (AttributeError, OSError):
+        return max(1, os.cpu_count() or 1)
+
+
+def _parse_jobs(value: str) -> int:
+    max_cpu = _available_cpu_count()
+    if value == "max":
+        return max_cpu
+    try:
+        jobs = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "jobs must be a positive integer or 'max'"
+        ) from error
+    if jobs <= 0:
+        raise argparse.ArgumentTypeError("jobs must be a positive integer or 'max'")
+    if jobs > max_cpu:
+        raise argparse.ArgumentTypeError(f"only {max_cpu} threads are available but {jobs} were given")
+    return jobs
 
 
 def _parse_run_args(argv=None) -> RunArguments:
@@ -125,6 +150,14 @@ def _parse_run_args(argv=None) -> RunArguments:
         metavar="PATTERN",
         help="include matching cocotb/pyuvm tests in a matrix run",
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=_parse_jobs,
+        default=None,
+        metavar="N|max",
+        help="run up to N matrix configurations concurrently (default: 1)",
+    )
     # A runner can also be called by pytest, whose arguments must not be
     # interpreted as errors by this small command-line compatibility layer.
     args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
@@ -132,11 +165,14 @@ def _parse_run_args(argv=None) -> RunArguments:
         raise ValueError("--plan requires --matrix")
     if args.matrix_tests and not args.matrix:
         raise ValueError("--test requires --matrix")
+    if args.jobs is not None and not args.matrix:
+        raise ValueError("--jobs requires --matrix")
     return RunArguments(
         debug=args.debug,
         matrix=args.matrix,
         plan=args.plan,
         matrix_tests=tuple(args.matrix_tests),
+        jobs=1 if args.jobs is None else args.jobs,
     )
 
 

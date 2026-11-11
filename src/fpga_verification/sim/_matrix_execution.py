@@ -13,7 +13,8 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -25,6 +26,7 @@ from ._matrix_planning import (
     plan_test_module,
     runtime_key,
 )
+from ._matrix_processes import ProcessRegistry, process_group_options
 from ._matrix_reporting import ProgressReporter, print_plan, print_summary, write_results
 from .config import CONFIG_CASE_ENV, RUNTIME_CONFIG_ENV, ComponentConfig
 
@@ -107,6 +109,11 @@ class ExecutionContext:
     project_root: Path
     script: Path
     simulator: str
+    processes: ProcessRegistry = field(
+        default_factory=ProcessRegistry,
+        repr=False,
+        compare=False,
+    )
 
 
 def _child_environment(job: MatrixJob, work_dir: Path) -> dict[str, str]:
@@ -173,12 +180,27 @@ def _preserve_or_discard_artifacts(
             failure_dir / "simulation.log"
         ).relative_to(context.project_root).as_posix()
 
-    if work_root.exists() and not any(work_root.iterdir()):
+    try:
         work_root.rmdir()
+    except OSError:
+        # Another worker may still own a directory or may remove the shared
+        # empty parent first.
+        pass
 
 
-def execute_job(job: MatrixJob, context: ExecutionContext) -> bool:
-    """Execute one job and return whether an external interruption occurred."""
+def _mark_job_error(job: MatrixJob, message: str) -> None:
+    if not job.results:
+        job.results = _error_results(job)
+    job.status = MatrixStatus.ERROR
+    job.error = message
+
+
+def execute_job(job: MatrixJob, context: ExecutionContext) -> None:
+    """Execute one HDL configuration and all simulator tests assigned to it."""
+    if context.processes.stopping:
+        _mark_job_error(job, "matrix run interrupted before execution")
+        return
+
     work_root = context.project_root / ".matrix_work"
     work_dir = work_root / job.config_id
     if work_dir.exists():
@@ -186,54 +208,104 @@ def execute_job(job: MatrixJob, context: ExecutionContext) -> bool:
     work_dir.mkdir(parents=True)
     log_path = work_dir / "simulation.log"
 
-    completed = None
+    process = None
+    returncode = 1
     execution_error: Exception | None = None
-    interruption: BaseException | None = None
     start = time.monotonic()
     with log_path.open("w", encoding="utf-8", errors="replace") as log:
         try:
-            completed = subprocess.run(
+            process = subprocess.Popen(
                 [sys.executable, str(context.script)],
                 cwd=context.project_root,
                 env=_child_environment(job, work_dir),
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 text=True,
-                check=False,
+                **process_group_options(),
             )
-        except (KeyboardInterrupt, SystemExit) as error:
-            interruption = error
-            print(f"Matrix job interrupted by {type(error).__name__}: {error}", file=log)
+            context.processes.register(process)
+            returncode = process.wait()
         except Exception as error:  # subprocess and OS failures become job errors
             execution_error = error
             print(f"Matrix job failed to start: {type(error).__name__}: {error}", file=log)
+            if process is not None and process.poll() is None:
+                context.processes.terminate(process)
+        finally:
+            if process is not None and process.poll() is not None:
+                context.processes.unregister(process)
     job.wall_time_s = time.monotonic() - start
 
     results_path = work_dir / f"sim_build_{context.simulator}" / "results.xml"
     _load_job_results(job, results_path)
-    returncode = completed.returncode if completed is not None else 1
     job.status = _resolve_job_status(job, returncode)
 
-    if interruption is not None:
-        job.error = f"matrix job interrupted by {type(interruption).__name__}"
+    if context.processes.stopping:
+        job.error = "matrix run interrupted"
     elif execution_error is not None:
         job.error = f"matrix job execution failed: {execution_error}"
     elif returncode != 0 and job.error is None:
         job.error = f"simulation process exited with code {returncode}"
 
     _preserve_or_discard_artifacts(job, context, work_root, work_dir)
-    return interruption is not None
 
 
-def _run_jobs(plan: MatrixPlan, context: ExecutionContext) -> bool:
-    """Run jobs sequentially through a boundary suitable for a future worker pool."""
-    reporter = ProgressReporter(plan)
+def _handle_worker_exception(job: MatrixJob, error: Exception) -> None:
+    _mark_job_error(
+        job,
+        f"matrix worker failed with {type(error).__name__}: {error}",
+    )
+
+
+def _cancel_pending_jobs(
+    plan: MatrixPlan,
+    futures: Mapping[Future, MatrixJob],
+) -> None:
+    for future in futures:
+        future.cancel()
     for job in plan.jobs:
-        interrupted = execute_job(job, context)
-        reporter.report(job)
-        if interrupted:
-            return True
-    return False
+        if job.status is MatrixStatus.PENDING:
+            _mark_job_error(job, "matrix run interrupted before execution")
+
+
+def _run_jobs(
+    plan: MatrixPlan,
+    context: ExecutionContext,
+    jobs: int = 1,
+) -> bool:
+    """Execute jobs concurrently and report them in completion order."""
+    if jobs <= 0:
+        raise ValueError("matrix jobs must be positive")
+    if not plan.jobs:
+        return False
+
+    worker_count = min(jobs, len(plan.jobs))
+    print("Matrix execution", flush=True)
+    print(f"  workers:         {worker_count}", flush=True)
+
+    reporter = ProgressReporter(plan)
+    executor = ThreadPoolExecutor(
+        max_workers=worker_count,
+        thread_name_prefix="fpga-matrix",
+    )
+    futures: dict[Future, MatrixJob] = {}
+    interrupted = False
+    try:
+        for job in plan.jobs:
+            futures[executor.submit(execute_job, job, context)] = job
+        for future in as_completed(futures):
+            job = futures[future]
+            try:
+                future.result()
+            except Exception as error:
+                _handle_worker_exception(job, error)
+            reporter.report(job)
+    except (KeyboardInterrupt, SystemExit):
+        interrupted = True
+        context.processes.terminate_all()
+        _cancel_pending_jobs(plan, futures)
+    finally:
+        executor.shutdown(wait=True, cancel_futures=interrupted)
+    return interrupted
 
 
 def run_matrix(
@@ -243,6 +315,7 @@ def run_matrix(
     test_module: str,
     test_patterns: Sequence[str] = (),
     plan_only: bool = False,
+    jobs: int = 1,
     script=None,
 ) -> MatrixPlan:
     """Plan and optionally execute a test module's parameter matrix."""
@@ -262,7 +335,7 @@ def run_matrix(
     )
 
     start = time.monotonic()
-    interrupted = _run_jobs(plan, context)
+    interrupted = _run_jobs(plan, context, jobs=jobs)
     elapsed = time.monotonic() - start
     results_path = write_results(project_root, plan)
     print_summary(plan, elapsed)
