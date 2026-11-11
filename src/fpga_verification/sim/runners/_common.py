@@ -5,6 +5,7 @@ import argparse
 import os
 import shutil
 import sys
+from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -85,7 +86,17 @@ def _clean_sim_build(project_root, sim):
         file_path.write_bytes(content)
 
 
-def _parse_run_args(argv=None):
+@dataclass(frozen=True)
+class RunArguments:
+    """Runner options shared by RTL and generated-component entry points."""
+
+    debug: bool
+    matrix: bool
+    plan: bool
+    matrix_tests: tuple[str, ...]
+
+
+def _parse_run_args(argv=None) -> RunArguments:
     parser = argparse.ArgumentParser(
         description="Run a cocotb simulation.",
         add_help=False,
@@ -117,7 +128,16 @@ def _parse_run_args(argv=None):
     # A runner can also be called by pytest, whose arguments must not be
     # interpreted as errors by this small command-line compatibility layer.
     args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
-    return args
+    if args.plan and not args.matrix:
+        raise ValueError("--plan requires --matrix")
+    if args.matrix_tests and not args.matrix:
+        raise ValueError("--test requires --matrix")
+    return RunArguments(
+        debug=args.debug,
+        matrix=args.matrix,
+        plan=args.plan,
+        matrix_tests=tuple(args.matrix_tests),
+    )
 
 
 def prepare_test_run(

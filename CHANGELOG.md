@@ -5,6 +5,15 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
+## Unreleased
+
+- Refactored parameter-matrix planning, child-process execution, and reporting
+  into separate layers. Matrix jobs are now plain data objects and the
+  sequential scheduler has an explicit execution boundary suitable for a
+  future parallel worker pool; the internal pytest orchestration was removed.
+- Added focused matrix tests for discovery, XML result parsing, interruption,
+  artifact retention, and terminal/JSON reporting.
+
 ## 1.2.0 - 2026-11-10
 
 - Consolidated the public simulation API under `fpga_verification.sim.runners`:

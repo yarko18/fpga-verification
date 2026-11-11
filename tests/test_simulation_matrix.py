@@ -1,11 +1,8 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
-import json
-import re
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -18,20 +15,11 @@ from fpga_verification.sim import (
     matrix_parameter,
     random_subset,
 )
-from fpga_verification.sim.matrix import (
-    MATRIX_ARTIFACT_ROOT_ENV,
-    MATRIX_CONFIG_ENV,
+from fpga_verification.sim._matrix_planning import (
     MatrixTest,
-    MatrixTestResult,
     ParameterMatrix,
-    MatrixJob,
-    _ExecutionContext,
-    _execute_job,
-    _test_filter,
-    _write_results,
     build_matrix_plan,
-    matrix_artifact_root,
-    resolve_matrix_config,
+    discover_matrix_tests,
 )
 
 
@@ -175,133 +163,26 @@ def test_undecorated_test_runs_once_on_the_baseline():
     assert plan.jobs[0].tests == ["matrix_tests.test_smoke"]
 
 
-def test_cocotb_filter_matches_only_planned_fullnames():
-    expression = _test_filter(
-        ["vip.test_pyuvm.ControlPacketTest", "vip.test_pyuvm.UserPacketTest"]
+def test_discovery_filters_full_names_and_ignores_duplicate_objects(monkeypatch):
+    cocotb_test_type = type("Test", (), {"__module__": "cocotb._decorators"})
+    video_test = cocotb_test_type()
+    video_test.name = "VideoPacketTest"
+    video_test.fullname = "vip.test_pyuvm.VideoPacketTest"
+    control_test = cocotb_test_type()
+    control_test.name = "ControlPacketTest"
+    control_test.fullname = "vip.test_pyuvm.ControlPacketTest"
+    module = SimpleNamespace(
+        video=video_test,
+        video_alias=video_test,
+        control=control_test,
     )
-
-    assert re.search(expression, "vip.test_pyuvm.ControlPacketTest")
-    assert re.search(expression, "vip.test_pyuvm.UserPacketTest")
-    assert not re.search(expression, "other.ControlPacketTest")
-
-
-def test_matrix_child_override_is_strictly_restored():
-    selected = _Config(width=16, lanes=2, operation="PACK")
-    restored = resolve_matrix_config(
-        _Config(),
-        {MATRIX_CONFIG_ENV: json.dumps(selected.to_runtime_dict())},
-    )
-
-    assert restored == selected
-
-
-def test_matrix_artifact_root_defaults_to_project_and_accepts_child_override():
-    assert matrix_artifact_root("project", {}) == matrix_artifact_root("project")
-    assert matrix_artifact_root(
-        "project",
-        {MATRIX_ARTIFACT_ROOT_ENV: "work/config"},
-    ).as_posix() == "work/config"
-
-
-def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
-    job = MatrixJob(_Config(), ["matrix_tests.test_smoke"], "12345678")
-    script = tmp_path / "run_test.py"
-    script.write_text("# fake runner\n", encoding="utf-8")
-
-    def fake_subprocess_run(command, *, env, **kwargs):
-        assert "PYTEST_CURRENT_TEST" not in env
-        assert env["COCOTB_ANSI_OUTPUT"] == "0"
-        assert env["COCOTB_TEST_FILTER"] == "^(?:matrix_tests\\.test_smoke)$"
-        artifact_root = Path(env[MATRIX_ARTIFACT_ROOT_ENV])
-        build_dir = artifact_root / "sim_build_verilator"
-        build_dir.mkdir(parents=True)
-        (build_dir / "results.xml").write_text(
-            """<testsuites><testsuite><testcase name="test_smoke" """
-            """classname="matrix_tests" """
-            """time="0.1" sim_time_ns="10" ratio_time="100" />"""
-            """</testsuite></testsuites>""",
-            encoding="utf-8",
-        )
-        return SimpleNamespace(returncode=0)
-
-    monkeypatch.setenv("PYTEST_CURRENT_TEST", "parent.py::test_job (call)")
-    monkeypatch.setattr("fpga_verification.sim.matrix.subprocess.run", fake_subprocess_run)
-    _execute_job(
-        job,
-        _ExecutionContext(tmp_path, script, "verilator"),
-    )
-
-    assert job.status == "PASS"
-    assert job.log_path is None
-    assert not (tmp_path / ".matrix_work").exists()
-    assert not (tmp_path / "logs" / "matrix_failures").exists()
-
-
-def test_failed_matrix_job_preserves_log_and_config_build(monkeypatch, tmp_path):
-    job = MatrixJob(_Config(), ["matrix_tests.test_smoke"], "12345678")
-    script = tmp_path / "run_test.py"
-    script.write_text("# fake runner\n", encoding="utf-8")
-
     monkeypatch.setattr(
-        "fpga_verification.sim.matrix.subprocess.run",
-        lambda *args, **kwargs: SimpleNamespace(returncode=2),
-    )
-    _execute_job(
-        job,
-        _ExecutionContext(tmp_path, script, "verilator"),
+        "fpga_verification.sim._matrix_planning.importlib.import_module",
+        lambda name: module,
     )
 
-    failure = tmp_path / "logs" / "matrix_failures" / job.config_id
-    assert job.status == "ERROR"
-    assert job.log_path == "logs/matrix_failures/12345678/simulation.log"
-    assert (failure / "simulation.log").is_file()
+    discovered = discover_matrix_tests("vip.test_pyuvm", ("Video*",))
 
-
-def test_matrix_results_contain_only_compact_configuration_summaries(tmp_path):
-    plan = build_matrix_plan(
-        _Config(),
-        [MatrixTest("matrix_tests.test_smoke")],
-    )
-    job = plan.jobs[0]
-    job.status = "FAIL"
-    job.log_path = "logs/matrix_failures/12345678/simulation.log"
-    job.results = [
-        MatrixTestResult(
-            "matrix_tests.test_a",
-            "PASS",
-            real_time_s=0.125,
-            sim_time_ns=10.0,
-        ),
-        MatrixTestResult(
-            "matrix_tests.test_b",
-            "FAIL",
-            real_time_s=0.375,
-            sim_time_ns=20.0,
-        ),
-    ]
-
-    result = json.loads(_write_results(tmp_path, plan).read_text(encoding="utf-8"))
-
-    assert result == [
-        {
-            "id": job.config_id,
-            "status": "FAIL",
-            "log": "logs/matrix_failures/12345678/simulation.log",
-            "sim_time_ns": 30.0,
-            "real_time_s": 0.5,
-            "config": {
-                "lanes": 1,
-                "note": "baseline",
-                "operation": "PAD",
-                "width": 8,
-            },
-        }
-    ]
-    assert list(result[0]) == [
-        "id",
-        "status",
-        "log",
-        "sim_time_ns",
-        "real_time_s",
-        "config",
+    assert [test.fullname for test in discovered] == [
+        "vip.test_pyuvm.VideoPacketTest"
     ]

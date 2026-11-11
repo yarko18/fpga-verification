@@ -99,15 +99,7 @@ guides, case studies, and generated API reference.
 ./docs/mkdoc.sh build
 ```
 
-GitHub Pages is rebuilt automatically when documentation changes reach
-`main`.
-
 ## License
-
-Version 1.1.1 is licensed under the
-[FPGA Verification Commercial Reciprocity License 1.0](LICENSE). Releases up
-to and including version 1.1.0 remain under the license that accompanied each
-release.
 
 Project Use may begin immediately but requires a private Notice of Use within
 30 days. See the [notice instructions and template](NOTICE-OF-USE.md). Personal

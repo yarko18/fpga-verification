@@ -8,8 +8,14 @@ from fpga_verification.altera.quartus.component import (
     prepare_component_simulation,
 )
 
+from .._matrix_execution import (
+    matrix_artifact_root,
+    resolve_matrix_config,
+    run_matrix,
+)
 from ._common import (
     DEFAULT_SIMULATOR,
+    RunArguments,
     _parse_run_args,
     prepare_test_run,
     resolve_test_config,
@@ -36,6 +42,38 @@ def _component_test_cocotb(*, build_args=None, **kwargs):
             build_args,
         ),
         **kwargs,
+    )
+
+
+def _run_component_matrix(
+    *,
+    project_root: Path,
+    config,
+    test_module: str,
+    python_paths,
+    run_args: RunArguments,
+    debug: bool | None,
+    generate_only: bool,
+    enable_questa_acc: bool,
+):
+    if generate_only:
+        raise ValueError("generate_only cannot be combined with --matrix")
+    if debug is True or run_args.debug:
+        raise ValueError("GUI/debug mode cannot be combined with --matrix")
+    prepare_test_run(
+        project_root=project_root,
+        python_paths=python_paths,
+        debug=False,
+        argv=(),
+        clean_build=False,
+        enable_questa_acc=enable_questa_acc,
+    )
+    return run_matrix(
+        project_root=project_root,
+        baseline=config,
+        test_module=test_module,
+        test_patterns=run_args.matrix_tests,
+        plan_only=run_args.plan,
     )
 
 
@@ -73,35 +111,17 @@ def run_component_test(
         test_module = os.getenv(test_module_env, test_module)
 
     run_args = _parse_run_args(argv)
-    if run_args.plan and not run_args.matrix:
-        raise ValueError("--plan requires --matrix")
     if run_args.matrix:
-        if generate_only:
-            raise ValueError("generate_only cannot be combined with --matrix")
-        if debug is True or run_args.debug:
-            raise ValueError("GUI/debug mode cannot be combined with --matrix")
-        prepare_test_run(
+        return _run_component_matrix(
             project_root=project_root,
+            config=config,
+            test_module=test_module,
             python_paths=python_paths,
-            debug=False,
-            argv=(),
-            clean_build=False,
+            run_args=run_args,
+            debug=debug,
+            generate_only=generate_only,
             enable_questa_acc=enable_questa_acc,
         )
-        from fpga_verification.sim.matrix import run_matrix
-
-        return run_matrix(
-            project_root=project_root,
-            baseline=config,
-            test_module=test_module,
-            test_patterns=run_args.matrix_tests,
-            plan_only=run_args.plan,
-        )
-
-    from fpga_verification.sim.matrix import (
-        matrix_artifact_root,
-        resolve_matrix_config,
-    )
 
     config = resolve_matrix_config(config)
     artifacts_root = (
@@ -109,12 +129,13 @@ def run_component_test(
         if artifacts_root is None
         else Path(artifacts_root)
     )
+    resolved_debug = run_args.debug if debug is None else debug
     debug, sim = prepare_test_run(
         project_root=project_root,
         artifacts_root=artifacts_root,
         python_paths=python_paths,
-        debug=debug,
-        argv=argv,
+        debug=resolved_debug,
+        argv=(),
         clean_build=clean_build,
         enable_questa_acc=enable_questa_acc,
     )

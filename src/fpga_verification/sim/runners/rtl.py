@@ -237,16 +237,18 @@ def run_rtl_test(
     **kwargs,
 ):
     """Run RTL with optional prepared Intel simulation libraries."""
-    if _parse_run_args(argv).matrix:
+    run_args = _parse_run_args(argv)
+    if run_args.matrix:
         raise NotImplementedError(
             "parameter matrix execution is currently supported by run_component_test()"
         )
     project_root = Path(project_root)
+    resolved_debug = run_args.debug if debug is None else debug
     debug, sim = prepare_test_run(
         project_root=project_root,
         python_paths=python_paths,
-        debug=debug,
-        argv=argv,
+        debug=resolved_debug,
+        argv=(),
         clean_build=clean_build,
         enable_questa_acc=enable_questa_acc,
     )

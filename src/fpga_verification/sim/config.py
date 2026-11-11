@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import MISSING, asdict, fields
+from dataclasses import MISSING, asdict, field, fields
 from types import UnionType
 from typing import (
     Any,
     Callable,
+    Iterable,
     Literal,
     Mapping,
     TypeVar,
@@ -30,19 +31,23 @@ RUNTIME_CONFIG_ENV = "FPGA_VERIFICATION_TEST_CONFIG_JSON"
 
 _ConfigT = TypeVar("_ConfigT")
 
-MATRIX_VALUES_METADATA = "fpga_verification.matrix_values"
+_MATRIX_VALUES_METADATA = "fpga_verification.matrix_values"
 """Dataclass metadata key containing an optional matrix domain."""
 
 
-def _parameter_field(default, *, values=None, metadata=None, **kwargs):
-    from dataclasses import field
-
+def _parameter_field(
+    default: Any,
+    *,
+    values: Iterable[Any] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    **kwargs,
+):
     metadata = dict(metadata or {})
     if values is not None:
         values = tuple(values)
         if not values:
             raise ValueError("matrix parameter values must not be empty")
-        metadata[MATRIX_VALUES_METADATA] = values
+        metadata[_MATRIX_VALUES_METADATA] = values
     if default is MISSING:
         return field(metadata=metadata, **kwargs)
     return field(default=default, metadata=metadata, **kwargs)

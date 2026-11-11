@@ -40,6 +40,12 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             "fpga-verification 1.2.3 | Yaroslav Mariukha\n",
         )
 
+    def test_matrix_only_options_require_matrix_mode(self):
+        with self.assertRaisesRegex(ValueError, "--plan requires --matrix"):
+            _common._parse_run_args(["--plan"])
+        with self.assertRaisesRegex(ValueError, "--test requires --matrix"):
+            _common._parse_run_args(["--test", "Video*"])
+
     def test_rtl_runner_defaults_to_verilator(self):
         runner = Mock()
         runner.test.return_value = Path("results.xml")
@@ -267,7 +273,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             patch.dict(os.environ, {}, clear=True),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(component, "_component_test_cocotb") as component_runner,
-            patch("fpga_verification.sim.matrix.run_matrix") as run_matrix,
+            patch.object(component, "run_matrix") as run_matrix,
         ):
             component.run_component_test(
                 project_root=".",
@@ -285,7 +291,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             project_root=Path("."),
             baseline=self._Config(),
             test_module="test_dut",
-            test_patterns=["Video*"],
+            test_patterns=("Video*",),
             plan_only=True,
         )
 

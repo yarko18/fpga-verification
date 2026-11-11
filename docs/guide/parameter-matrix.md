@@ -232,10 +232,11 @@ domains from collapsing onto their first value while preserving a compact
 cover. It does not promise pairwise or higher-order interaction coverage.
 
 `random_subset(count=N, seed=S)` selects at most `N` legal configurations.
-The explicit seed makes the sample reproducible and is stored in
-`logs/matrix-results.json`. Random selection provides no value or interaction
-coverage guarantee, so use it as a bounded supplement rather than as a
-replacement for `balance()`.
+The explicit seed in the test declaration makes the sample reproducible.
+`logs/matrix-results.json` records the configurations that actually ran, not
+the planning strategy or seed. Random selection provides no value or
+interaction coverage guarantee, so use it as a bounded supplement rather than
+as a replacement for `balance()`.
 
 Always run `--plan` after changing domains, legality rules or strategy. There is
 no silent maximum and no automatic downgrade from exhaustive to another rule.
@@ -282,9 +283,12 @@ log path, total simulation time, total test real time and the resolved
 configuration values. Matrix logs are plain text without terminal color
 control sequences.
 
-Pytest is an internal job orchestrator. It supplies isolation, result handling
-and a standard process exit status, but project tests do not need a separate
-pytest file and the public command remains `python run_test.py --matrix`.
+The host process currently schedules matrix jobs sequentially. Planning,
+child-process execution, and reporting are separate internal layers: each job
+is a plain data object, receives its own environment and work directory, and
+the final manifest is written once by the host. This isolation is the basis
+for a future parallel worker pool; it does not change the public command,
+which remains `python run_test.py --matrix`.
 
 Parameter coverage and coverage-driven selection are intentionally separate
 future features. A matrix strategy states what was scheduled now; it must not

@@ -20,8 +20,11 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
     options:
       show_root_heading: true
       members_order: source
-      filters:
-        - "!^_"
+      members:
+        - parameter_matrix
+        - exhaustive
+        - balance
+        - random_subset
 
 ## Agents
 
