@@ -20,7 +20,7 @@ def _print_runner_banner():
     except PackageNotFoundError:
         package_version = "development"
     print(
-        f"{_DISTRIBUTION_NAME} {package_version} | {_AUTHOR}",
+        f"{_DISTRIBUTION_NAME} {package_version} | by {_AUTHOR}",
         flush=True,
     )
 

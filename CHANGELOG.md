@@ -5,7 +5,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
-## 1.2.1 - 2026-11-10
+## 1.2.1 - 2026-13-10
 
 - Added `-j/--jobs N|max` multithread matrix execution with isolated `MatrixJob` workers
 - Refactored parameter-matrix planning, child-process execution, and reporting
