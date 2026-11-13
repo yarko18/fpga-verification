@@ -37,7 +37,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue(),
-            "fpga-verification 1.2.3 | Yaroslav Mariukha\n",
+            "fpga-verification 1.2.3 | by Yaroslav Mariukha\n",
         )
 
     def test_matrix_only_options_require_matrix_mode(self):
@@ -86,6 +86,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             "-Wno-PARAMNODEFAULT",
             runner.build.call_args.kwargs["build_args"],
         )
+        self.assertEqual(runner.test.call_args.kwargs["extra_env"], {})
 
     def test_rtl_runner_debug_enables_verilator_waves(self):
         runner = Mock()
@@ -301,6 +302,33 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             )
 
         component_runner.assert_not_called()
+        run_matrix.assert_called_once_with(
+            project_root=Path("."),
+            baseline=self._Config(),
+            test_module="test_dut",
+            test_patterns=("Video*",),
+            plan_only=True,
+            jobs=1,
+        )
+
+    def test_rtl_matrix_plan_dispatches_without_running_simulator(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
+            patch.object(rtl, "run_matrix") as run_matrix,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                config=self._Config(),
+                sources=(),
+                python_paths=(),
+                argv=["--matrix", "--plan", "--test", "Video*"],
+            )
+
+        rtl_runner.assert_not_called()
         run_matrix.assert_called_once_with(
             project_root=Path("."),
             baseline=self._Config(),

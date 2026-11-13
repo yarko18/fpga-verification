@@ -4,6 +4,11 @@
 import os
 from pathlib import Path
 
+from .._matrix_execution import (
+    matrix_artifact_root,
+    resolve_matrix_config,
+    run_matrix,
+)
 from ._common import (
     DEFAULT_SIMULATOR,
     _parse_run_args,
@@ -100,15 +105,19 @@ def _rtl_test_cocotb(
     test_args=None,
     extra_env=None,
     build_dir=None,
+    artifacts_root=None,
 ):
     """Compile RTL with optional prepared Intel models and run cocotb."""
     from cocotb_tools.runner import get_runner
 
     project_root = Path(project_root)
+    artifacts_root = (
+        project_root if artifacts_root is None else Path(artifacts_root)
+    )
     sim = os.getenv("SIM", DEFAULT_SIMULATOR)
 
     if build_dir is None:
-        build_dir = project_root / f"sim_build_{sim}"
+        build_dir = artifacts_root / f"sim_build_{sim}"
     else:
         build_dir = Path(build_dir)
 
@@ -130,7 +139,7 @@ def _rtl_test_cocotb(
             project_root=project_root,
             quartus_sim_lib=quartus_sim_lib,
             simulator=sim,
-            output_dir=project_root / "logs" / "simulation_models",
+            output_dir=artifacts_root / "logs" / "simulation_models",
             apply_simulation_fixes=apply_simulation_fixes,
         )
     sources = vendor_sources + sources
@@ -202,6 +211,7 @@ def _rtl_test_cocotb(
         default_test_args += ["-do", "wave.do"]
 
     test_args = default_test_args + list(test_args or ())
+    extra_env = dict(extra_env or {})
 
     results_xml = runner.test(
         hdl_toplevel=hdl_toplevel,
@@ -214,6 +224,36 @@ def _rtl_test_cocotb(
         extra_env=extra_env,
     )
     _check_results(results_xml)
+
+
+def _run_rtl_matrix(
+    *,
+    project_root,
+    config,
+    test_module,
+    python_paths,
+    run_args,
+    debug,
+    enable_questa_acc,
+):
+    if debug is True or run_args.debug:
+        raise ValueError("GUI/debug mode cannot be combined with --matrix")
+    prepare_test_run(
+        project_root=project_root,
+        python_paths=python_paths,
+        debug=False,
+        argv=(),
+        clean_build=False,
+        enable_questa_acc=enable_questa_acc,
+    )
+    return run_matrix(
+        project_root=project_root,
+        baseline=config,
+        test_module=test_module,
+        test_patterns=run_args.matrix_tests,
+        plan_only=run_args.plan,
+        jobs=run_args.jobs,
+    )
 
 
 def run_rtl_test(
@@ -234,27 +274,42 @@ def run_rtl_test(
     clean_build=True,
     enable_questa_acc=False,
     test_module_env=None,
+    artifacts_root=None,
     **kwargs,
 ):
     """Run RTL with optional prepared Intel simulation libraries."""
+    project_root = Path(project_root)
+    if test_module_env is not None:
+        test_module = os.getenv(test_module_env, test_module)
+
     run_args = _parse_run_args(argv)
     if run_args.matrix:
-        raise NotImplementedError(
-            "parameter matrix execution is currently supported by run_component_test()"
+        return _run_rtl_matrix(
+            project_root=project_root,
+            config=config,
+            test_module=test_module,
+            python_paths=python_paths,
+            run_args=run_args,
+            debug=debug,
+            enable_questa_acc=enable_questa_acc,
         )
-    project_root = Path(project_root)
+
+    config = resolve_matrix_config(config)
+    artifacts_root = (
+        matrix_artifact_root(project_root)
+        if artifacts_root is None
+        else Path(artifacts_root)
+    )
     resolved_debug = run_args.debug if debug is None else debug
     debug, sim = prepare_test_run(
         project_root=project_root,
+        artifacts_root=artifacts_root,
         python_paths=python_paths,
         debug=resolved_debug,
         argv=(),
         clean_build=clean_build,
         enable_questa_acc=enable_questa_acc,
     )
-
-    if test_module_env is not None:
-        test_module = os.getenv(test_module_env, test_module)
 
     parameters, extra_env = resolve_test_config(
         config,
@@ -271,8 +326,9 @@ def run_rtl_test(
         quartus_sim_lib=quartus_sim_lib,
         apply_simulation_fixes=apply_simulation_fixes,
         debug=debug,
-        compile_log=project_root / "logs" / f"{sim}_compile.log",
+        compile_log=artifacts_root / "logs" / f"{sim}_compile.log",
         parameters=parameters,
         extra_env=extra_env,
+        artifacts_root=artifacts_root,
         **kwargs,
     )
