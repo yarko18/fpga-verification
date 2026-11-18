@@ -5,6 +5,15 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
+## Unreleased
+
+- Exposed the installed distribution version as `fpga_verification.__version__`.
+- Added a resolved configuration table when `FPGA_VERIFICATION_CONFIG_CASE`
+  selects a named host-side case.
+- Added an optional `cocotb-coverage` 2.0 extra and functional-coverage design
+  guidance.
+- Added a standalone registered-adder functional-coverage example.
+
 ## 1.2.1 - 2026-13-10
 
 - Added `-j/--jobs N|max` multithread matrix execution with isolated `MatrixJob` workers

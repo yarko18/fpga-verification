@@ -14,3 +14,4 @@ sim_build_*/
 /generated/
 *logs/
 .matrix_work/
+examples/adder_coverage/simulation/adder_coverage.xml
