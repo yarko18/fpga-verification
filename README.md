@@ -46,6 +46,7 @@ python -m pip install -e ".[docs]"
 - runners for plain RTL and generated Altera components;
 - an Altera streaming DMA model and sparse byte memory;
 - packet latency and throughput analysis;
+- optional cocotb functional-coverage integration and guidance;
 - persistent Quartus System Console access for hardware tests;
 - video frame and raw numeric data helpers.
 

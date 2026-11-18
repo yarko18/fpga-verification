@@ -11,6 +11,7 @@
     - [Video implementation map](video.md)
     - [Project style](guide/testbench-style.md)
     - [Parameter matrix simulations](guide/parameter-matrix.md)
+    - [Functional coverage](guide/functional-coverage.md)
     - [Modelling DUT behaviour](guide/modeling.md)
     - [Ordered VIP verification](guide/vip-verification.md)
 - How-to guides

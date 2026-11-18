@@ -39,6 +39,9 @@ docs = [
     "mkdocs-literate-nav",
     "mkdocstrings[python]",
 ]
+functional-coverage = [
+    "cocotb-coverage==2.0",
+]
 
 [project.urls]
 Documentation = "https://yarko18.github.io/fpga-verification/"
