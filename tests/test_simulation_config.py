@@ -89,6 +89,32 @@ def test_named_configuration_case_uses_environment_and_is_lazy():
     assert constructed == ["matrix"]
 
 
+def test_environment_selected_configuration_case_is_reported(capsys):
+    resolve_config_case(
+        {"matrix": _TestConfig(width=80, label="selected")},
+        environ={CONFIG_CASE_ENV: "matrix"},
+    )
+
+    output = capsys.readouterr().out
+    assert "Selected configuration case: matrix" in output
+    assert "Config field" in output
+    assert "width" in output
+    assert "80" in output
+    assert "WIDTH" in output
+    assert "label" in output
+    assert '"selected"' in output
+
+
+def test_explicit_configuration_case_is_not_reported_as_environment_selected(capsys):
+    resolve_config_case(
+        {"default": _TestConfig(), "matrix": _TestConfig(width=80)},
+        "default",
+        environ={CONFIG_CASE_ENV: "matrix"},
+    )
+
+    assert capsys.readouterr().out == ""
+
+
 def test_explicit_configuration_case_overrides_environment():
     selected = resolve_config_case(
         {

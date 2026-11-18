@@ -24,6 +24,7 @@ dependencies = [
     "cocotbext-avalon",
     "pyuvm==4.0.1",
     "pytest",
+    "tabulate>=0.9,<1",
     "tqdm",
     "vunit-hdl==4.7.1",
 ]

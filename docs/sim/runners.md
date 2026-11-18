@@ -245,7 +245,21 @@ def get_test_config(case=None):
 With no explicit `case`, the helper reads `FPGA_VERIFICATION_CONFIG_CASE` and
 falls back to `default`. The public `CONFIG_CASE_ENV` constant provides that
 environment-variable name to matrix launchers and other host-side tooling.
-Factories are evaluated only for the selected case.
+Factories are evaluated only for the selected case. When the environment
+variable is present, the runner log names the selected case and prints its
+resolved runtime fields. Fields passed to HDL are identified in a separate
+column:
+
+```text
+Selected configuration case: wide
+╭────────────────┬─────────┬─────────────────╮
+│ Config field   │ Value   │ HDL parameter   │
+├────────────────┼─────────┼─────────────────┤
+│ data_width     │ 64      │ DATA_WIDTH      │
+│ queue_depth    │ 8       │ QUEUE_DEPTH     │
+│ case_note      │ "smoke" │ —               │
+╰────────────────┴─────────┴─────────────────╯
+```
 
 When the same tests must cover several elaborated parameter sets, use the
 [parameter matrix guide](../guide/parameter-matrix.md). Matrix domains are

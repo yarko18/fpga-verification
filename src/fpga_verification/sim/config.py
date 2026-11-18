@@ -199,6 +199,44 @@ def runtime_config_environment(config: ComponentConfig) -> dict[str, str]:
     return {RUNTIME_CONFIG_ENV: json.dumps(config.to_runtime_dict(), sort_keys=True)}
 
 
+def _print_selected_config_case(
+    selected_name: str,
+    selected: Any,
+    label: str,
+) -> None:
+    """Print the environment-selected case as a compact runner-log table."""
+    from tabulate import tabulate
+
+    if isinstance(selected, ComponentConfig):
+        values = selected.to_runtime_dict()
+        hdl_names = {}
+        for item in fields(selected):
+            name = item.metadata.get("fpga_verification.hdl_parameter")
+            if name:
+                hdl_names[item.name] = item.name if name is True else name
+        rows = [
+            (
+                name,
+                json.dumps(value, sort_keys=True),
+                hdl_names.get(name, "—"),
+            )
+            for name, value in values.items()
+        ]
+    else:
+        rows = [("value", repr(selected), "—")]
+
+    print(f"Selected {label} case: {selected_name}", flush=True)
+    print(
+        tabulate(
+            rows,
+            headers=("Config field", "Value", "HDL parameter"),
+            tablefmt="rounded_outline",
+            disable_numparse=True,
+        ),
+        flush=True,
+    )
+
+
 def resolve_config_case(
     cases: Mapping[str, _ConfigT | Callable[[], _ConfigT]],
     case: str | None = None,
@@ -223,7 +261,10 @@ def resolve_config_case(
             f"Unknown {label} case {selected_name!r}; available: {available}"
         ) from error
 
-    return selected() if callable(selected) else selected
+    resolved = selected() if callable(selected) else selected
+    if case is None and CONFIG_CASE_ENV in environ:
+        _print_selected_config_case(selected_name, resolved, label)
+    return resolved
 
 
 def load_test_config(config_type, environ: Mapping[str, str] | None = None):
