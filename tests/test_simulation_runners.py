@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
+import fpga_verification
 from fpga_verification.sim import ComponentConfig, hdl_parameter
 from fpga_verification.sim.runners import _common, component, rtl
 
@@ -24,7 +25,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
         output = StringIO()
 
         with (
-            patch.object(_common, "version", return_value="1.2.3"),
             patch.object(_common, "_prepend_python_paths"),
             patch.object(_common, "_clean_sim_build"),
             redirect_stdout(output),
@@ -37,7 +37,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue(),
-            "fpga-verification 1.2.3 | by Yaroslav Mariukha\n",
+            f"fpga-verification {fpga_verification.__version__} | by Yaroslav Mariukha\n",
         )
 
     def test_matrix_only_options_require_matrix_mode(self):

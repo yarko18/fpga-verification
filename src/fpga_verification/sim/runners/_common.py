@@ -6,8 +6,9 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+
+from ..._version import __version__
 
 DEFAULT_SIMULATOR = "verilator"
 _DISTRIBUTION_NAME = "fpga-verification"
@@ -15,12 +16,8 @@ _AUTHOR = "Yaroslav Mariukha"
 
 
 def _print_runner_banner():
-    try:
-        package_version = version(_DISTRIBUTION_NAME)
-    except PackageNotFoundError:
-        package_version = "development"
     print(
-        f"{_DISTRIBUTION_NAME} {package_version} | by {_AUTHOR}",
+        f"{_DISTRIBUTION_NAME} {__version__} | by {_AUTHOR}",
         flush=True,
     )
 

@@ -23,6 +23,15 @@ Python 3.10 - 3.13 is supported.
 python -m pip install fpga-verification
 ```
 
+Read the installed distribution version without duplicating it in application
+code:
+
+```python
+import fpga_verification
+
+print(fpga_verification.__version__)
+```
+
 For local library development, install a checkout from the repository root in
 editable mode:
 
