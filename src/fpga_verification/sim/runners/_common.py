@@ -170,8 +170,6 @@ def _parse_run_args(argv=None) -> RunArguments:
         raise ValueError("--test requires --matrix")
     if args.jobs is not None and not args.matrix:
         raise ValueError("--jobs requires --matrix")
-    if args.coverage and args.matrix:
-        raise ValueError("--coverage cannot be combined with --matrix")
     return RunArguments(
         debug=args.debug,
         coverage=args.coverage,

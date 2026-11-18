@@ -27,9 +27,13 @@ python run_test.py --coverage
 
 `simulation/config.py` keeps the HDL width, matrix domain, random seed/count,
 and required coverage percentage together. `--matrix` runs the random test for
-the declared `DATA_WIDTH` values. Coverage and matrix modes are currently
-separate because matrix coverage artifacts are not merged yet.
+the declared `DATA_WIDTH` values. The same run can collect and merge coverage:
 
-The coverage run prints every bin and writes `simulation/adder_coverage.xml`.
-Its 100% target means that all four sign combinations were observed; it does
-not mean that every operand pair was tested.
+```bash
+python run_test.py --matrix --coverage --test test_random_addition -j max
+```
+
+The coverage run writes `simulation/logs/functional_coverage.xml`; matrix job
+databases are kept under `simulation/logs/coverage/matrix/`. Its 100% target
+means that all four sign combinations were observed; it does not mean that
+every operand pair was tested.

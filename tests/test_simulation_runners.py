@@ -47,8 +47,12 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             _common._parse_run_args(["--test", "Video*"])
         with self.assertRaisesRegex(ValueError, "--jobs requires --matrix"):
             _common._parse_run_args(["--jobs", "2"])
-        with self.assertRaisesRegex(ValueError, "cannot be combined"):
-            _common._parse_run_args(["--matrix", "--coverage"])
+
+    def test_coverage_can_be_combined_with_matrix_mode(self):
+        args = _common._parse_run_args(["--matrix", "--coverage"])
+
+        self.assertTrue(args.matrix)
+        self.assertTrue(args.coverage)
 
     def test_coverage_flag_is_parsed_for_an_ordinary_run(self):
         args = _common._parse_run_args(["--coverage"])
@@ -317,6 +321,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             test_patterns=("Video*",),
             plan_only=True,
             jobs=1,
+            functional_coverage=False,
         )
 
     def test_rtl_matrix_plan_dispatches_without_running_simulator(self):
@@ -344,6 +349,7 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             test_patterns=("Video*",),
             plan_only=True,
             jobs=1,
+            functional_coverage=False,
         )
 
     def test_altera_component_runner_rejects_parameters_different_from_config(self):
@@ -427,7 +433,12 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
                 argv=["--coverage"],
             )
 
-        coverage_environment.assert_called_once_with(True, None)
+        coverage_environment.assert_called_once_with(
+            True,
+            None,
+            artifacts_root=Path("."),
+            defer=False,
+        )
         self.assertEqual(
             rtl_runner.call_args.kwargs["extra_env"],
             {"FPGA_VERIFICATION_FUNCTIONAL_COVERAGE": "1"},

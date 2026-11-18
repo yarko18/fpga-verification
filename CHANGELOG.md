@@ -15,6 +15,11 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added a standalone registered-adder functional-coverage example.
 - Added unified `--coverage` runner mode and reworked the adder example into
   manual and random tests sharing a typed configuration.
+- Added layered plain-Python analysis subscribers, reusable parameter and
+  Avalon-ST Video packet coverage, per-layer requirements, and runner-owned
+  XML/JSON coverage reports.
+- Added `--matrix --coverage`: worker reports are preserved and merged before
+  threshold checks, with optional hit-bin tables for random parameter crosses.
 - Rejected `FPGA_VERIFICATION_CONFIG_CASE` together with `--matrix`; matrix
   test selection remains available through repeatable `--test` patterns.
 

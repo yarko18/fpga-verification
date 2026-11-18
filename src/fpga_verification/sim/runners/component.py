@@ -13,7 +13,11 @@ from .._matrix_execution import (
     resolve_matrix_config,
     run_matrix,
 )
-from ..coverage import functional_coverage_environment
+from ..coverage import (
+    FUNCTIONAL_COVERAGE_DEFER_ENV,
+    functional_coverage_enabled,
+    functional_coverage_environment,
+)
 from ._common import (
     DEFAULT_SIMULATOR,
     RunArguments,
@@ -61,6 +65,7 @@ def _run_component_matrix(
         raise ValueError("generate_only cannot be combined with --matrix")
     if debug is True or run_args.debug:
         raise ValueError("GUI/debug mode cannot be combined with --matrix")
+    functional_coverage_environment(run_args.coverage)
     prepare_test_run(
         project_root=project_root,
         python_paths=python_paths,
@@ -76,6 +81,7 @@ def _run_component_matrix(
         test_patterns=run_args.matrix_tests,
         plan_only=run_args.plan,
         jobs=run_args.jobs,
+        functional_coverage=run_args.coverage,
     )
 
 
@@ -147,7 +153,13 @@ def run_component_test(
         parameters=component_parameters,
         extra_env=kwargs.pop("extra_env", None),
     )
-    extra_env = functional_coverage_environment(run_args.coverage, extra_env)
+    coverage_enabled = run_args.coverage or functional_coverage_enabled()
+    extra_env = functional_coverage_environment(
+        coverage_enabled,
+        extra_env,
+        artifacts_root=artifacts_root,
+        defer=os.environ.get(FUNCTIONAL_COVERAGE_DEFER_ENV) == "1",
+    )
     if component_parameters is None:
         component_parameters = {}
     if derived_parameters is not None:

@@ -40,7 +40,7 @@ docs = [
     "mkdocstrings[python]",
 ]
 functional-coverage = [
-    "cocotb-coverage==2.0",
+    "cocotb-coverage==2.0; python_version >= '3.11'",
 ]
 
 [project.urls]

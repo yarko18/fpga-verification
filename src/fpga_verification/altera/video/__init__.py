@@ -7,6 +7,7 @@ from fpga_verification.video import FrameSize, compare_frames
 
 from .checker import VIPProtocolChecker, VIPProtocolError
 from .codec import VIPFrameCodec
+from .coverage import VIPPacketCoverage, VIP_PACKET_KINDS, vip_packet_kind
 from .format import ImageGenerator, VideoFormat, VideoPayloadCodec
 from .packets import (
     VIPControlPacket,
@@ -27,6 +28,8 @@ __all__ = [
     "VIPFrameCodec",
     "VIPInterlacing",
     "VIPPacket",
+    "VIPPacketCoverage",
+    "VIP_PACKET_KINDS",
     "VIPPacketType",
     "VIPProtocolChecker",
     "VIPProtocolError",
@@ -36,4 +39,5 @@ __all__ = [
     "VideoPayloadCodec",
     "compare_frames",
     "vip_packet_from_symbols",
+    "vip_packet_kind",
 ]

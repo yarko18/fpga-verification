@@ -29,6 +29,15 @@ from ._matrix_planning import (
 from ._matrix_processes import ProcessRegistry, process_group_options
 from ._matrix_reporting import ProgressReporter, print_plan, print_summary, write_results
 from .config import CONFIG_CASE_ENV, RUNTIME_CONFIG_ENV, ComponentConfig
+from .coverage import (
+    DEFAULT_FUNCTIONAL_COVERAGE_FILE,
+    FUNCTIONAL_COVERAGE_DEFER_ENV,
+    FUNCTIONAL_COVERAGE_ENV,
+    FUNCTIONAL_COVERAGE_FILE_ENV,
+    FUNCTIONAL_COVERAGE_MANAGED_ENV,
+    FUNCTIONAL_COVERAGE_METADATA_ENV,
+    merge_functional_coverage,
+)
 
 MATRIX_CONFIG_ENV = "FPGA_VERIFICATION_MATRIX_CONFIG_JSON"
 """Private child-process override for one resolved matrix configuration."""
@@ -109,6 +118,7 @@ class ExecutionContext:
     project_root: Path
     script: Path
     simulator: str
+    functional_coverage: bool = False
     processes: ProcessRegistry = field(
         default_factory=ProcessRegistry,
         repr=False,
@@ -116,7 +126,11 @@ class ExecutionContext:
     )
 
 
-def _child_environment(job: MatrixJob, work_dir: Path) -> dict[str, str]:
+def _child_environment(
+    job: MatrixJob,
+    work_dir: Path,
+    functional_coverage: bool = False,
+) -> dict[str, str]:
     environment = os.environ.copy()
     serialized_config = runtime_key(job.config)
     environment[MATRIX_CONFIG_ENV] = serialized_config
@@ -130,7 +144,44 @@ def _child_environment(job: MatrixJob, work_dir: Path) -> dict[str, str]:
     environment.pop(CONFIG_CASE_ENV, None)
     # cocotb_tools.runner changes its results filename when it detects pytest.
     environment.pop("PYTEST_CURRENT_TEST", None)
+    if functional_coverage:
+        report = work_dir.resolve() / DEFAULT_FUNCTIONAL_COVERAGE_FILE
+        environment[FUNCTIONAL_COVERAGE_ENV] = "1"
+        environment[FUNCTIONAL_COVERAGE_FILE_ENV] = str(report)
+        environment[FUNCTIONAL_COVERAGE_METADATA_ENV] = str(
+            report.with_suffix(".json")
+        )
+        environment[FUNCTIONAL_COVERAGE_MANAGED_ENV] = "1"
+        environment[FUNCTIONAL_COVERAGE_DEFER_ENV] = "1"
     return environment
+
+
+def _matrix_coverage_path(context: ExecutionContext, job: MatrixJob) -> Path:
+    return (
+        context.project_root
+        / "logs"
+        / "coverage"
+        / "matrix"
+        / f"{job.config_id}.xml"
+    )
+
+
+def _preserve_coverage_artifacts(
+    job: MatrixJob,
+    context: ExecutionContext,
+    work_dir: Path,
+) -> None:
+    if not context.functional_coverage:
+        return
+    source = work_dir / DEFAULT_FUNCTIONAL_COVERAGE_FILE
+    metadata = source.with_suffix(".json")
+    if not source.is_file() or not metadata.is_file():
+        _mark_job_error(job, "Simulation did not produce functional coverage")
+        return
+    destination = _matrix_coverage_path(context, job)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    shutil.copy2(metadata, destination.with_suffix(".json"))
 
 
 def _error_results(job: MatrixJob) -> list[MatrixTestResult]:
@@ -217,7 +268,11 @@ def execute_job(job: MatrixJob, context: ExecutionContext) -> None:
             process = subprocess.Popen(
                 [sys.executable, str(context.script)],
                 cwd=context.project_root,
-                env=_child_environment(job, work_dir),
+                env=_child_environment(
+                    job,
+                    work_dir,
+                    context.functional_coverage,
+                ),
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -238,6 +293,8 @@ def execute_job(job: MatrixJob, context: ExecutionContext) -> None:
     results_path = work_dir / f"sim_build_{context.simulator}" / "results.xml"
     _load_job_results(job, results_path)
     job.status = _resolve_job_status(job, returncode)
+    if job.status in {MatrixStatus.PASS, MatrixStatus.SKIP}:
+        _preserve_coverage_artifacts(job, context, work_dir)
 
     if context.processes.stopping:
         job.error = "matrix run interrupted"
@@ -317,6 +374,7 @@ def run_matrix(
     plan_only: bool = False,
     jobs: int = 1,
     script=None,
+    functional_coverage: bool = False,
 ) -> MatrixPlan:
     """Plan and optionally execute a test module's parameter matrix."""
     if CONFIG_CASE_ENV in os.environ:
@@ -338,6 +396,7 @@ def run_matrix(
         project_root=project_root,
         script=script,
         simulator=os.getenv("SIM", "verilator"),
+        functional_coverage=functional_coverage,
     )
 
     start = time.monotonic()
@@ -351,6 +410,12 @@ def run_matrix(
         job.status not in {MatrixStatus.PASS, MatrixStatus.SKIP}
         for job in plan.jobs
     )
+    if functional_coverage and not failed and not interrupted:
+        coverage_path = project_root / DEFAULT_FUNCTIONAL_COVERAGE_FILE
+        merge_functional_coverage(
+            [_matrix_coverage_path(context, job) for job in plan.jobs],
+            coverage_path,
+        )
     if failed or interrupted:
         raise SystemExit(1)
     return plan

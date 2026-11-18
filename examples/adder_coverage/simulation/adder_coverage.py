@@ -24,7 +24,10 @@ def create_operand_sign_coverage():
     )
     @CoverCross(
         "top.adder_signs.cross",
-        items=["top.adder_signs.a_sign", "top.adder_signs.b_sign"],
+        items=[
+            "top.adder_signs.a_sign",
+            "top.adder_signs.b_sign"
+        ],
     )
     def sample(a, b, width):
         """Sample one operation after its registered result was checked."""

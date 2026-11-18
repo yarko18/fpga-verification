@@ -3,6 +3,8 @@
 
 """Simulation helpers for FPGA verification."""
 
+from .analysis import AnalysisPort, CallbackSubscriber, Subscriber
+
 from .config import (
     CONFIG_CASE_ENV,
     ComponentConfig,
@@ -13,8 +15,13 @@ from .config import (
     resolve_config_case,
 )
 from .coverage import (
+    CoverageGroup,
+    CoverageScope,
     FUNCTIONAL_COVERAGE_ENV,
+    FunctionalCoverageSession,
+    ParameterCoverage,
     functional_coverage_enabled,
+    get_functional_coverage_session,
     report_functional_coverage,
     reset_functional_coverage,
 )
@@ -32,20 +39,28 @@ from .stream_metrics import (
 )
 
 __all__ = [
+    "AnalysisPort",
+    "CallbackSubscriber",
     "CONFIG_CASE_ENV",
     "ComponentConfig",
+    "CoverageGroup",
+    "CoverageScope",
     "FUNCTIONAL_COVERAGE_ENV",
+    "FunctionalCoverageSession",
     "PacketMetrics",
     "PacketObservation",
     "PacketSequenceMetrics",
+    "ParameterCoverage",
     "RUNTIME_CONFIG_ENV",
     "StreamPerformanceAnalyzer",
+    "Subscriber",
     "hdl_parameter",
     "load_test_config",
     "matrix_parameter",
     "balance",
     "exhaustive",
     "functional_coverage_enabled",
+    "get_functional_coverage_session",
     "parameter_matrix",
     "random_subset",
     "report_functional_coverage",

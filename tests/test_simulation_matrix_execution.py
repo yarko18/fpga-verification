@@ -22,6 +22,11 @@ from fpga_verification.sim._matrix_execution import (
     resolve_matrix_config,
     run_matrix,
 )
+from fpga_verification.sim.coverage import (
+    FUNCTIONAL_COVERAGE_DEFER_ENV,
+    FUNCTIONAL_COVERAGE_ENV,
+    FUNCTIONAL_COVERAGE_FILE_ENV,
+)
 from fpga_verification.sim.config import CONFIG_CASE_ENV
 from fpga_verification.sim._matrix_processes import ProcessRegistry
 from fpga_verification.sim._matrix_planning import (
@@ -186,6 +191,46 @@ def test_successful_matrix_job_discards_log_and_build(monkeypatch, tmp_path):
 
     assert job.status is MatrixStatus.PASS
     assert job.log_path is None
+    assert not (tmp_path / ".matrix_work").exists()
+
+
+def test_coverage_matrix_job_preserves_report_before_discard(monkeypatch, tmp_path):
+    job = MatrixJob(_Config(), ["matrix_tests.test_smoke"], "12345678")
+
+    def fake_subprocess_popen(command, *, env, **kwargs):
+        assert env[FUNCTIONAL_COVERAGE_ENV] == "1"
+        assert env[FUNCTIONAL_COVERAGE_DEFER_ENV] == "1"
+        report = Path(env[FUNCTIONAL_COVERAGE_FILE_ENV])
+        report.parent.mkdir(parents=True)
+        report.write_text('<top abs_name="top" cover_percentage="100"/>')
+        report.with_suffix(".json").write_text(
+            '{"requirements": {"top": 100}}\n'
+        )
+        build_dir = Path(env[MATRIX_ARTIFACT_ROOT_ENV]) / "sim_build_verilator"
+        build_dir.mkdir(parents=True)
+        (build_dir / "results.xml").write_text(
+            '<testsuites><testsuite><testcase name="test_smoke" '
+            'classname="matrix_tests" /></testsuite></testsuites>'
+        )
+        return _FakeProcess(returncode=0)
+
+    monkeypatch.setattr(
+        "fpga_verification.sim._matrix_execution.subprocess.Popen",
+        fake_subprocess_popen,
+    )
+    context = ExecutionContext(
+        tmp_path,
+        _context(tmp_path).script,
+        "verilator",
+        functional_coverage=True,
+    )
+
+    execute_job(job, context)
+
+    report = tmp_path / "logs/coverage/matrix/12345678.xml"
+    assert job.status is MatrixStatus.PASS
+    assert report.is_file()
+    assert report.with_suffix(".json").is_file()
     assert not (tmp_path / ".matrix_work").exists()
 
 

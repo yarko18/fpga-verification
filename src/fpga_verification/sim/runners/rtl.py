@@ -9,7 +9,12 @@ from .._matrix_execution import (
     resolve_matrix_config,
     run_matrix,
 )
-from ..coverage import functional_coverage_environment
+from ..coverage import (
+    FUNCTIONAL_COVERAGE_DEFER_ENV,
+    finalize_functional_coverage,
+    functional_coverage_enabled,
+    functional_coverage_environment,
+)
 from ._common import (
     DEFAULT_SIMULATOR,
     _parse_run_args,
@@ -225,6 +230,7 @@ def _rtl_test_cocotb(
         extra_env=extra_env,
     )
     _check_results(results_xml)
+    finalize_functional_coverage(extra_env)
 
 
 def _run_rtl_matrix(
@@ -239,6 +245,7 @@ def _run_rtl_matrix(
 ):
     if debug is True or run_args.debug:
         raise ValueError("GUI/debug mode cannot be combined with --matrix")
+    functional_coverage_environment(run_args.coverage)
     prepare_test_run(
         project_root=project_root,
         python_paths=python_paths,
@@ -254,6 +261,7 @@ def _run_rtl_matrix(
         test_patterns=run_args.matrix_tests,
         plan_only=run_args.plan,
         jobs=run_args.jobs,
+        functional_coverage=run_args.coverage,
     )
 
 
@@ -317,7 +325,13 @@ def run_rtl_test(
         parameters=parameters,
         extra_env=extra_env,
     )
-    extra_env = functional_coverage_environment(run_args.coverage, extra_env)
+    coverage_enabled = run_args.coverage or functional_coverage_enabled()
+    extra_env = functional_coverage_environment(
+        coverage_enabled,
+        extra_env,
+        artifacts_root=artifacts_root,
+        defer=os.environ.get(FUNCTIONAL_COVERAGE_DEFER_ENV) == "1",
+    )
 
     return _rtl_test_cocotb(
         project_root=project_root,
