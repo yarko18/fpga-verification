@@ -3,31 +3,30 @@
 
 """Functional coverage model for the standalone adder example."""
 
-from cocotb_coverage.coverage import CoverCross, CoverPoint
+
+def _sign(value, width):
+    return "-" if value & (1 << (width - 1)) else "+"
 
 
-def _is_negative(value, width):
-    return bool(value & (1 << (width - 1)))
+def create_operand_sign_coverage():
+    """Declare and return a sampler for the four operand-sign combinations."""
+    from cocotb_coverage.coverage import CoverCross, CoverPoint
 
+    @CoverPoint(
+        "top.adder_signs.a_sign",
+        xf=lambda a, b, width: _sign(a, width),
+        bins=["+", "-"],
+    )
+    @CoverPoint(
+        "top.adder_signs.b_sign",
+        xf=lambda a, b, width: _sign(b, width),
+        bins=["+", "-"],
+    )
+    @CoverCross(
+        "top.adder_signs.cross",
+        items=["top.adder_signs.a_sign", "top.adder_signs.b_sign"],
+    )
+    def sample(a, b, width):
+        """Sample one operation after its registered result was checked."""
 
-@CoverPoint(
-    "top.adder.a_negative",
-    xf=lambda a, b, result, overflow, width: _is_negative(a, width),
-    bins=[False, True],
-)
-@CoverPoint(
-    "top.adder.b_negative",
-    xf=lambda a, b, result, overflow, width: _is_negative(b, width),
-    bins=[False, True],
-)
-@CoverPoint(
-    "top.adder.overflow",
-    xf=lambda a, b, result, overflow, width: overflow,
-    bins=[False, True],
-)
-@CoverCross(
-    "top.adder.operand_sign_cross",
-    items=["top.adder.a_negative", "top.adder.b_negative"],
-)
-def sample_adder(a, b, result, overflow, width):
-    """Sample one accepted and observed adder operation."""
+    return sample

@@ -13,6 +13,7 @@ from .._matrix_execution import (
     resolve_matrix_config,
     run_matrix,
 )
+from ..coverage import functional_coverage_environment
 from ._common import (
     DEFAULT_SIMULATOR,
     RunArguments,
@@ -146,6 +147,7 @@ def run_component_test(
         parameters=component_parameters,
         extra_env=kwargs.pop("extra_env", None),
     )
+    extra_env = functional_coverage_environment(run_args.coverage, extra_env)
     if component_parameters is None:
         component_parameters = {}
     if derived_parameters is not None:

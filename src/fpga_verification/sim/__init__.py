@@ -12,6 +12,12 @@ from .config import (
     matrix_parameter,
     resolve_config_case,
 )
+from .coverage import (
+    FUNCTIONAL_COVERAGE_ENV,
+    functional_coverage_enabled,
+    report_functional_coverage,
+    reset_functional_coverage,
+)
 from .matrix import (
     balance,
     exhaustive,
@@ -28,6 +34,7 @@ from .stream_metrics import (
 __all__ = [
     "CONFIG_CASE_ENV",
     "ComponentConfig",
+    "FUNCTIONAL_COVERAGE_ENV",
     "PacketMetrics",
     "PacketObservation",
     "PacketSequenceMetrics",
@@ -38,7 +45,10 @@ __all__ = [
     "matrix_parameter",
     "balance",
     "exhaustive",
+    "functional_coverage_enabled",
     "parameter_matrix",
     "random_subset",
+    "report_functional_coverage",
+    "reset_functional_coverage",
     "resolve_config_case",
 ]

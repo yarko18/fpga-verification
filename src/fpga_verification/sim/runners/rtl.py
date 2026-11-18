@@ -9,6 +9,7 @@ from .._matrix_execution import (
     resolve_matrix_config,
     run_matrix,
 )
+from ..coverage import functional_coverage_environment
 from ._common import (
     DEFAULT_SIMULATOR,
     _parse_run_args,
@@ -316,6 +317,7 @@ def run_rtl_test(
         parameters=parameters,
         extra_env=extra_env,
     )
+    extra_env = functional_coverage_environment(run_args.coverage, extra_env)
 
     return _rtl_test_cocotb(
         project_root=project_root,

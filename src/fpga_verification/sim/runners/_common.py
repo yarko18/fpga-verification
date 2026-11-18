@@ -88,6 +88,7 @@ class RunArguments:
     """Runner options shared by RTL and generated-component entry points."""
 
     debug: bool
+    coverage: bool
     matrix: bool
     plan: bool
     matrix_tests: tuple[str, ...]
@@ -130,6 +131,11 @@ def _parse_run_args(argv=None) -> RunArguments:
         help="run simulator in GUI/debug mode",
     )
     parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="enable functional coverage declared by the simulator tests",
+    )
+    parser.add_argument(
         "--matrix",
         action="store_true",
         help="run the parameter matrix declared by cocotb/pyuvm tests",
@@ -164,8 +170,11 @@ def _parse_run_args(argv=None) -> RunArguments:
         raise ValueError("--test requires --matrix")
     if args.jobs is not None and not args.matrix:
         raise ValueError("--jobs requires --matrix")
+    if args.coverage and args.matrix:
+        raise ValueError("--coverage cannot be combined with --matrix")
     return RunArguments(
         debug=args.debug,
+        coverage=args.coverage,
         matrix=args.matrix,
         plan=args.plan,
         matrix_tests=tuple(args.matrix_tests),

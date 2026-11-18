@@ -21,6 +21,15 @@ python -m pip install "fpga-verification[functional-coverage]"
 Version 2.0 is used because it supports cocotb 2.x. It can define coverpoints
 and crosses, report hit bins, export XML or YAML, and merge exported runs.
 
+Enable coverage declared by a testbench through its normal runner:
+
+```bash
+python run_test.py --coverage
+```
+
+Without the flag, the optional library is not imported and the same cocotb
+tests run only their correctness checks.
+
 ## Where coverage belongs
 
 Do not put DUT-specific bins in a generic BFM or protocol agent. A BFM owns bus
@@ -66,11 +75,13 @@ accepted or the registered result became observable.
 
 ## Scope of the current integration
 
-`fpga-verification` is ready to use the library inside individual cocotb and
-pyuvm testbenches. Coverage is intentionally an optional dependency, so users
-that only need runners and BFMs do not pay for it.
+`fpga-verification` passes the `--coverage` mode into individual cocotb and
+pyuvm testbenches and provides common reset/report helpers. Coverage is
+intentionally an optional dependency, so users that only need runners and BFMs
+do not pay for it.
 
-Coverage artifacts are not yet first-class matrix-run outputs. Each matrix job
+Coverage artifacts are not yet first-class matrix-run outputs, so
+`--coverage` and `--matrix` are currently mutually exclusive. Each matrix job
 runs in an isolated process and successful temporary directories are removed;
 a production matrix integration therefore needs stable per-configuration
 coverage paths, merging after all workers finish, and an explicit threshold

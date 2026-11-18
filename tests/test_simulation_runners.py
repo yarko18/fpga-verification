@@ -47,6 +47,14 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             _common._parse_run_args(["--test", "Video*"])
         with self.assertRaisesRegex(ValueError, "--jobs requires --matrix"):
             _common._parse_run_args(["--jobs", "2"])
+        with self.assertRaisesRegex(ValueError, "cannot be combined"):
+            _common._parse_run_args(["--matrix", "--coverage"])
+
+    def test_coverage_flag_is_parsed_for_an_ordinary_run(self):
+        args = _common._parse_run_args(["--coverage"])
+
+        self.assertTrue(args.coverage)
+        self.assertFalse(args.matrix)
 
     def test_matrix_jobs_support_number_short_option_and_max(self):
         self.assertEqual(
@@ -397,6 +405,33 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             )
 
         self.assertTrue(rtl_runner.call_args.kwargs["debug"])
+
+    def test_rtl_wrapper_enables_functional_coverage_environment(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(
+                rtl,
+                "functional_coverage_environment",
+                return_value={"FPGA_VERIFICATION_FUNCTIONAL_COVERAGE": "1"},
+            ) as coverage_environment,
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                sources=(),
+                python_paths=(),
+                argv=["--coverage"],
+            )
+
+        coverage_environment.assert_called_once_with(True, None)
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["extra_env"],
+            {"FPGA_VERIFICATION_FUNCTIONAL_COVERAGE": "1"},
+        )
 
     def test_rtl_wrapper_ignores_pytest_arguments(self):
         with (
