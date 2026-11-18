@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from fpga_verification.sim import ComponentConfig, hdl_parameter
+from fpga_verification.sim import ComponentConfig, hdl_parameter, resolve_config_case
 
 
 @dataclass(frozen=True)
@@ -18,5 +18,14 @@ class TestConfig(ComponentConfig):
             raise ValueError("fifo_width must be positive")
 
 
-def get_test_config():
-    return TestConfig()
+def get_test_config(case=None):
+    return resolve_config_case(
+        {
+            "default": TestConfig(),
+            "custom1": TestConfig(
+                fifo_depth=256,
+                fifo_width=64,
+            ),
+        },
+        case,
+    )

@@ -73,6 +73,19 @@ Use a glob to select one or more simulator tests before planning:
 python run_test.py --matrix --test 'Video*'
 ```
 
+`--test` selects cocotb or pyuvm tests; repeat it to include several patterns.
+Named configuration cases serve the single-configuration workflow and cannot
+be combined with `--matrix`:
+
+```bash
+FPGA_VERIFICATION_CONFIG_CASE=wide python run_test.py       # allowed
+python run_test.py --matrix --test 'Video*'                 # allowed
+FPGA_VERIFICATION_CONFIG_CASE=wide python run_test.py --matrix  # rejected
+```
+
+Define matrix domains and attach `@parameter_matrix(...)` to tests instead of
+using a named case as an implicit matrix baseline.
+
 ## Describe independent parameters
 
 `ComponentConfig` remains the single resolved contract shared by HDL generation

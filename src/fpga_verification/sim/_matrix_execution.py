@@ -319,6 +319,12 @@ def run_matrix(
     script=None,
 ) -> MatrixPlan:
     """Plan and optionally execute a test module's parameter matrix."""
+    if CONFIG_CASE_ENV in os.environ:
+        raise ValueError(
+            f"{CONFIG_CASE_ENV} cannot be combined with --matrix; "
+            "use --test to select specific cocotb or pyuvm tests"
+        )
+
     project_root = Path(project_root).resolve()
     plan = plan_test_module(baseline, test_module, test_patterns)
     print_plan(plan)

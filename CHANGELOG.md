@@ -13,6 +13,8 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added an optional `cocotb-coverage` 2.0 extra and functional-coverage design
   guidance.
 - Added a standalone registered-adder functional-coverage example.
+- Rejected `FPGA_VERIFICATION_CONFIG_CASE` together with `--matrix`; matrix
+  test selection remains available through repeatable `--test` patterns.
 
 ## 1.2.1 - 2026-13-10
 

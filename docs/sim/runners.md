@@ -261,6 +261,11 @@ Selected configuration case: wide
 ╰────────────────┴─────────┴─────────────────╯
 ```
 
+Named cases are only for ordinary single-configuration runs. Setting
+`FPGA_VERIFICATION_CONFIG_CASE` together with `--matrix` is an error. Use
+`--matrix --test PATTERN` to select particular cocotb or pyuvm tests without
+changing the matrix baseline.
+
 When the same tests must cover several elaborated parameter sets, use the
 [parameter matrix guide](../guide/parameter-matrix.md). Matrix domains are
 optional metadata, relevance is declared beside each cocotb/pyuvm test, and
