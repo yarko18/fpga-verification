@@ -7,8 +7,9 @@ import pytest
 from fpga_verification.altera.video import (
     FrameSize,
     ImageGenerator,
-    VIPFrameCodec,
+    VIPAncillaryPacket,
     VIPControlPacket,
+    VIPFrameCodec,
     VIPUserPacket,
     VIPVideoPacket,
     VideoFormat,
@@ -43,6 +44,14 @@ def test_user_and_video_packets_do_not_add_payload_padding():
     assert len(video_symbols) % 3 != 0
     assert vip_packet_from_symbols(user_symbols, 3).payload == [1, 2, 3, 4]
     assert vip_packet_from_symbols(video_symbols, 3).payload == [5, 6, 7, 8]
+
+
+def test_ancillary_packet_round_trip():
+    packet = VIPAncillaryPacket([0x20, 0x21, 0x22, 0x23])
+    symbols = packet.to_symbols(3)
+
+    assert symbols == [0xD, 0, 0, 0x20, 0x21, 0x22, 0x23]
+    assert vip_packet_from_symbols(symbols, 3) == packet
 
 
 def test_control_packet_keeps_fixed_payload_padding():

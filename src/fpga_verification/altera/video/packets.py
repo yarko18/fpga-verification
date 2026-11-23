@@ -272,7 +272,38 @@ class VIPVideoPacket(VIPPacket):
                 require_complete_beats=False,
             )
         )
-    
+
+
+@dataclass
+class VIPAncillaryPacket(VIPPacket):
+    """Ancillary data packet passed transparently by Avalon-ST Video IP."""
+
+    payload: list[int]
+
+    def __init__(self, payload: list[int]):
+        super().__init__(VIPPacketType.ANCILLARY)
+        self.payload = payload
+
+    def to_symbols(self, symbols_per_beat: int = 1) -> list[int]:
+        return _encode_packet(
+            VIPPacketType.ANCILLARY,
+            self.payload,
+            symbols_per_beat,
+            pad_payload=False,
+        )
+
+    @classmethod
+    def from_symbols(cls, symbols: list[int], symbols_per_beat: int = 1):
+        return cls(
+            payload=_decode_payload(
+                symbols,
+                VIPPacketType.ANCILLARY,
+                symbols_per_beat,
+                require_complete_beats=False,
+            )
+        )
+
+
 @dataclass
 class VIPUserPacket(VIPPacket):
     user_type: int
@@ -367,6 +398,9 @@ def vip_packet_from_symbols(
         )
 
     if packet_type == int(VIPPacketType.ANCILLARY):
-        raise NotImplementedError("Ancillary VIP packet is not implemented yet")
+        return VIPAncillaryPacket.from_symbols(
+            symbols,
+            symbols_per_beat=symbols_per_beat,
+        )
 
     raise ValueError(f"Reserved/unsupported VIP packet type: 0x{packet_type:X}")

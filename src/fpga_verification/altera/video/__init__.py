@@ -10,6 +10,7 @@ from .codec import VIPFrameCodec
 from .coverage import VIPPacketCoverage, VIP_PACKET_KINDS, vip_packet_kind
 from .format import ImageGenerator, VideoFormat, VideoPayloadCodec
 from .packets import (
+    VIPAncillaryPacket,
     VIPControlPacket,
     VIPFrame,
     VIPInterlacing,
@@ -23,6 +24,7 @@ from .packets import (
 __all__ = [
     "FrameSize",
     "ImageGenerator",
+    "VIPAncillaryPacket",
     "VIPControlPacket",
     "VIPFrame",
     "VIPFrameCodec",

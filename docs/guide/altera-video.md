@@ -22,6 +22,7 @@ test can check ordering and sideband traffic.
 
 ```python
 from fpga_verification.altera.video import (
+    VIPAncillaryPacket,
     VIPControlPacket,
     VIPFrame,
     VIPInterlacing,
@@ -44,16 +45,17 @@ for packet_type in VIPPacketType:
     print(packet_type.name, hex(int(packet_type)))
 ```
 
-A control packet carries geometry and interlacing state. A user packet carries
-a user type and payload. A video packet carries raster-order payload symbols.
+A control packet carries geometry and interlacing state. User and ancillary
+packets carry sideband payload. A video packet carries raster-order payload symbols.
 Control payload is padded to a whole beat; the final beat of a user or video
 packet is described by Avalon-ST `empty`.
 
 ```python
 user = VIPUserPacket(user_type=1, payload=[0xA, 0xB])
+ancillary = VIPAncillaryPacket(payload=[0x20, 0x21])
 video = VIPVideoPacket(payload=[10, 20, 30, 40])
 
-for packet in (user, control, video):
+for packet in (user, ancillary, control, video):
     wire = packet.to_symbols(symbols_per_beat=3)
     assert vip_packet_from_symbols(wire, symbols_per_beat=3) == packet
 ```

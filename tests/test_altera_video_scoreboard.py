@@ -9,6 +9,7 @@ from cocotb.types import Logic
 
 from fpga_verification.altera.video import (
     FrameSize,
+    VIPAncillaryPacket,
     VIPControlPacket,
     VIPUserPacket,
     VIPVideoPacket,
@@ -150,6 +151,20 @@ def test_exact_and_shape_user_comparisons_have_explicit_contracts():
         PacketExpectation(VIPUserPacket(1, [1, 2]), check=CheckMode.SHAPE)
     )
     scoreboard.data_out_export.write(VIPUserPacket(1, [7, 8]))
+    assert scoreboard._failure is None
+
+
+def test_exact_and_shape_ancillary_comparisons_have_explicit_contracts():
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(PacketExpectation(VIPAncillaryPacket([1, 2])))
+    scoreboard.data_out_export.write(VIPAncillaryPacket([1, 2]))
+    assert scoreboard._failure is None
+
+    scoreboard = _scoreboard()
+    scoreboard.add_expectation(
+        PacketExpectation(VIPAncillaryPacket([1, 2]), check=CheckMode.SHAPE)
+    )
+    scoreboard.data_out_export.write(VIPAncillaryPacket([7, 8]))
     assert scoreboard._failure is None
 
 

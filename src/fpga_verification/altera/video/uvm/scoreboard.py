@@ -22,8 +22,9 @@ from cocotb.triggers import (
 from pyuvm import uvm_scoreboard
 
 from fpga_verification.altera.video import (
-    VIPFrameCodec,
+    VIPAncillaryPacket,
     VIPControlPacket,
+    VIPFrameCodec,
     VIPPacket,
     VIPUserPacket,
     VIPVideoPacket,
@@ -259,6 +260,8 @@ class BaseVIPScoreboard(uvm_scoreboard):
 
     @staticmethod
     def _packet_name(packet):
+        if isinstance(packet, VIPAncillaryPacket):
+            return "ANCILLARY"
         if isinstance(packet, VIPControlPacket):
             return "CONTROL"
         if isinstance(packet, VIPVideoPacket):
@@ -275,6 +278,13 @@ class BaseVIPScoreboard(uvm_scoreboard):
 
         if isinstance(packet, VIPControlPacket):
             self._compare_control_packet(packet, packet_ref)
+        elif isinstance(packet, VIPAncillaryPacket):
+            self._compare_payload_packet(
+                packet,
+                packet_ref,
+                name="ANCILLARY",
+                exact=True,
+            )
         elif isinstance(packet, VIPUserPacket):
             self._compare_user_packet(packet, packet_ref, exact=True)
         elif isinstance(packet, VIPVideoPacket):
@@ -285,6 +295,13 @@ class BaseVIPScoreboard(uvm_scoreboard):
     def _compare_shape(self, packet, packet_ref):
         if isinstance(packet, VIPControlPacket):
             self._compare_control_packet(packet, packet_ref)
+        elif isinstance(packet, VIPAncillaryPacket):
+            self._compare_payload_packet(
+                packet,
+                packet_ref,
+                name="ANCILLARY",
+                exact=False,
+            )
         elif isinstance(packet, VIPUserPacket):
             self._compare_user_packet(packet, packet_ref, exact=False)
         elif isinstance(packet, VIPVideoPacket):
@@ -307,6 +324,16 @@ class BaseVIPScoreboard(uvm_scoreboard):
             f"expected interlacing {packet_ref.interlacing}, "
             f"got {packet.interlacing}"
         )
+
+    @staticmethod
+    def _compare_payload_packet(packet, packet_ref, *, name, exact):
+        if exact:
+            assert packet.payload == packet_ref.payload, f"{name} payload mismatch"
+        else:
+            assert len(packet.payload) == len(packet_ref.payload), (
+                f"expected {name} payload length {len(packet_ref.payload)}, "
+                f"got {len(packet.payload)}"
+            )
 
     @staticmethod
     def _compare_user_packet(packet, packet_ref, *, exact):

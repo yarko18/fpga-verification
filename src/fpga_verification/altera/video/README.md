@@ -238,6 +238,7 @@ failures, and frame counters remain isolated.
 ## Python structure:
 
 `VIPPacket`:
+ - `VIPAncillaryPacket`
  - `VIPControlPacket`
  - `VIPVideoPacket`
  - `VIPUserPacket`

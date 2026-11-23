@@ -20,6 +20,7 @@ from pyuvm import (
 )
 
 from fpga_verification.altera.video import (
+    VIPAncillaryPacket,
     VIPControlPacket,
     VIPPacket,
     VIPUserPacket,
@@ -56,6 +57,8 @@ def _bus_label(bus):
 
 
 def _vip_packet_kind(packet):
+    if isinstance(packet, VIPAncillaryPacket):
+        return "ancillary"
     if isinstance(packet, VIPControlPacket):
         return "control"
     if isinstance(packet, VIPVideoPacket):
@@ -75,7 +78,10 @@ def _vip_packet_summary(packet):
             f" ({packet.width}x{packet.height}, "
             f"{packet.interlacing.description})"
         )
-    if isinstance(packet, (VIPVideoPacket, VIPUserPacket)):
+    if isinstance(
+        packet,
+        (VIPAncillaryPacket, VIPVideoPacket, VIPUserPacket),
+    ):
         return f" ({len(packet.payload)} symbols)"
     return ""
 
