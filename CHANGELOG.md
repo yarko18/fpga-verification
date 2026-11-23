@@ -5,7 +5,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 # Changelog
 
-## Unreleased
+## 1.3.0 - 26/11/2026
 
 - Exposed the installed distribution version as `fpga_verification.__version__`.
 - Allowed repeatable `--test` selection in ordinary and matrix runs.
@@ -21,7 +21,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added `--matrix --coverage`: worker reports are preserved and merged before
   threshold checks, with optional hit-bin tables for random parameter crosses.
 
-## 1.2.1 - 2026-13-10
+## 1.2.1 - 13/11/2026
 
 - Added `-j/--jobs N|max` multithread matrix execution with isolated `MatrixJob` workers
 - Refactored parameter-matrix planning, child-process execution, and reporting
@@ -30,7 +30,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added focused matrix tests for discovery, XML result parsing, interruption,
   artifact retention, and terminal/JSON reporting.
 
-## 1.2.0 - 2026-11-10
+## 1.2.0 - 10/11/2026
 
 - Consolidated the public simulation API under `fpga_verification.sim.runners`:
   `run_rtl_test()` now prepares optional Intel libraries itself and
@@ -55,7 +55,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Split each standalone stream-pipeline example into independent CONTROL, USER,
   and VIDEO tests with its own local base-class constructor and lifecycle.
 
-## 1.1.1 - 2026-10-12
+## 1.1.1 - 12/10/2026
 
 - Changed the project license for version 1.1.1 to the FPGA Verification
   Commercial Reciprocity License 1.0. Releases through 1.1.0 remain under
@@ -64,7 +64,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   mixed `.v`/`.sv` files and recursively scanned directories in `sources`.
 - Added a one-line project and author banner to runner logs.
 
-## 1.1.0 - 2026-10-09
+## 1.1.0 - 09/10/2026
 
 - Moved Altera-specific APIs under `fpga_verification.altera`, including
   Avalon-ST Video, Avalon-MM UVM components, DMA models, Quartus runners,
@@ -76,7 +76,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Updated the stream-pipeline examples, documentation, and tests for the new
   public import structure.
 
-## 1.0.6 - 2026-10-09
+## 1.0.6 - 09/10/2026
 
 - Added recursive multi-directory RTL source discovery for relative and
   absolute paths.
@@ -91,7 +91,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added Linux and Windows wheel builds, including Python 3.12 artifacts for the
   `develop` branch and all supported Python versions for tagged releases.
 
-## 1.0.5 - 2026-09-24
+## 1.0.5 - 24/09/2026
 
 - Reorganized the documentation into getting-started material, guides, API
   reference, case studies, and a complete stream-pipeline tutorial.
@@ -104,19 +104,19 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Added dark and light themes, WaveDrom diagrams, inline Draw.io page export,
   and CI support for generated Draw.io SVG assets.
 
-## 1.0.4 - 2026-09-15
+## 1.0.4 - 15/09/2026
 
 - Create standard `VideoPacketPolicy` for intel video packets:
   - Use `EXACT` to compare frame shape and data,.
   - Use `SHAPE` to compare only output frame shape.
   - Use `DROP` if frame shouldn't exists on the output.
 
-## 1.0.3 - 2026-09-15
+## 1.0.3 - 15/09/2026
 
 - Added an optional default frame size to `ImageGenerator`.
 - Expanded the simulation runner documentation and corrected the `run_rtl_test()` example.
 
-## 1.0.2 - 2026-09-11
+## 1.0.2 - 11/09/2026
 
 - Added the MkDocs Material documentation site, structured guides, and local
   documentation build helpers.
@@ -124,7 +124,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   relevant main-branch and pull-request changes.
 - Replaced the former long-form README with a concise project entry point.
 
-## 1.0.1 - 2026-09-10
+## 1.0.1 - 10/09/2026
 
 - Preserved non-UTF-8 bytes while applying simulator-model source fixes.
 - Pinned the tested cocotb and pyuvm versions and allowed the installed
