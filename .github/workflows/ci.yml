@@ -47,6 +47,11 @@ jobs:
 
   test:
     name: Python ${{ matrix.python-version }}
+    needs: validate-release
+    if: >-
+      always() &&
+      (needs.validate-release.result == 'success' ||
+      needs.validate-release.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
