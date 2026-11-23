@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
 from dataclasses import dataclass
+import importlib.util
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -24,6 +25,15 @@ from fpga_verification.sim.coverage import (
 )
 
 
+_COCOTB_COVERAGE_AVAILABLE = (
+    importlib.util.find_spec("cocotb_coverage") is not None
+)
+requires_cocotb_coverage = pytest.mark.skipif(
+    not _COCOTB_COVERAGE_AVAILABLE,
+    reason="requires the functional-coverage optional dependency",
+)
+
+
 @dataclass(frozen=True)
 class _Config(ComponentConfig):
     width: int = hdl_parameter(8, values=(8, 16))
@@ -36,6 +46,9 @@ class _Config(ComponentConfig):
 
 @pytest.fixture(autouse=True)
 def _clean_coverage_database():
+    if not _COCOTB_COVERAGE_AVAILABLE:
+        yield
+        return
     reset_functional_coverage()
     yield
     reset_functional_coverage()
@@ -92,6 +105,7 @@ def test_plain_analysis_port_fans_out_without_pyuvm():
     assert port.subscriber_count == 2
 
 
+@requires_cocotb_coverage
 def test_parameter_coverage_uses_declared_domains_and_ignores_illegal_crosses():
     from cocotb_coverage.coverage import coverage_db
 
@@ -139,6 +153,7 @@ def _write_parameter_report(report, samples, *, report_bins=()):
     )
 
 
+@requires_cocotb_coverage
 def test_managed_report_is_checked_after_simulation(tmp_path):
     report = tmp_path / "coverage.xml"
     _write_parameter_report(report, [_Config()])
@@ -151,6 +166,7 @@ def test_managed_report_is_checked_after_simulation(tmp_path):
     assert percentages == {"top.parameters": pytest.approx(42.86)}
 
 
+@requires_cocotb_coverage
 def test_matrix_reports_merge_hits_from_random_parameter_jobs(tmp_path):
     first = tmp_path / "first.xml"
     second = tmp_path / "second.xml"
@@ -175,6 +191,7 @@ def test_matrix_reports_merge_hits_from_random_parameter_jobs(tmp_path):
     ) == pytest.approx(66.67)
 
 
+@requires_cocotb_coverage
 def test_runner_prints_only_hit_bins_requested_by_the_model(tmp_path):
     report = tmp_path / "coverage.xml"
     _write_parameter_report(

@@ -20,6 +20,8 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   XML/JSON coverage reports.
 - Added `--matrix --coverage`: worker reports are preserved and merged before
   threshold checks, with optional hit-bin tables for random parameter crosses.
+- Fixed functional-coverage tests for base installations without the optional
+  dependency and enabled the extra in CI package verification.
 
 ## 1.2.1 - 13/11/2026
 

@@ -62,6 +62,7 @@ python_files = ["test_*.py"]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-win32 *-manylinux_i686 *-musllinux_*"
 environment = { FPGA_VERIFICATION_BINARY = "1" }
+test-extras = ["functional-coverage"]
 test-requires = ["pytest"]
 test-command = "python -m pytest -q {project}/tests"
 
