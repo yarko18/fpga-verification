@@ -13,6 +13,9 @@ from unittest.mock import Mock, patch
 import fpga_verification
 from fpga_verification.sim import ComponentConfig, hdl_parameter
 from fpga_verification.sim.runners import _common, component, rtl
+from fpga_verification.altera.quartus.component import (
+    prepare_component_simulation,
+)
 
 
 class SimulationRunnerDefaultTests(unittest.TestCase):
@@ -400,6 +403,50 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
         self.assertEqual(
             prepare_component.call_args.kwargs["simulator"],
             "verilator",
+        )
+
+    def test_component_preparation_passes_test_filter_to_rtl_backend(self):
+        rtl_backend = Mock()
+
+        def create_spd(command, **_kwargs):
+            report_option = next(
+                item for item in command if item.startswith("--report-file=spd:")
+            )
+            Path(report_option.removeprefix("--report-file=spd:")).touch()
+
+        with (
+            TemporaryDirectory() as temporary_dir,
+            patch(
+                "fpga_verification.altera.quartus.component.shutil.which",
+                return_value="ip-generate",
+            ),
+            patch(
+                "fpga_verification.altera.quartus.component._run_command",
+                side_effect=create_spd,
+            ),
+            patch(
+                "fpga_verification.altera.quartus.component._spd_hdl_sources",
+                return_value=[],
+            ),
+            patch(
+                "fpga_verification.altera.quartus.component._quartus_sim_sources",
+                return_value=[],
+            ),
+        ):
+            prepare_component_simulation(
+                project_root=temporary_dir,
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                rtl_backend=rtl_backend,
+                simulator="verilator",
+                make_ipx=False,
+                test_filter="VideoPacketTest",
+            )
+
+        self.assertEqual(
+            rtl_backend.call_args.kwargs["test_filter"],
+            "VideoPacketTest",
         )
 
     def test_altera_component_runner_serializes_resolved_config(self):

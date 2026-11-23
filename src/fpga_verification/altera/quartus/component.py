@@ -179,6 +179,7 @@ def prepare_component_simulation(
     ip_search_paths=(),
     build_args=None,
     test_args=None,
+    test_filter=None,
     extra_env=None,
     apply_simulation_fixes=True,
     artifacts_root=None,
@@ -328,6 +329,7 @@ def prepare_component_simulation(
             compile_log=compile_log,
             build_args=build_args,
             test_args=test_args,
+            test_filter=test_filter,
             extra_env=extra_env,
             build_dir=(
                 artifacts_root
