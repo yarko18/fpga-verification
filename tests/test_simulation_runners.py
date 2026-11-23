@@ -43,10 +43,35 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
     def test_matrix_only_options_require_matrix_mode(self):
         with self.assertRaisesRegex(ValueError, "--plan requires --matrix"):
             _common._parse_run_args(["--plan"])
-        with self.assertRaisesRegex(ValueError, "--test requires --matrix"):
-            _common._parse_run_args(["--test", "Video*"])
         with self.assertRaisesRegex(ValueError, "--jobs requires --matrix"):
             _common._parse_run_args(["--jobs", "2"])
+
+    def test_test_patterns_are_available_in_ordinary_and_matrix_runs(self):
+        ordinary = _common._parse_run_args(
+            ["--test", "ControlPacketTest", "--test", "Video*"],
+        )
+        matrix = _common._parse_run_args(["--matrix", "--test", "Video*"])
+
+        self.assertEqual(
+            ordinary.test_patterns,
+            ("ControlPacketTest", "Video*"),
+        )
+        self.assertEqual(matrix.test_patterns, ("Video*",))
+
+    def test_test_patterns_match_full_names_or_test_class_names(self):
+        expression = _common._test_filter_from_patterns(
+            ("vip.test_pyuvm.ControlPacketTest", "Video*"),
+        )
+
+        import re
+
+        self.assertIsNotNone(
+            re.search(expression, "vip.test_pyuvm.ControlPacketTest"),
+        )
+        self.assertIsNotNone(
+            re.search(expression, "vip.test_pyuvm.VideoPacketTest"),
+        )
+        self.assertIsNone(re.search(expression, "vip.test_pyuvm.UserPacketTest"))
 
     def test_coverage_can_be_combined_with_matrix_mode(self):
         args = _common._parse_run_args(["--matrix", "--coverage"])
@@ -138,6 +163,27 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             )
 
         self.assertEqual(runner.test.call_args.kwargs["extra_env"], {"TEST_VALUE": "value"})
+
+    def test_rtl_runner_passes_test_filter(self):
+        runner = Mock()
+        runner.test.return_value = Path("results.xml")
+
+        with (
+            patch("cocotb_tools.runner.get_runner", return_value=runner),
+            patch("cocotb_tools.runner.get_results", return_value=(1, 0)),
+        ):
+            rtl._rtl_test_cocotb(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                sources=[],
+                test_filter="VideoPacketTest",
+            )
+
+        self.assertEqual(
+            runner.test.call_args.kwargs["test_filter"],
+            "VideoPacketTest",
+        )
 
     def test_rtl_runner_encodes_boolean_parameters_as_verilog_bits(self):
         runner = Mock()
@@ -270,6 +316,29 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             component_runner.call_args.kwargs["extra_env"],
             {"FPGA_VERIFICATION_TEST_CONFIG_JSON": '{"name": "matrix", "width": 80}'},
         )
+
+    def test_component_runner_filters_an_ordinary_run(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(component, "_component_test_cocotb") as component_runner,
+        ):
+            component.run_component_test(
+                project_root=".",
+                component_file="component.tcl",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                sources=(),
+                python_paths=(),
+                argv=["--test", "Video*"],
+            )
+
+        test_filter = component_runner.call_args.kwargs["test_filter"]
+        import re
+
+        self.assertIsNotNone(re.search(test_filter, "test_dut.VideoPacketTest"))
+        self.assertIsNone(re.search(test_filter, "test_dut.UserPacketTest"))
 
     def test_altera_component_runner_merges_derived_parameters_after_config(self):
         with (

@@ -22,6 +22,7 @@ from ._common import (
     DEFAULT_SIMULATOR,
     RunArguments,
     _parse_run_args,
+    _test_filter_from_patterns,
     prepare_test_run,
     resolve_test_config,
 )
@@ -78,7 +79,7 @@ def _run_component_matrix(
         project_root=project_root,
         baseline=config,
         test_module=test_module,
-        test_patterns=run_args.matrix_tests,
+        test_patterns=run_args.test_patterns,
         plan_only=run_args.plan,
         jobs=run_args.jobs,
         functional_coverage=run_args.coverage,
@@ -96,7 +97,6 @@ def run_component_test(
     derived_parameters=None,
     sources=("../../src", "../../../common"),
     project_directory="../../..",
-    test_module_env=None,
     python_paths=("..", "../../../common"),
     debug=None,
     argv=None,
@@ -115,9 +115,6 @@ def run_component_test(
     ``ComponentConfig`` dataclass.
     """
     project_root = Path(project_root)
-    if test_module_env is not None:
-        test_module = os.getenv(test_module_env, test_module)
-
     run_args = _parse_run_args(argv)
     if run_args.matrix:
         return _run_component_matrix(
@@ -194,6 +191,7 @@ def run_component_test(
         ip_generate_log=log_dir / "ip_generate.log",
         compile_log=log_dir / f"{sim}_compile.log",
         retain_generated=retain_generated,
+        test_filter=_test_filter_from_patterns(run_args.test_patterns),
         artifacts_root=artifacts_root,
         **kwargs,
     )

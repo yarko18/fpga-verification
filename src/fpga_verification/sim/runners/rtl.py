@@ -18,6 +18,7 @@ from ..coverage import (
 from ._common import (
     DEFAULT_SIMULATOR,
     _parse_run_args,
+    _test_filter_from_patterns,
     prepare_test_run,
     resolve_path,
     resolve_test_config,
@@ -112,6 +113,7 @@ def _rtl_test_cocotb(
     extra_env=None,
     build_dir=None,
     artifacts_root=None,
+    test_filter=None,
 ):
     """Compile RTL with optional prepared Intel models and run cocotb."""
     from cocotb_tools.runner import get_runner
@@ -228,6 +230,7 @@ def _rtl_test_cocotb(
         waves=debug,
         test_args=test_args,
         extra_env=extra_env,
+        test_filter=test_filter,
     )
     _check_results(results_xml)
     finalize_functional_coverage(extra_env)
@@ -258,7 +261,7 @@ def _run_rtl_matrix(
         project_root=project_root,
         baseline=config,
         test_module=test_module,
-        test_patterns=run_args.matrix_tests,
+        test_patterns=run_args.test_patterns,
         plan_only=run_args.plan,
         jobs=run_args.jobs,
         functional_coverage=run_args.coverage,
@@ -282,15 +285,11 @@ def run_rtl_test(
     argv=None,
     clean_build=True,
     enable_questa_acc=False,
-    test_module_env=None,
     artifacts_root=None,
     **kwargs,
 ):
     """Run RTL with optional prepared Intel simulation libraries."""
     project_root = Path(project_root)
-    if test_module_env is not None:
-        test_module = os.getenv(test_module_env, test_module)
-
     run_args = _parse_run_args(argv)
     if run_args.matrix:
         return _run_rtl_matrix(
@@ -345,6 +344,7 @@ def run_rtl_test(
         compile_log=artifacts_root / "logs" / f"{sim}_compile.log",
         parameters=parameters,
         extra_env=extra_env,
+        test_filter=_test_filter_from_patterns(run_args.test_patterns),
         artifacts_root=artifacts_root,
         **kwargs,
     )

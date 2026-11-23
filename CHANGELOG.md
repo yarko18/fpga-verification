@@ -8,6 +8,7 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 ## Unreleased
 
 - Exposed the installed distribution version as `fpga_verification.__version__`.
+- Allowed repeatable `--test` selection in ordinary and matrix runs.
 - Added a resolved configuration table when `FPGA_VERIFICATION_CONFIG_CASE`
   selects a named host-side case.
 - Added an optional `cocotb-coverage` 2.0 extra and functional-coverage design

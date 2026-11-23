@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass
+from fnmatch import translate
 from pathlib import Path
 
 from ..._version import __version__
@@ -91,8 +92,19 @@ class RunArguments:
     coverage: bool
     matrix: bool
     plan: bool
-    matrix_tests: tuple[str, ...]
+    test_patterns: tuple[str, ...]
     jobs: int
+
+
+def _test_filter_from_patterns(patterns) -> str | None:
+    """Translate runner globs into a cocotb full-name filter."""
+    expressions = []
+    for pattern in patterns:
+        expression = translate(pattern)
+        expressions.extend((f"^{expression}", rf"(?:^|\.){expression}"))
+    if not expressions:
+        return None
+    return "(?:" + "|".join(expressions) + ")"
 
 
 def _available_cpu_count() -> int:
@@ -147,11 +159,11 @@ def _parse_run_args(argv=None) -> RunArguments:
     )
     parser.add_argument(
         "--test",
-        dest="matrix_tests",
+        dest="test_patterns",
         action="append",
         default=[],
         metavar="PATTERN",
-        help="include matching cocotb/pyuvm tests in a matrix run",
+        help="run matching cocotb/pyuvm tests (repeatable glob pattern)",
     )
     parser.add_argument(
         "-j",
@@ -166,8 +178,6 @@ def _parse_run_args(argv=None) -> RunArguments:
     args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
     if args.plan and not args.matrix:
         raise ValueError("--plan requires --matrix")
-    if args.matrix_tests and not args.matrix:
-        raise ValueError("--test requires --matrix")
     if args.jobs is not None and not args.matrix:
         raise ValueError("--jobs requires --matrix")
     return RunArguments(
@@ -175,7 +185,7 @@ def _parse_run_args(argv=None) -> RunArguments:
         coverage=args.coverage,
         matrix=args.matrix,
         plan=args.plan,
-        matrix_tests=tuple(args.matrix_tests),
+        test_patterns=tuple(args.test_patterns),
         jobs=1 if args.jobs is None else args.jobs,
     )
 

@@ -93,14 +93,12 @@ file without manually maintaining their compilation order:
 run_rtl_test(
     project_root=PROJECT_ROOT,
     sources=(
-        "../../../common/wip/common_hdl",
-        "../../../common/others/hdl/common_sc_fifo",
-        "../../../common/others/hdl/common_mult",
-        "../../src/hw/radiometry_core",
-        "../../src/hw/radiometry_pkg.sv",
+        "../../rtl/common",
+        "../../rtl/packet_processing",
+        "../../rtl/packet_types_pkg.sv",
     ),
-    hdl_toplevel="radiometry_core_temp_stabilization_wrp",
-    test_module="simulation.core.test",
+    hdl_toplevel="packet_processing",
+    test_module="simulation.test",
 )
 ```
 
