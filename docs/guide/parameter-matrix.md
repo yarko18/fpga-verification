@@ -18,9 +18,8 @@ The ordinary single-configuration workflow remains the starting point. Add a
 matrix after the DUT model and tests work for one configuration; matrix metadata
 is optional and does not change a normal run.
 
-The first implementation is integrated with `run_component_test()`. The
-planning model is vendor-independent, but the plain RTL runner does not yet
-expose the matrix command-line mode.
+Both `run_rtl_test()` and `run_component_test()` expose the same matrix
+command-line mode.
 
 ## Single and matrix runs
 
@@ -74,17 +73,19 @@ python run_test.py --matrix --test 'Video*'
 ```
 
 `--test` selects cocotb or pyuvm tests; repeat it to include several patterns.
-Named configuration cases serve the single-configuration workflow and cannot
-be combined with `--matrix`:
+The same option works without `--matrix` for one default or preset
+configuration. Parameter presets serve the single-configuration workflow and
+cannot be combined with `--matrix`:
 
 ```bash
-FPGA_VERIFICATION_CONFIG_CASE=wide python run_test.py       # allowed
-python run_test.py --matrix --test 'Video*'                 # allowed
-FPGA_VERIFICATION_CONFIG_CASE=wide python run_test.py --matrix  # rejected
+python run_test.py --param-preset wide                 # allowed
+python run_test.py --test 'Video*'                     # allowed
+python run_test.py --matrix --test 'Video*'            # allowed
+python run_test.py --matrix --param-preset wide        # rejected
 ```
 
 Define matrix domains and attach `@parameter_matrix(...)` to tests instead of
-using a named case as an implicit matrix baseline.
+using a preset as an implicit matrix baseline.
 
 ## Describe independent parameters
 

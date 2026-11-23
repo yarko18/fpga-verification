@@ -44,7 +44,7 @@ must not import cocotb, pyuvm, agents, a scoreboard or a DUT handle.
 
 | File | Responsibility |
 | --- | --- |
-| `config.py` | Immutable serialisable input values, HDL parameter metadata, named cases and intrinsic validation. |
+| `config.py` | Immutable serialisable input values, HDL parameter metadata, parameter presets and intrinsic validation. |
 | `layout.py` | Immutable derived formats, masks, dimensions and numeric ranges. |
 | `functional_model.py` | Pure domain-value transformations. |
 | `behavior_model.py` | Registers, modes, history and reset-visible state. Optional for a genuinely stateless component. |
@@ -74,10 +74,10 @@ runtime environment. Restore it in cocotb with `load_test_config(TestConfig)`.
 Never create a fallback `TestConfig()` in the running testbench. A fallback can
 make Python interpret a different layout from the compiled HDL.
 
-Use `resolve_config_case()` in `config.py` for named host configurations. It
-selects an explicit case or reads `FPGA_VERIFICATION_CONFIG_CASE`; keep the
-project-specific case mapping in the project. Host launchers that set this
-variable should import its public name from `CONFIG_CASE_ENV`.
+Keep optional named configurations in a project-local `PARAMETER_PRESETS`
+mapping and pass it to the runner through `parameter_presets=`. The mapping
+must contain `default`. Select another preset only for an ordinary run with
+`--param-preset NAME`; matrix runs derive configurations from matrix domains.
 
 ## Lifecycle rule
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fpga_verification.sim.runners import run_rtl_test
 
-from config import get_test_config
+from config import PARAMETER_PRESETS
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -17,7 +17,7 @@ def main():
         sources=("../src",),
         hdl_toplevel="stream_fifo",
         test_module="simulation.test",
-        config=get_test_config(),
+        parameter_presets=PARAMETER_PRESETS,
         intel_libraries=("altera_mf",),
         python_paths=("..",),
     )

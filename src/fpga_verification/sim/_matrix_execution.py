@@ -28,7 +28,7 @@ from ._matrix_planning import (
 )
 from ._matrix_processes import ProcessRegistry, process_group_options
 from ._matrix_reporting import ProgressReporter, print_plan, print_summary, write_results
-from .config import CONFIG_CASE_ENV, RUNTIME_CONFIG_ENV, ComponentConfig
+from .config import RUNTIME_CONFIG_ENV, ComponentConfig
 from .coverage import (
     DEFAULT_FUNCTIONAL_COVERAGE_FILE,
     FUNCTIONAL_COVERAGE_DEFER_ENV,
@@ -140,8 +140,6 @@ def _child_environment(
     environment["PYTHONUNBUFFERED"] = "1"
     # Matrix output is a plain-text artifact rather than interactive output.
     environment["COCOTB_ANSI_OUTPUT"] = "0"
-    # The anonymous resolved config is authoritative in the child process.
-    environment.pop(CONFIG_CASE_ENV, None)
     # cocotb_tools.runner changes its results filename when it detects pytest.
     environment.pop("PYTEST_CURRENT_TEST", None)
     if functional_coverage:
@@ -377,12 +375,6 @@ def run_matrix(
     functional_coverage: bool = False,
 ) -> MatrixPlan:
     """Plan and optionally execute a test module's parameter matrix."""
-    if CONFIG_CASE_ENV in os.environ:
-        raise ValueError(
-            f"{CONFIG_CASE_ENV} cannot be combined with --matrix; "
-            "use --test to select specific cocotb or pyuvm tests"
-        )
-
     project_root = Path(project_root).resolve()
     plan = plan_test_module(baseline, test_module, test_patterns)
     print_plan(plan)

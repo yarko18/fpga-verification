@@ -6,13 +6,11 @@
 from .analysis import AnalysisPort, CallbackSubscriber, Subscriber
 
 from .config import (
-    CONFIG_CASE_ENV,
     ComponentConfig,
     RUNTIME_CONFIG_ENV,
     hdl_parameter,
     load_test_config,
     matrix_parameter,
-    resolve_config_case,
 )
 from .coverage import (
     CoverageGroup,
@@ -41,7 +39,6 @@ from .stream_metrics import (
 __all__ = [
     "AnalysisPort",
     "CallbackSubscriber",
-    "CONFIG_CASE_ENV",
     "ComponentConfig",
     "CoverageGroup",
     "CoverageScope",
@@ -65,5 +62,4 @@ __all__ = [
     "random_subset",
     "report_functional_coverage",
     "reset_functional_coverage",
-    "resolve_config_case",
 ]

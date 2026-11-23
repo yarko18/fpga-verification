@@ -6,12 +6,10 @@ from dataclasses import dataclass
 import pytest
 
 from fpga_verification.sim import (
-    CONFIG_CASE_ENV,
     ComponentConfig,
     RUNTIME_CONFIG_ENV,
     hdl_parameter,
     load_test_config,
-    resolve_config_case,
 )
 from fpga_verification.sim.config import runtime_config_environment
 
@@ -71,66 +69,3 @@ def test_runtime_configuration_rejects_wrong_in_memory_field_types():
 
     with pytest.raises(ValueError, match="runtime configuration value"):
         config.to_runtime_dict()
-
-
-def test_named_configuration_case_uses_environment_and_is_lazy():
-    constructed = []
-    cases = {
-        "default": lambda: constructed.append("default") or _TestConfig(),
-        "matrix": lambda: constructed.append("matrix") or _TestConfig(width=80),
-    }
-
-    selected = resolve_config_case(
-        cases,
-        environ={CONFIG_CASE_ENV: "matrix"},
-    )
-
-    assert selected == _TestConfig(width=80)
-    assert constructed == ["matrix"]
-
-
-def test_environment_selected_configuration_case_is_reported(capsys):
-    resolve_config_case(
-        {"matrix": _TestConfig(width=80, label="selected")},
-        environ={CONFIG_CASE_ENV: "matrix"},
-    )
-
-    output = capsys.readouterr().out
-    assert "Selected configuration case: matrix" in output
-    assert "Config field" in output
-    assert "width" in output
-    assert "80" in output
-    assert "WIDTH" in output
-    assert "label" in output
-    assert '"selected"' in output
-
-
-def test_explicit_configuration_case_is_not_reported_as_environment_selected(capsys):
-    resolve_config_case(
-        {"default": _TestConfig(), "matrix": _TestConfig(width=80)},
-        "default",
-        environ={CONFIG_CASE_ENV: "matrix"},
-    )
-
-    assert capsys.readouterr().out == ""
-
-
-def test_explicit_configuration_case_overrides_environment():
-    selected = resolve_config_case(
-        {
-            "default": _TestConfig(),
-            "matrix": _TestConfig(width=80),
-        },
-        "default",
-        environ={CONFIG_CASE_ENV: "matrix"},
-    )
-
-    assert selected == _TestConfig()
-
-
-def test_unknown_configuration_case_lists_available_cases():
-    with pytest.raises(ValueError, match="available: default, matrix"):
-        resolve_config_case(
-            {"default": _TestConfig(), "matrix": _TestConfig(width=80)},
-            "missing",
-        )

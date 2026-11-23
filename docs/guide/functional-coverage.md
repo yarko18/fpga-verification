@@ -36,9 +36,9 @@ python run_test.py --matrix --coverage --test CombinedPacketTest -j max
 Each matrix worker writes an isolated XML database. The parent runner preserves
 those databases under `logs/coverage/matrix/`, merges them into
 `logs/functional_coverage.xml`, and only then enforces the declared coverage
-requirements. `--matrix` may be combined with `--coverage`; the incompatible
-combination is `--matrix` with `FPGA_VERIFICATION_CONFIG_CASE`, because a
-matrix already owns the resolved configuration of every child process.
+requirements. `--matrix` may be combined with `--coverage`; it cannot be
+combined with `--param-preset`, because a matrix already owns the resolved
+configuration of every child process.
 
 Without the flag, the optional library is not imported and the same cocotb
 tests run only their correctness checks.

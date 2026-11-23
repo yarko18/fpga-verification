@@ -20,6 +20,7 @@ from ._common import (
     _parse_run_args,
     _test_filter_from_patterns,
     prepare_test_run,
+    resolve_parameter_config,
     resolve_path,
     resolve_test_config,
 )
@@ -274,6 +275,7 @@ def run_rtl_test(
     hdl_toplevel,
     test_module,
     config=None,
+    parameter_presets=None,
     parameters=None,
     extra_env=None,
     sources=("src",),
@@ -291,6 +293,11 @@ def run_rtl_test(
     """Run RTL with optional prepared Intel simulation libraries."""
     project_root = Path(project_root)
     run_args = _parse_run_args(argv)
+    config = resolve_parameter_config(
+        config,
+        parameter_presets,
+        run_args.param_preset,
+    )
     if run_args.matrix:
         return _run_rtl_matrix(
             project_root=project_root,

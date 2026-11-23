@@ -3,44 +3,30 @@ Copyright 2026 Yaroslav Mariukha
 SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 -->
 
-# Stream pipeline
+# Endianity swap
 
-`rtl/stream_pipeline.sv` reverses valid bytes in each Avalon-ST VIDEO payload
-beat. `USE_FIFO` selects its storage implementation.
-
-`test_1` and `test_2` are independent teaching projects. Each keeps its own
-local `StreamPipelineTest` base class and three cocotb tests for CONTROL, USER,
-and VIDEO packets. Their duplication is intentional: neither testbench imports
-implementation from the other.
-
-## test_1: plain RTL
-
-Runs with `USE_FIFO=False` and use pure RTL sources.
+This example verifies a plain RTL Avalon-ST block with library BFMs and a
+Python reference model. USER packets pass through unchanged; valid symbols in
+each VIDEO payload beat are reversed. It also demonstrates typed HDL/test
+configuration and parameter-matrix tests without pyuvm or component Tcl.
 
 ```bash
-SIM=verilator python -m examples.stream_pipeline.simulation.test_1.run_test
+cd examples/endianity_swap/simulation
+SIM=verilator python run_test.py
 ```
 
-## test_2: Altera FIFO
-
-Same three tests with RTL sources but with included FIFO. FIFO IP is provided by
-vendor so we need to use `altera_mf` library to support `USE_FIFO=True`
-parameter.
+Select one test or a named single-run parameter preset:
 
 ```bash
-SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test
+SIM=verilator python run_test.py --test test_video_packet
+SIM=verilator python run_test.py --param-preset custom1
 ```
 
-`test_2` also demonstrates named host configurations. For example:
+Inspect or execute the declared matrix with:
 
 ```bash
-FPGA_VERIFICATION_CONFIG_CASE=preset2 \
-SIM=verilator python -m examples.stream_pipeline.simulation.test_2.run_test
+SIM=verilator python run_test.py --matrix --plan
+SIM=verilator python run_test.py --matrix
 ```
 
-Each runner treats its own directory as `PROJECT_ROOT`. Consequently its
-`sim_build_<simulator>/` and `logs/` directories are created under
-`simulation/test_1/` or `simulation/test_2/`, not at the example root.
-
-Use `SIM=questa` for Questa and `-g` for debug mode. Set `QUARTUS_SIM_LIB` when
-the Quartus simulation library is not discovered automatically.
+Use `SIM=questa` for Questa and `-g` for debug mode.

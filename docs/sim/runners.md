@@ -114,10 +114,10 @@ from fpga_verification.sim.runners import run_rtl_test
 
 run_rtl_test(
     project_root=PROJECT_ROOT,
-    sources=("../../rtl", "/shared/rtl"),
-    hdl_toplevel="stream_pipeline",
-    test_module="simulation.test_1.test",
-    config=get_test_config(use_fifo=True),
+    sources=("../src",),
+    hdl_toplevel="stream_fifo",
+    test_module="simulation.test",
+    parameter_presets=PARAMETER_PRESETS,
     intel_libraries=("altera_mf",),
 )
 ```
@@ -212,8 +212,8 @@ class TestConfig(ComponentConfig):
 
 ```python
 # Host side, in run_test.py
-run_rtl_test(..., config=get_test_config())
-run_component_test(..., config=get_test_config())
+run_rtl_test(..., config=TestConfig())
+run_component_test(..., config=TestConfig())
 
 # Cocotb side, in test_pyuvm.py
 cfg = load_test_config(TestConfig)
@@ -224,32 +224,30 @@ stale or malformed runtime configuration is an error by design: creating a
 new default config in cocotb would hide a mismatch with generated HDL. See
 [Project style](../guide/testbench-style.md) for the ownership rule.
 
-Host-side named configurations can share the standard selector:
+Put reusable single-run configurations in a preset mapping:
 
 ```python
-from fpga_verification.sim import resolve_config_case
-
-
-def get_test_config(case=None):
-    return resolve_config_case(
-        {
-            "default": TestConfig,
-            "wide": lambda: TestConfig(data_width=64),
-        },
-        case,
-    )
+PARAMETER_PRESETS = {
+    "default": TestConfig,
+    "wide": lambda: TestConfig(data_width=64),
+}
 ```
 
-With no explicit `case`, the helper reads `FPGA_VERIFICATION_CONFIG_CASE` and
-falls back to `default`. The public `CONFIG_CASE_ENV` constant provides that
-environment-variable name to matrix launchers and other host-side tooling.
-Factories are evaluated only for the selected case. When the environment
-variable is present, the runner log names the selected case and prints its
-resolved runtime fields. Fields passed to HDL are identified in a separate
-column:
+Pass the mapping to `parameter_presets=` instead of `config=`. A mapping must
+contain `default`; its values may be ready configurations or zero-argument
+factories. The runner evaluates only the selected factory.
+
+An ordinary run uses `default`. Select another preset explicitly:
+
+```bash
+python run_test.py --param-preset wide
+```
+
+The runner names an explicitly selected preset and prints its resolved fields.
+Fields passed to HDL are identified in a separate column:
 
 ```text
-Selected configuration case: wide
+Selected parameter preset: wide
 ╭────────────────┬─────────┬─────────────────╮
 │ Config field   │ Value   │ HDL parameter   │
 ├────────────────┼─────────┼─────────────────┤
@@ -259,10 +257,10 @@ Selected configuration case: wide
 ╰────────────────┴─────────┴─────────────────╯
 ```
 
-Named cases are only for ordinary single-configuration runs. Setting
-`FPGA_VERIFICATION_CONFIG_CASE` together with `--matrix` is an error. Use
-`--matrix --test PATTERN` to select particular cocotb or pyuvm tests without
-changing the matrix baseline.
+Parameter presets are only for ordinary single-configuration runs.
+`--param-preset` together with `--matrix` is an error. Use repeatable
+`--matrix --test PATTERN` options to select particular cocotb or pyuvm tests
+without changing the matrix baseline.
 
 When the same tests must cover several elaborated parameter sets, use the
 [parameter matrix guide](../guide/parameter-matrix.md). Matrix domains are
@@ -280,7 +278,7 @@ from pathlib import Path
 
 from fpga_verification.sim.runners import run_component_test
 
-from .config import get_test_config
+from .config import PARAMETER_PRESETS
 
 
 if __name__ == "__main__":
@@ -289,7 +287,7 @@ if __name__ == "__main__":
         component_file="../../src/component_hw.tcl",
         hdl_toplevel="component",
         test_module="stream.test_pyuvm",
-        config=get_test_config(),
+        parameter_presets=PARAMETER_PRESETS,
         enable_questa_acc=True,
     )
 ```
@@ -299,6 +297,7 @@ Run it with:
 ```bash
 SIM=verilator python -m simulation.stream.run_test
 SIM=questa python -m simulation.stream.run_test -g
+SIM=verilator python -m simulation.stream.run_test --test 'Video*'
 ```
 
 ## Debugging

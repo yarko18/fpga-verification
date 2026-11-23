@@ -27,7 +27,6 @@ from fpga_verification.sim.coverage import (
     FUNCTIONAL_COVERAGE_ENV,
     FUNCTIONAL_COVERAGE_FILE_ENV,
 )
-from fpga_verification.sim.config import CONFIG_CASE_ENV
 from fpga_verification.sim._matrix_processes import ProcessRegistry
 from fpga_verification.sim._matrix_planning import (
     MatrixJob,
@@ -122,24 +121,6 @@ def test_matrix_artifact_root_defaults_to_project_and_accepts_child_override():
         "project",
         {MATRIX_ARTIFACT_ROOT_ENV: "work/config"},
     ).as_posix() == "work/config"
-
-
-def test_matrix_rejects_named_configuration_case(monkeypatch, tmp_path):
-    monkeypatch.setenv(CONFIG_CASE_ENV, "default")
-
-    with pytest.raises(
-        ValueError,
-        match=(
-            rf"{CONFIG_CASE_ENV} cannot be combined with --matrix; "
-            r"use --test to select specific cocotb or pyuvm tests"
-        ),
-    ):
-        run_matrix(
-            project_root=tmp_path,
-            baseline=_Config(),
-            test_module="matrix_tests",
-            plan_only=True,
-        )
 
 
 def test_xml_results_restore_full_names_and_missing_tests_are_errors(tmp_path):

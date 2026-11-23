@@ -24,6 +24,7 @@ from ._common import (
     _parse_run_args,
     _test_filter_from_patterns,
     prepare_test_run,
+    resolve_parameter_config,
     resolve_test_config,
 )
 from .rtl import _rtl_test_cocotb
@@ -93,6 +94,7 @@ def run_component_test(
     hdl_toplevel,
     test_module,
     config=None,
+    parameter_presets=None,
     component_parameters=None,
     derived_parameters=None,
     sources=("../../src", "../../../common"),
@@ -116,6 +118,11 @@ def run_component_test(
     """
     project_root = Path(project_root)
     run_args = _parse_run_args(argv)
+    config = resolve_parameter_config(
+        config,
+        parameter_presets,
+        run_args.param_preset,
+    )
     if run_args.matrix:
         return _run_component_matrix(
             project_root=project_root,

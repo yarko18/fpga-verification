@@ -11,11 +11,9 @@ from dataclasses import MISSING, asdict, field, fields
 from types import UnionType
 from typing import (
     Any,
-    Callable,
     Iterable,
     Literal,
     Mapping,
-    TypeVar,
     Union,
     get_args,
     get_origin,
@@ -23,13 +21,8 @@ from typing import (
 )
 
 
-CONFIG_CASE_ENV = "FPGA_VERIFICATION_CONFIG_CASE"
-"""Environment variable selecting a host-side named configuration case."""
-
 RUNTIME_CONFIG_ENV = "FPGA_VERIFICATION_TEST_CONFIG_JSON"
 """Environment variable containing the resolved test configuration JSON."""
-
-_ConfigT = TypeVar("_ConfigT")
 
 _MATRIX_VALUES_METADATA = "fpga_verification.matrix_values"
 """Dataclass metadata key containing an optional matrix domain."""
@@ -199,12 +192,11 @@ def runtime_config_environment(config: ComponentConfig) -> dict[str, str]:
     return {RUNTIME_CONFIG_ENV: json.dumps(config.to_runtime_dict(), sort_keys=True)}
 
 
-def _print_selected_config_case(
+def _print_selected_parameter_preset(
     selected_name: str,
     selected: Any,
-    label: str,
 ) -> None:
-    """Print the environment-selected case as a compact runner-log table."""
+    """Print an explicitly selected preset as a compact runner-log table."""
     from tabulate import tabulate
 
     if isinstance(selected, ComponentConfig):
@@ -225,7 +217,7 @@ def _print_selected_config_case(
     else:
         rows = [("value", repr(selected), "—")]
 
-    print(f"Selected {label} case: {selected_name}", flush=True)
+    print(f"Selected parameter preset: {selected_name}", flush=True)
     print(
         tabulate(
             rows,
@@ -235,36 +227,6 @@ def _print_selected_config_case(
         ),
         flush=True,
     )
-
-
-def resolve_config_case(
-    cases: Mapping[str, _ConfigT | Callable[[], _ConfigT]],
-    case: str | None = None,
-    *,
-    default: str = "default",
-    environ: Mapping[str, str] | None = None,
-    label: str = "configuration",
-) -> _ConfigT:
-    """Resolve one host-side named configuration case.
-
-    Values may be pre-built configurations or zero-argument factories. Factories
-    keep unselected cases lazy, so validation is limited to the selected case.
-    """
-    environ = os.environ if environ is None else environ
-    selected_name = environ.get(CONFIG_CASE_ENV, default) if case is None else case
-
-    try:
-        selected = cases[selected_name]
-    except KeyError as error:
-        available = ", ".join(cases)
-        raise ValueError(
-            f"Unknown {label} case {selected_name!r}; available: {available}"
-        ) from error
-
-    resolved = selected() if callable(selected) else selected
-    if case is None and CONFIG_CASE_ENV in environ:
-        _print_selected_config_case(selected_name, resolved, label)
-    return resolved
 
 
 def load_test_config(config_type, environ: Mapping[str, str] | None = None):

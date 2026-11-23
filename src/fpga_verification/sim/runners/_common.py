@@ -10,6 +10,7 @@ from fnmatch import translate
 from pathlib import Path
 
 from ..._version import __version__
+from ..config import ComponentConfig, _print_selected_parameter_preset
 
 DEFAULT_SIMULATOR = "verilator"
 _DISTRIBUTION_NAME = "fpga-verification"
@@ -93,6 +94,7 @@ class RunArguments:
     matrix: bool
     plan: bool
     test_patterns: tuple[str, ...]
+    param_preset: str | None
     jobs: int
 
 
@@ -105,6 +107,39 @@ def _test_filter_from_patterns(patterns) -> str | None:
     if not expressions:
         return None
     return "(?:" + "|".join(expressions) + ")"
+
+
+def resolve_parameter_config(config, parameter_presets, selected_preset):
+    """Resolve the runner's direct config or one named parameter preset."""
+    if parameter_presets is None:
+        if selected_preset is not None:
+            raise ValueError(
+                "--param-preset requires parameter_presets in run_test.py"
+            )
+        return config
+    if config is not None:
+        raise ValueError("config and parameter_presets cannot be used together")
+    if "default" not in parameter_presets:
+        raise ValueError("parameter_presets must define a 'default' preset")
+
+    preset_name = "default" if selected_preset is None else selected_preset
+    try:
+        preset = parameter_presets[preset_name]
+    except KeyError as error:
+        available = ", ".join(parameter_presets)
+        raise ValueError(
+            f"Unknown parameter preset {preset_name!r}; available: {available}"
+        ) from error
+
+    resolved = preset() if callable(preset) else preset
+    if not isinstance(resolved, ComponentConfig):
+        raise TypeError("parameter preset must resolve to a ComponentConfig")
+    if selected_preset is not None:
+        _print_selected_parameter_preset(
+            preset_name,
+            resolved,
+        )
+    return resolved
 
 
 def _available_cpu_count() -> int:
@@ -166,6 +201,11 @@ def _parse_run_args(argv=None) -> RunArguments:
         help="run matching cocotb/pyuvm tests (repeatable glob pattern)",
     )
     parser.add_argument(
+        "--param-preset",
+        metavar="NAME",
+        help="select a named HDL/test parameter preset",
+    )
+    parser.add_argument(
         "-j",
         "--jobs",
         type=_parse_jobs,
@@ -178,6 +218,8 @@ def _parse_run_args(argv=None) -> RunArguments:
     args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
     if args.plan and not args.matrix:
         raise ValueError("--plan requires --matrix")
+    if args.param_preset is not None and args.matrix:
+        raise ValueError("--param-preset cannot be combined with --matrix")
     if args.jobs is not None and not args.matrix:
         raise ValueError("--jobs requires --matrix")
     return RunArguments(
@@ -186,6 +228,7 @@ def _parse_run_args(argv=None) -> RunArguments:
         matrix=args.matrix,
         plan=args.plan,
         test_patterns=tuple(args.test_patterns),
+        param_preset=args.param_preset,
         jobs=1 if args.jobs is None else args.jobs,
     )
 

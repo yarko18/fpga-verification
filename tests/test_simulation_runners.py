@@ -46,6 +46,115 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "--jobs requires --matrix"):
             _common._parse_run_args(["--jobs", "2"])
 
+    def test_parameter_preset_cannot_be_combined_with_matrix(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "--param-preset cannot be combined with --matrix",
+        ):
+            _common._parse_run_args(
+                ["--matrix", "--param-preset", "wide"],
+            )
+
+    def test_parameter_presets_are_lazy_and_default_is_implicit(self):
+        constructed = []
+        presets = {
+            "default": lambda: constructed.append("default") or self._Config(),
+            "wide": lambda: constructed.append("wide") or self._Config(width=80),
+        }
+
+        resolved = _common.resolve_parameter_config(None, presets, None)
+
+        self.assertEqual(resolved, self._Config())
+        self.assertEqual(constructed, ["default"])
+
+    def test_explicit_parameter_preset_is_reported(self):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            resolved = _common.resolve_parameter_config(
+                None,
+                {
+                    "default": self._Config(),
+                    "wide": self._Config(width=80, name="selected"),
+                },
+                "wide",
+            )
+
+        self.assertEqual(resolved, self._Config(width=80, name="selected"))
+        self.assertIn("Selected parameter preset: wide", output.getvalue())
+        self.assertIn("WIDTH", output.getvalue())
+        self.assertIn('"selected"', output.getvalue())
+
+    def test_parameter_preset_validation(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "--param-preset requires parameter_presets",
+        ):
+            _common.resolve_parameter_config(None, None, "wide")
+        with self.assertRaisesRegex(
+            ValueError,
+            "config and parameter_presets cannot be used together",
+        ):
+            _common.resolve_parameter_config(
+                self._Config(),
+                {"default": self._Config()},
+                None,
+            )
+        with self.assertRaisesRegex(
+            ValueError,
+            "must define a 'default' preset",
+        ):
+            _common.resolve_parameter_config(
+                None,
+                {"wide": self._Config(width=80)},
+                None,
+            )
+        with self.assertRaisesRegex(
+            ValueError,
+            "Unknown parameter preset 'missing'; available: default, wide",
+        ):
+            _common.resolve_parameter_config(
+                None,
+                {
+                    "default": self._Config(),
+                    "wide": self._Config(width=80),
+                },
+                "missing",
+            )
+
+    def test_rtl_runner_resolves_selected_parameter_preset(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(_common, "_prepend_python_paths"),
+            patch.object(_common, "_clean_sim_build"),
+            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
+        ):
+            rtl.run_rtl_test(
+                project_root=".",
+                hdl_toplevel="dut",
+                test_module="test_dut",
+                parameter_presets={
+                    "default": self._Config(),
+                    "wide": self._Config(width=80, name="selected"),
+                },
+                sources=(),
+                python_paths=(),
+                argv=["--param-preset", "wide"],
+            )
+
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["parameters"],
+            {"WIDTH": 80},
+        )
+        self.assertEqual(
+            rtl_runner.call_args.kwargs["extra_env"],
+            {
+                "FPGA_VERIFICATION_TEST_CONFIG_JSON": (
+                    '{"name": "selected", "width": 80}'
+                ),
+            },
+        )
+
     def test_test_patterns_are_available_in_ordinary_and_matrix_runs(self):
         ordinary = _common._parse_run_args(
             ["--test", "ControlPacketTest", "--test", "Video*"],

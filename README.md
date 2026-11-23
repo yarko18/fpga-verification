@@ -12,7 +12,7 @@ and Quartus System Console access.
 
 [Documentation](https://yarko18.github.io/fpga-verification/) ·
 [PyPI](https://pypi.org/project/fpga-verification/) ·
-[Video endianness example](examples/stream_pipeline) ·
+[Video endianness example](examples/endianity_swap) ·
 [Changelog](CHANGELOG.md)
 
 ## Install
@@ -88,14 +88,15 @@ run_rtl_test(
 
 RTL and Intel component runners use `sources` for their source input. Cocotb
 tests restore the resolved HDL/test configuration with `load_test_config()`,
-and host-side named cases can use `resolve_config_case()`. See
+and ordinary runs can select project-local parameter presets with
+`--param-preset`. See
 [Simulation runners](docs/sim/runners.md) for the complete contracts.
 Parameterized component regressions can declare test-local matrix axes and run
 them with `python run_test.py --matrix`; see
 [Parameter matrix simulations](docs/guide/parameter-matrix.md).
 
 Start with the [documentation](https://yarko18.github.io/fpga-verification/)
-or run the [video-packet endianness example](examples/stream_pipeline). It
+or run the [video-packet endianness example](examples/endianity_swap). It
 preserves CONTROL and USER packets while reversing byte order in VIDEO payload
 beats. The repository includes examples for several verification patterns. The
 site separates a complete tutorial, verification concepts, focused how-to

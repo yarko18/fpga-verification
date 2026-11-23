@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from fpga_verification.sim import ComponentConfig, hdl_parameter, resolve_config_case
+from fpga_verification.sim import ComponentConfig, hdl_parameter
 
 
 @dataclass(frozen=True)
@@ -28,14 +28,10 @@ class TestConfig(ComponentConfig):
             raise ValueError("symbols_per_beat must be at least 2")
 
 
-def get_test_config(case=None):
-    return resolve_config_case(
-        {
-            "default": TestConfig(),
-            "custom1": TestConfig(
-                bits_per_symbol=4,
-                symbols_per_beat=4,
-            ),
-        },
-        case,
-    )
+PARAMETER_PRESETS = {
+    "default": TestConfig(),
+    "custom1": TestConfig(
+        bits_per_symbol=4,
+        symbols_per_beat=4,
+    ),
+}

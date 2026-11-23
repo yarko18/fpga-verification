@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from fpga_verification.sim import ComponentConfig, hdl_parameter, resolve_config_case
+from fpga_verification.sim import ComponentConfig, hdl_parameter
 
 
 @dataclass(frozen=True)
@@ -28,11 +28,7 @@ class TestConfig(ComponentConfig):
             raise ValueError("coverage_minimum must be between 0 and 100")
 
 
-def get_test_config(case=None):
-    return resolve_config_case(
-        {
-            "default": TestConfig(),
-            "small": TestConfig(data_width=4),
-        },
-        case,
-    )
+PARAMETER_PRESETS = {
+    "default": TestConfig(),
+    "small": TestConfig(data_width=4),
+}
