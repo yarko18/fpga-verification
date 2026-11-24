@@ -106,17 +106,15 @@ class _RunnerArgumentParser(argparse.ArgumentParser):
 
 
 def _is_pytest_passthrough(arguments):
-    """Recognize pytest's common quiet/verbose invocation plus test path."""
+    """Recognize pytest's common short flags and optional test path."""
     pytest_flags = {"-q", "-v", "-x", "-s"}
-    has_test_path = False
     for argument in arguments:
         if argument in pytest_flags:
             continue
         if not argument.startswith("-") and argument.endswith(".py"):
-            has_test_path = True
             continue
         return False
-    return has_test_path
+    return bool(arguments)
 
 
 def _test_filter_from_patterns(patterns) -> str | None:
@@ -235,10 +233,7 @@ def _parse_run_args(argv=None) -> RunArguments:
     )
     arguments = sys.argv[1:] if argv is None else list(argv)
     args, unknown = parser.parse_known_args(arguments)
-    running_under_pytest = argv is None and "pytest" in sys.modules
-    if unknown and not (
-        running_under_pytest or _is_pytest_passthrough(unknown)
-    ):
+    if unknown and not _is_pytest_passthrough(unknown):
         parser.error(f"unrecognized arguments: {' '.join(unknown)}")
     if args.plan and not args.matrix:
         raise ValueError("--plan requires --matrix")
