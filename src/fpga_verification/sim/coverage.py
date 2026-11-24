@@ -90,10 +90,11 @@ def functional_coverage_environment(
     resolved[FUNCTIONAL_COVERAGE_ENV] = "1"
     if artifacts_root is not None:
         report = Path(artifacts_root).resolve() / DEFAULT_FUNCTIONAL_COVERAGE_FILE
+        metadata = report.with_suffix(".json")
+        report.unlink(missing_ok=True)
+        metadata.unlink(missing_ok=True)
         resolved[FUNCTIONAL_COVERAGE_FILE_ENV] = str(report)
-        resolved[FUNCTIONAL_COVERAGE_METADATA_ENV] = str(
-            report.with_suffix(".json")
-        )
+        resolved[FUNCTIONAL_COVERAGE_METADATA_ENV] = str(metadata)
         resolved[FUNCTIONAL_COVERAGE_MANAGED_ENV] = "1"
         if defer:
             resolved[FUNCTIONAL_COVERAGE_DEFER_ENV] = "1"
