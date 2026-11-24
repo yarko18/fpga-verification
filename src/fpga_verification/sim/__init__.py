@@ -3,7 +3,7 @@
 
 """Simulation helpers for FPGA verification."""
 
-from .analysis import AnalysisPort, CallbackSubscriber, Subscriber
+from .analysis import Subscriber
 
 from .config import (
     ComponentConfig,
@@ -37,8 +37,6 @@ from .stream_metrics import (
 )
 
 __all__ = [
-    "AnalysisPort",
-    "CallbackSubscriber",
     "ComponentConfig",
     "CoverageGroup",
     "CoverageScope",

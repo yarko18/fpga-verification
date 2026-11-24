@@ -7,7 +7,6 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from fpga_verification.sim import AnalysisPort, CallbackSubscriber
 from fpga_verification.sim import ComponentConfig, hdl_parameter
 from fpga_verification.sim.coverage import (
     CoverageScope,
@@ -89,20 +88,6 @@ def test_coverage_environment_preserves_existing_values(monkeypatch):
         "EXISTING": "value",
         FUNCTIONAL_COVERAGE_ENV: "1",
     }
-
-
-def test_plain_analysis_port_fans_out_without_pyuvm():
-    first = []
-    second = []
-    port = AnalysisPort("transactions")
-    port.connect(CallbackSubscriber(first.append))
-    port.connect(CallbackSubscriber(second.append))
-
-    port.write({"value": 3})
-
-    assert first == [{"value": 3}]
-    assert second == [{"value": 3}]
-    assert port.subscriber_count == 2
 
 
 @requires_cocotb_coverage

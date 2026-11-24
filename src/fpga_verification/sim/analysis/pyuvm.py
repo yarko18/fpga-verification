@@ -1,7 +1,7 @@
 # Copyright 2026 Yaroslav Mariukha
 # SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 
-"""pyuvm adapters for the dependency-light analysis API."""
+"""Adapter from pyuvm analysis exports to Python write callbacks."""
 
 from pyuvm import uvm_analysis_export
 

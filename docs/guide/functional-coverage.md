@@ -68,22 +68,22 @@ IP-specific collector.
 
 The reusable structure has four distinct responsibilities:
 
-1. `fpga_verification.sim.analysis` provides a plain-Python `Subscriber` and
-   `AnalysisPort`; neither depends on pyuvm.
+1. `fpga_verification.sim.analysis.Subscriber` describes the plain-Python
+   `write(item)` contract used by coverage collectors; it does not depend on
+   pyuvm.
 2. `CoverageGroup`, `CoverageScope`, and `FunctionalCoverageSession` provide
    sampling namespaces and one simulation-wide lifecycle on top of
    `cocotb-coverage`.
 3. Protocol packages can provide subscribers such as
    `altera.video.VIPPacketCoverage`.
-4. An IP wrapper composes protocol subscribers with its parameter and semantic
-   crosses, then adapts them to pyuvm ports through
+4. An IP coverage wrapper exposes domain methods such as `sample_input()` and
+   `sample_output()`. Classic cocotb tests call them directly; a pyuvm
+   environment connects native analysis ports to those same methods through
    `fpga_verification.sim.analysis.pyuvm.AnalysisImp`.
 
-The resulting flow is similar to a SystemVerilog UVM coverage subscriber: the
-monitor publishes transactions, several independent subscribers consume them,
-and the IP environment owns the connections. The coverpoint implementation is
-from `cocotb-coverage`; the layering and lifecycle are supplied by
-`fpga-verification`.
+The same coverage model can therefore be driven by either test style, while
+only the UVM environment needs a pyuvm adapter. The coverpoint implementation
+is from `cocotb-coverage`; the lifecycle is supplied by `fpga-verification`.
 
 ## Parameter coverage
 
