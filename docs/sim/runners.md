@@ -24,8 +24,10 @@ run_test.py -> runner -> compile / generate -> cocotb test module -> pyuvm Env
 | `run_component_test()` | An Altera component description that must be generated first. |
 
 Both functions are imported from `fpga_verification.sim.runners`. They prepare
-paths and logs, accept `-g`, and ignore unrelated pytest options. Compilation
-and component-generation helpers are internal implementation details.
+paths and logs, accept `-g`, and provide `--help` for runner options. Unknown
+runner arguments produce an error with a `--help` hint. Calls made from pytest
+continue to tolerate pytest's own command-line options. Compilation and
+component-generation helpers are internal implementation details.
 
 In a `run_test.py`, use the directory containing that file as `PROJECT_ROOT`:
 

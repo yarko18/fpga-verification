@@ -98,6 +98,27 @@ class RunArguments:
     jobs: int
 
 
+class _RunnerArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        super().error(
+            f"{message}. Use --help to see available runner options."
+        )
+
+
+def _is_pytest_passthrough(arguments):
+    """Recognize pytest's common quiet/verbose invocation plus test path."""
+    pytest_flags = {"-q", "-v", "-x", "-s"}
+    has_test_path = False
+    for argument in arguments:
+        if argument in pytest_flags:
+            continue
+        if not argument.startswith("-") and argument.endswith(".py"):
+            has_test_path = True
+            continue
+        return False
+    return has_test_path
+
+
 def _test_filter_from_patterns(patterns) -> str | None:
     """Translate runner globs into a cocotb full-name filter."""
     expressions = []
@@ -167,9 +188,8 @@ def _parse_jobs(value: str) -> int:
 
 
 def _parse_run_args(argv=None) -> RunArguments:
-    parser = argparse.ArgumentParser(
+    parser = _RunnerArgumentParser(
         description="Run a cocotb simulation.",
-        add_help=False,
     )
     parser.add_argument(
         "-g",
@@ -213,9 +233,13 @@ def _parse_run_args(argv=None) -> RunArguments:
         metavar="N|max",
         help="run up to N matrix configurations concurrently (default: 1)",
     )
-    # A runner can also be called by pytest, whose arguments must not be
-    # interpreted as errors by this small command-line compatibility layer.
-    args, _ = parser.parse_known_args(sys.argv[1:] if argv is None else list(argv))
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    args, unknown = parser.parse_known_args(arguments)
+    running_under_pytest = argv is None and "pytest" in sys.modules
+    if unknown and not (
+        running_under_pytest or _is_pytest_passthrough(unknown)
+    ):
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
     if args.plan and not args.matrix:
         raise ValueError("--plan requires --matrix")
     if args.param_preset is not None and args.matrix:
