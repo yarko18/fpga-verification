@@ -407,6 +407,7 @@ def run_matrix(
         merge_functional_coverage(
             [_matrix_coverage_path(context, job) for job in plan.jobs],
             coverage_path,
+            enforce=not bool(test_patterns),
         )
     if failed or interrupted:
         raise SystemExit(1)

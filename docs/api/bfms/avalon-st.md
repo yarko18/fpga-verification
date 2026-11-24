@@ -203,6 +203,11 @@ Use a monitor for scoreboards, coverage and timing measurements. Use a sink
 when the testbench must provide `ready` or insert backpressure. Calling
 `cancel()` stops the monitor's receive and reset coroutines.
 
+The BFM monitor reports accepted beats and complete frames. For coverage of
+every raw `ready`/`valid` clock state or per-beat backpressure duration, start
+the separate `fpga_verification.protocols.avalon_st.AvalonSTCycleCoverage`
+sidecar described in the [functional coverage guide](../../guide/functional-coverage.md).
+
 ## Ready timing and backpressure
 
 `ready_latency=0, ready_allowance=0` uses the current-cycle `ready` value for

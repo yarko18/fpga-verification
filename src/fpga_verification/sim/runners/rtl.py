@@ -341,7 +341,10 @@ def run_rtl_test(
         coverage_enabled,
         extra_env,
         artifacts_root=artifacts_root,
-        defer=os.environ.get(FUNCTIONAL_COVERAGE_DEFER_ENV) == "1",
+        defer=(
+            bool(run_args.test_patterns)
+            or os.environ.get(FUNCTIONAL_COVERAGE_DEFER_ENV) == "1"
+        ),
     )
 
     return _rtl_test_cocotb(

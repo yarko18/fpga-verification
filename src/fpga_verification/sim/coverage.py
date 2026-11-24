@@ -42,7 +42,7 @@ FUNCTIONAL_COVERAGE_MANAGED_ENV = (
 """Flag moving threshold enforcement from a test to the runner."""
 
 FUNCTIONAL_COVERAGE_DEFER_ENV = "FPGA_VERIFICATION_FUNCTIONAL_COVERAGE_DEFER"
-"""Matrix-child flag deferring thresholds until all job reports are merged."""
+"""Flag deferring suite-level thresholds for partial coverage runs."""
 
 DEFAULT_FUNCTIONAL_COVERAGE_FILE = Path("logs/functional_coverage.xml")
 
@@ -79,8 +79,8 @@ def functional_coverage_environment(
 ) -> dict[str, str] | None:
     """Validate coverage and extend the simulator environment.
 
-    ``artifacts_root`` opts into runner-managed output. A matrix child uses
-    ``defer=True`` so only the merged database is checked against thresholds.
+    ``artifacts_root`` opts into runner-managed output. ``defer=True`` leaves
+    suite-level threshold enforcement to a later full or merged run.
     """
     if not enabled:
         return None if extra_env is None else dict(extra_env)
@@ -548,8 +548,9 @@ def merge_functional_coverage(
     output: str | Path,
     *,
     logger: Callable[[str], object] = print,
+    enforce: bool = True,
 ) -> dict[str, float]:
-    """Merge compatible job databases and enforce their shared policy."""
+    """Merge compatible job databases and optionally enforce their policy."""
     from cocotb_coverage.coverage import merge_coverage
 
     reports = [Path(path) for path in files]
@@ -580,5 +581,5 @@ def merge_functional_coverage(
     return finalize_functional_coverage(
         environment,
         logger=logger,
-        enforce=True,
+        enforce=enforce,
     ) or {}

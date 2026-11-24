@@ -35,10 +35,13 @@ python run_test.py --matrix --coverage --test CombinedPacketTest -j max
 
 Each matrix worker writes an isolated XML database. The parent runner preserves
 those databases under `logs/coverage/matrix/`, merges them into
-`logs/functional_coverage.xml`, and only then enforces the declared coverage
-requirements. `--matrix` may be combined with `--coverage`; it cannot be
-combined with `--param-preset`, because a matrix already owns the resolved
-configuration of every child process.
+`logs/functional_coverage.xml`, and enforces declared requirements after an
+unfiltered full run. A run using `--test` still writes and merges its report but
+does not enforce suite-level closure thresholds; this lets an individual test
+report its contribution without failing because other tests' bins are absent.
+`--matrix` may be combined with `--coverage`; it cannot be combined with
+`--param-preset`, because a matrix already owns the resolved configuration of
+every child process.
 
 Without the flag, the optional library is not imported and the same cocotb
 tests run only their correctness checks.
@@ -74,7 +77,8 @@ The reusable structure has four distinct responsibilities:
 2. `CoverageGroup`, `CoverageScope`, and `FunctionalCoverageSession` provide
    sampling namespaces and one simulation-wide lifecycle on top of
    `cocotb-coverage`.
-3. Protocol packages can provide subscribers such as
+3. Protocol packages can provide reusable collectors such as
+   `protocols.avalon_st.AvalonSTCycleCoverage` and
    `altera.video.VIPPacketCoverage`.
 4. An IP coverage wrapper exposes domain methods such as `sample_input()` and
    `sample_output()`. Classic cocotb tests call them directly; a pyuvm
@@ -128,6 +132,79 @@ def sample_adder(a, b):
 
 Call the function only at the chosen sampling event, after the transaction was
 accepted or the registered result became observable.
+
+## Avalon-ST cycle and packet coverage
+
+`AvalonSTCycleCoverage` is a sidecar observer. It samples the raw `ready` and
+`valid` pins on rising clock edges and does not change the source, sink, or
+monitor BFM. It records the four pin combinations and, for each accepted beat,
+the number of cycles that beat waited for qualified `ready`. The default wait
+bins are 0, 1, 2–3, 4–7 and 8 or more cycles. `ready_latency=1` applies the
+previous cycle's `ready` value when deciding whether a beat was accepted.
+This collector measures traffic; protocol assertions or a checker must still
+report violations such as dropping `valid` before a stalled beat is accepted.
+
+```python
+import cocotb
+from cocotbext.avalon import AvalonSTBus
+from fpga_verification.protocols.avalon_st import AvalonSTCycleCoverage
+from fpga_verification.sim.coverage import (
+    CoverageScope,
+    get_functional_coverage_session,
+)
+
+input_bus = AvalonSTBus.from_prefix(dut, "din")
+session = get_functional_coverage_session("top")
+cycle_coverage = (
+    None
+    if session is None
+    else session.model(
+        "input_stream",
+        lambda: AvalonSTCycleCoverage(
+            CoverageScope("top.input_stream"),
+            ready_latency=0,
+        ),
+    )
+)
+cycle_monitor = (
+    None
+    if cycle_coverage is None
+    else cocotb.start_soon(
+        cycle_coverage.monitor(input_bus, dut.clk, reset=dut.reset)
+    )
+)
+# Cancel cycle_monitor in this test's finally block when it is not None.
+```
+
+Obtain the model through `FunctionalCoverageSession.model()` as shown so all
+tests in the simulator process contribute to one set of bins. Each test starts
+and cancels its own bus observer; the runner checks the suite's requirements
+only for an unfiltered run.
+
+Cancel `cycle_monitor` during test teardown. Reset cycles are excluded and
+clear a pending wait. If an interface omits `ready` or `valid`, the observer
+treats the missing signal as asserted and excludes unreachable cycle states;
+backpressure coverage is omitted when `ready` is absent. For a present signal
+that is tied off by a particular IP, pass only the applicable
+`expected_states` and `backpressure_bins`.
+
+For example, to close only the states reachable when `ready` is tied high, use
+`expected_states=("ready_only", "ready_valid")` and
+`backpressure_bins={"none": (0, None)}`.
+Set `include_backpressure=False` when the interface profile has no meaningful
+backpressure behavior to measure.
+
+`VIPPacketCoverage` records both broad categories (`video`, `control`, `user`,
+`ancillary`) and exact packet types. The exact user bins are `user1` through
+`user8`, matching the packet types represented by `VIPPacketType`. Pass
+`expected_types` when a specific VIP/IP profile supports only a subset; when
+omitted, exact types are derived from `expected_kinds`.
+
+Cycle coverage and packet coverage answer different questions. The former
+samples every clock; the latter should be connected to accepted, decoded packet
+observations. Keep field ranges, control/video relationships, and IP-specific
+requirements in the project coverage model, where the supported feature profile
+is known.
 
 ## Reports and requirements
 

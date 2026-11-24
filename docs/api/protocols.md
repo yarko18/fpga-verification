@@ -10,3 +10,9 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
       show_root_heading: true
       members_order: source
       show_submodules: false
+
+::: fpga_verification.protocols.avalon_st
+    options:
+      show_root_heading: true
+      members_order: source
+      show_submodules: false
