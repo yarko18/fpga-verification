@@ -19,7 +19,7 @@ Recommended reading order:
    control-before-video checks and active frame-size validation.
 6. `src/fpga_verification/altera/video/uvm/agent.py`: pyuvm source, monitor,
    sink, sequence, and item classes for VIP packet streams.
-7. `src/fpga_verification/sim/scoreboards/analysis.py`: shared `AnalysisImp`
+7. `src/fpga_verification/sim/analysis/pyuvm.py`: shared `AnalysisImp`
    helper that forwards pyuvm analysis writes to a Python callable.
 8. `src/fpga_verification/altera/video/uvm/scoreboard.py`: strict ordered
    protocol scoreboard used underneath IP-specific behavior models.

@@ -126,8 +126,9 @@ def connect_phase(self):
     )
 ```
 
-`AnalysisImp` is the adapter from `uvm_analysis_port.write(item)` to a Python
-callback. `BaseVIPScoreboard` creates three instances:
+`fpga_verification.sim.analysis.pyuvm.AnalysisImp` adapts
+`uvm_analysis_port.write(item)` to a Python callback. `BaseVIPScoreboard`
+creates three instances:
 
 ```text
 source_analysis_port.write(packet)

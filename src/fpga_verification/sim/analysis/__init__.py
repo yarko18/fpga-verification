@@ -43,7 +43,7 @@ class AnalysisPort(Generic[TransactionT]):
 
     This mirrors the useful part of a UVM analysis port without requiring a
     component hierarchy. A pyuvm monitor can use its native analysis port and
-    connect a subscriber through ``AnalysisImp`` instead.
+    connect a subscriber through :mod:`fpga_verification.sim.analysis.pyuvm`.
     """
 
     def __init__(self, name: str):

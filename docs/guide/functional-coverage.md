@@ -76,7 +76,8 @@ The reusable structure has four distinct responsibilities:
 3. Protocol packages can provide subscribers such as
    `altera.video.VIPPacketCoverage`.
 4. An IP wrapper composes protocol subscribers with its parameter and semantic
-   crosses, then adapts them to pyuvm ports through `AnalysisImp`.
+   crosses, then adapts them to pyuvm ports through
+   `fpga_verification.sim.analysis.pyuvm.AnalysisImp`.
 
 The resulting flow is similar to a SystemVerilog UVM coverage subscriber: the
 monitor publishes transactions, several independent subscribers consume them,

@@ -29,7 +29,7 @@ from fpga_verification.altera.video import (
     VIPUserPacket,
     VIPVideoPacket,
 )
-from fpga_verification.sim.scoreboards.analysis import AnalysisImp
+from fpga_verification.sim.analysis.pyuvm import AnalysisImp
 from fpga_verification.video import FrameSize, compare_frames
 
 
