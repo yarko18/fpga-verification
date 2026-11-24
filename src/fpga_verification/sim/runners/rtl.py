@@ -34,6 +34,11 @@ def _check_results(results_xml):
     from cocotb_tools.runner import get_results
 
     num_tests, num_failed = get_results(results_xml)
+    if num_tests == 0:
+        raise SystemExit(
+            "No cocotb tests were run. Check the --test pattern or use --help "
+            "to see the available runner options."
+        )
     if num_failed:
         raise SystemExit(f"Cocotb failed {num_failed} of {num_tests} tests")
 
