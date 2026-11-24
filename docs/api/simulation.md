@@ -33,12 +33,23 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
       show_root_heading: true
       members_order: source
 
-## Scoreboards
+## Analysis
 
-::: fpga_verification.sim.scoreboards
+::: fpga_verification.sim.analysis
     options:
       show_root_heading: true
       members_order: source
+      members:
+        - AnalysisPort
+        - CallbackSubscriber
+        - Subscriber
+
+::: fpga_verification.sim.analysis.pyuvm
+    options:
+      show_root_heading: true
+      members_order: source
+      members:
+        - AnalysisImp
 
 ## Altera Avalon components
 
