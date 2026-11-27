@@ -3,6 +3,6 @@
 
 """Quartus hardware-in-the-loop helpers."""
 
-from .system_console import IntelSystemConsoleSession, JtagSession
+from .system_console import IntelSystemConsoleSession
 
-__all__ = ["IntelSystemConsoleSession", "JtagSession"]
+__all__ = ["IntelSystemConsoleSession"]

@@ -31,6 +31,9 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   `--param-preset`, without compatibility aliases.
 - Removed runner `test_module_env` overrides; `test_module` is fixed by the
   runner entry point and individual tests are selected with `--test`.
+- Removed the `JtagSession` compatibility alias; use `IntelSystemConsoleSession`.
+- Removed CLI tolerance for pytest flags and Python file paths. Runners now
+  reject all unknown arguments; programmatic callers can pass `argv=()`.
 
 ## 1.2.1 - 13/11/2026
 

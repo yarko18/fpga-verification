@@ -105,18 +105,6 @@ class _RunnerArgumentParser(argparse.ArgumentParser):
         )
 
 
-def _is_pytest_passthrough(arguments):
-    """Recognize pytest's common short flags and optional test path."""
-    pytest_flags = {"-q", "-v", "-x", "-s"}
-    for argument in arguments:
-        if argument in pytest_flags:
-            continue
-        if not argument.startswith("-") and argument.endswith(".py"):
-            continue
-        return False
-    return bool(arguments)
-
-
 def _test_filter_from_patterns(patterns) -> str | None:
     """Translate runner globs into a cocotb full-name filter."""
     expressions = []
@@ -232,9 +220,7 @@ def _parse_run_args(argv=None) -> RunArguments:
         help="run up to N matrix configurations concurrently (default: 1)",
     )
     arguments = sys.argv[1:] if argv is None else list(argv)
-    args, unknown = parser.parse_known_args(arguments)
-    if unknown and not _is_pytest_passthrough(unknown):
-        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
+    args = parser.parse_args(arguments)
     if args.plan and not args.matrix:
         raise ValueError("--plan requires --matrix")
     if args.param_preset is not None and args.matrix:

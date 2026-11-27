@@ -25,9 +25,10 @@ run_test.py -> runner -> compile / generate -> cocotb test module -> pyuvm Env
 
 Both functions are imported from `fpga_verification.sim.runners`. They prepare
 paths and logs, accept `-g`, and provide `--help` for runner options. Unknown
-runner arguments produce an error with a `--help` hint. Common pytest
-invocations such as `-q tests/test_runner.py` are tolerated. Compilation and
-component-generation helpers are internal implementation details.
+runner arguments produce an error with a `--help` hint. When calling a runner
+from Python, pass `argv=()` or an explicit list of runner arguments to avoid
+reading the calling process's command line. Compilation and component-generation
+helpers are internal implementation details.
 
 In a `run_test.py`, use the directory containing that file as `PROJECT_ROOT`:
 

@@ -16,8 +16,7 @@ services in the design.
 ## Persistent session
 
 The session starts one process and communicates with the packaged Tcl helper.
-Reusing it avoids the startup overhead on every transfer. `JtagSession` remains
-a backward-compatible alias.
+Reusing it avoids the startup overhead on every transfer.
 
 ```python
 import numpy as np

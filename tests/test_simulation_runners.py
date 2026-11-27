@@ -669,24 +669,6 @@ class SimulationRunnerDefaultTests(unittest.TestCase):
             {"FPGA_VERIFICATION_FUNCTIONAL_COVERAGE": "1"},
         )
 
-    def test_rtl_wrapper_ignores_pytest_arguments(self):
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch.object(_common, "_prepend_python_paths"),
-            patch.object(_common, "_clean_sim_build"),
-            patch.object(rtl, "_rtl_test_cocotb") as rtl_runner,
-        ):
-            rtl.run_rtl_test(
-                project_root=".",
-                hdl_toplevel="dut",
-                test_module="test_dut",
-                sources=(),
-                python_paths=(),
-                argv=["-q", "tests/test_dut.py"],
-            )
-
-        self.assertFalse(rtl_runner.call_args.kwargs["debug"])
-
     def test_rtl_wrapper_resolves_config_for_build_and_test(self):
         with (
             patch.dict(os.environ, {}, clear=True),
