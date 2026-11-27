@@ -23,6 +23,14 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Fixed functional-coverage tests for base installations without the optional
   dependency and enabled the extra in CI package verification.
 - Fixed `--test` forwarding from the component runner to its RTL backend.
+- Optimized `ParameterCoverage` configuration crosses by constructing retained
+  tuple bins directly instead of removing illegal bins from a full `CoverCross`.
+  Preserved the public API and configuration validation through `__post_init__`.
+- Replaced `CONFIG_CASE_ENV` / `resolve_config_case()` and
+  `FPGA_VERIFICATION_CONFIG_CASE` selection with `parameter_presets` and
+  `--param-preset`, without compatibility aliases.
+- Removed runner `test_module_env` overrides; `test_module` is fixed by the
+  runner entry point and individual tests are selected with `--test`.
 
 ## 1.2.1 - 13/11/2026
 

@@ -170,21 +170,25 @@ def _matrix_domains(
     return domains
 
 
-def _illegal_cross_bins(
+def _configuration_bins(
     config: ComponentConfig,
     names: Sequence[str],
     domains: Mapping[str, Sequence[Any]],
+    *,
+    ignore_illegal: bool,
 ) -> list[tuple[Any, ...]]:
     baseline = config.to_runtime_dict()
-    ignored = []
+    bins = []
     for values in itertools.product(*(domains[name] for name in names)):
         candidate = dict(baseline)
         candidate.update(zip(names, values))
-        try:
-            type(config)(**candidate)
-        except ValueError:
-            ignored.append(values)
-    return ignored
+        if ignore_illegal:
+            try:
+                type(config)(**candidate)
+            except ValueError:
+                continue
+        bins.append(values)
+    return bins
 
 
 class ParameterCoverage(CoverageGroup):
@@ -199,7 +203,7 @@ class ParameterCoverage(CoverageGroup):
         crosses: Mapping[str, Sequence[str]] | None = None,
         ignore_illegal: bool = True,
     ):
-        from cocotb_coverage.coverage import CoverCross, CoverPoint
+        from cocotb_coverage.coverage import CoverPoint
 
         if not isinstance(config, ComponentConfig):
             raise TypeError("parameter coverage requires a ComponentConfig")
@@ -226,16 +230,20 @@ class ParameterCoverage(CoverageGroup):
                     f"coverage cross {cross_name!r} uses unknown fields: "
                     + ", ".join(sorted(missing))
                 )
-            ignored = (
-                _illegal_cross_bins(config, cross_names, domains)
-                if ignore_illegal
-                else []
-            )
+            # Each tuple is one configuration bin. Constructing only retained
+            # bins avoids CoverCross's quadratic scan of ignored combinations.
             cross_items.append(
-                CoverCross(
+                CoverPoint(
                     scope.item(cross_name),
-                    items=[scope.item(name) for name in cross_names],
-                    ign_bins=ignored,
+                    xf=lambda sampled, field_names=cross_names: tuple(
+                        getattr(sampled, name) for name in field_names
+                    ),
+                    bins=_configuration_bins(
+                        config,
+                        cross_names,
+                        domains,
+                        ignore_illegal=ignore_illegal,
+                    ),
                 )
             )
         super().__init__(*points, *cross_items)
