@@ -34,6 +34,8 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
 - Removed the `JtagSession` compatibility alias; use `IntelSystemConsoleSession`.
 - Removed CLI tolerance for pytest flags and Python file paths. Runners now
   reject all unknown arguments; programmatic callers can pass `argv=()`.
+- Fixed Cython compilation of Avalon-ST cycle coverage by using lists for
+  conditional ready/valid domains of different lengths.
 
 ## 1.2.1 - 13/11/2026
 

@@ -118,8 +118,8 @@ class AvalonSTCycleCoverage(Subscriber[AvalonSTCycleSample]):
 
     @staticmethod
     def _reachable_states(has_ready: bool, has_valid: bool) -> tuple[str, ...]:
-        ready_values = (False, True) if has_ready else (True,)
-        valid_values = (False, True) if has_valid else (True,)
+        ready_values = [False, True] if has_ready else [True]
+        valid_values = [False, True] if has_valid else [True]
         reachable = {
             AVALON_ST_CYCLE_STATES[(ready, valid)]
             for ready in ready_values
