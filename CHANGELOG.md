@@ -36,6 +36,9 @@ SPDX-License-Identifier: LicenseRef-FPGA-Verification-Commercial-Reciprocity-1.0
   reject all unknown arguments; programmatic callers can pass `argv=()`.
 - Fixed Cython compilation of Avalon-ST cycle coverage by using lists for
   conditional ready/valid domains of different lengths.
+- Fixed wheel builds on untagged `main` commits after skipped release validation,
+  while still requiring successful library tests and respecting cancellation.
+- Clarified CI job names for library tests, wheel builds, and publication.
 
 ## 1.2.1 - 13/11/2026
 

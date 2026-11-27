@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   validate-release:
+    name: Validate release tag
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -45,11 +46,11 @@ jobs:
               raise SystemExit(f"tag {actual!r} does not match {expected!r}")
           PY
 
-  test:
-    name: Python ${{ matrix.python-version }}
+  python-tests:
+    name: Library tests (Python ${{ matrix.python-version }})
     needs: validate-release
     if: >-
-      always() &&
+      !cancelled() &&
       (needs.validate-release.result == 'success' ||
       needs.validate-release.result == 'skipped')
     runs-on: ubuntu-latest
@@ -67,12 +68,15 @@ jobs:
       - run: python -m pip install -e ".[functional-coverage]" pytest
       - run: python -m pytest -q
 
-  build-wheels:
+  wheel-builds:
+    name: Build wheels (${{ matrix.os }})
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      !cancelled() &&
+      needs.python-tests.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/tags/')
-    needs: test
+      startsWith(github.ref, 'refs/tags/'))
+    needs: python-tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -96,8 +100,9 @@ jobs:
           if-no-files-found: error
 
   publish:
+    name: Publish wheels to PyPI
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [validate-release, build-wheels]
+    needs: [validate-release, wheel-builds]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -115,6 +120,7 @@ jobs:
           packages-dir: wheelhouse
 
   release:
+    name: Create GitHub release
     if: startsWith(github.ref, 'refs/tags/')
     needs: publish
     runs-on: ubuntu-latest
